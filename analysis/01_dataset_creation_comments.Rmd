@@ -23,7 +23,7 @@ This chunks also creates the run_query and get_sql function.
 
 ```{r setup, include=FALSE}
 # Updated for our year
-project_id <- "hst-953-2019"
+project_id <- "hst-953-2018"
 options(httr_oauth_cache=FALSE)
 # Function that takes in a sql command and runs it on bigquery
 run_query <- function(query){
@@ -79,6 +79,8 @@ demographic['body_surface_area']<-round(sqrt((demographic$height*demographic$wei
 patient_inexcluded_icd9 <- run_query(getSQL('sql/patient_inexcluded_icd9.sql'))
 IO_exclusion <- run_query(getSQL('sql/IO_exclusion.sql'))
 charlson_score <- run_query(getSQL('sql/charlson_score.sql'))
+# SOFA variables
+sofa_cv_open <- run_query(getSQL("sql/sofa/sofa_cv_open.sql"))
 ```
 
 ## AKI Dataset creation
@@ -231,8 +233,6 @@ USING
 WHERE
 IO_exclusion.patientunitstayid IS NULL
 ')
-
-sofa_open <- sqldf (getSQL("sql/sofa/sofa_test.sql"))
 
 Final_dataset<-Reduce(function(...) merge(..., all.x=TRUE), list(selected_cohort, apache_related,hct,AKIlist_final,sofa_eicu,charlson_score
 ))
