@@ -1,9 +1,0 @@
-"0","## fit ordered logit model and store results 'm'"
-"0","m <- polr(as.factor(actualhospitalmortality) ~ "
-"0","            Q_leakingn_index"
-"0","          +apachescore"
-"0","          +Final_Charlson_score"
-"0","          , data = Final_dataset, Hess=TRUE)"
-"2","Error in polr(as.factor(actualhospitalmortality) ~ Q_leakingn_index +  : 
-  response must have 3 or more levels
-"
