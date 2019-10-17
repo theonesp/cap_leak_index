@@ -45,8 +45,8 @@ table1strat <- CreateTableOne(vars = listVarstab1, data = Final_dataset, factorV
 
 # As an aside, the following code may help for your projects, as it improves the presentation of the tables above.  You will still need to update the column and row names manually, but this should paste nicely into Word or LateX!
 
-write.xlsx(as.data.frame(print(table1)), "table1.xlsx", col.names=TRUE, row.names=TRUE)
-write.xlsx(as.data.frame(print(table1strat)), "table1strat.xlsx", col.names=TRUE, row.names=TRUE)
+write.xlsx(as.data.frame(print(table1)), "table1.csv", col.names=TRUE, row.names=TRUE)
+write.xlsx(as.data.frame(print(table1strat)), "table1strat.csv", col.names=TRUE, row.names=TRUE)
 
 #  if(!("dplyr" %in% installed.packages()[,1])) {
 #  install.packages("dplyr")

@@ -14,6 +14,8 @@ library(readr)
 library(stringr)
 library(sqldf)
 library(dplyr)
+library(tableone)
+library(xlsx)
 ```
 
 
@@ -79,8 +81,13 @@ demographic['body_surface_area']<-round(sqrt((demographic$height*demographic$wei
 patient_inexcluded_icd9 <- run_query(getSQL('sql/patient_inexcluded_icd9.sql'))
 IO_exclusion <- run_query(getSQL('sql/IO_exclusion.sql'))
 charlson_score <- run_query(getSQL('sql/charlson_score.sql'))
+```
+```{r}
 # SOFA variables
 sofa_cv_open <- run_query(getSQL("sql/sofa/sofa_cv_open.sql"))
+sofa_renal_open <- run_query(getSQL("sql/sofa/sofa_renal_open.sql"))
+sofa_respi_open <- run_query(getSQL("sql/sofa/sofa_respi_open.sql"))
+sofa_3others_open <- run_query(getSQL("sql/sofa/sofa_3others_open.sql"))
 ```
 
 ## AKI Dataset creation
@@ -234,10 +241,23 @@ WHERE
 IO_exclusion.patientunitstayid IS NULL
 ')
 
-Final_dataset<-Reduce(function(...) merge(..., all.x=TRUE), list(selected_cohort, apache_related,hct,AKIlist_final,sofa_eicu,charlson_score
+Final_dataset<-Reduce(function(...) merge(..., all.x=TRUE), list(selected_cohort, apache_related,hct,AKIlist_final,charlson_score
 ))
+# sofa_eicu
+sofa_eicu<-sqldf('
+SELECT sofa_cv_open.patientunitstayid,
+       max(sofa_cv_open.sofa_cv + sofa_respi_open.sofa_respi + sofa_renal_open.sofarenal + sofa_3others_open.sofacoag + sofa_3others_open.sofaliver + sofa_3others_open.sofacns) AS sofatotal
+FROM sofa_cv_open
 
-# Creating new variables
+INNER JOIN sofa_respi_open  ON sofa_cv_open.patientunitstayid = sofa_respi_open.patientunitstayid
+INNER JOIN sofa_renal_open  ON sofa_cv_open.patientunitstayid = sofa_renal_open.patientunitstayid
+INNER JOIN sofa_3others_open  ON sofa_cv_open.patientunitstayid = sofa_3others_open.patientunitstayid
+GROUP BY sofa_cv_open.patientunitstayid
+ORDER BY sofa_cv_open.patientunitstayid
+')
+# INNER JOIN sofa_cv_open ON pt.patientunitstayid = sofa_cv_open .patientunitstayid
+
+#Creating new variables
 Final_dataset<-Final_dataset%>%
   mutate(
     leakingn_index=((mean_hct_24_36hrs/first_hct_6hrs)-1)*body_surface_area*1561
@@ -256,8 +276,8 @@ Final_dataset$actualhospitalmortality[Final_dataset$actualhospitalmortality=='AL
 Final_dataset$actualhospitalmortality[Final_dataset$actualhospitalmortality=='EXPIRED']<-1
 Final_dataset$actualhospitalmortality<-as.factor(Final_dataset$actualhospitalmortality)
 
-Final_dataset<-Final_dataset%>%
-  filter(!is.na(leakingn_index))
+# Final_dataset<-Final_dataset%>%
+#   filter(!is.na(leakingn_index))
 ```
 
 # Dataset report
@@ -270,6 +290,12 @@ view(dfSummary(Final_dataset[,c('gender','age_fixed','apachescore','Final_Charls
 
 ```{r}
 write.csv(Final_dataset, 'Final_dataset.csv',row.names = F)
+listVarstab1<-c("age_fixed", "gender", "weight", "height", "unitType", "body_surface_area", "apachescore", "actualicumortality", "actualhospitalmortality", "first_hct_6hrs", "mean_hct_24_36hrs", "AKIstage")
+
+catVars<-c("gender", "actualicumortality", "actualhospitalmortality")
+
+mortality <- CreateTableOne(vars = listVarstab1, data = Final_dataset, factorVars = catVars,testNormal=oneway.test, strata="actualhospitalmortality")
+write.csv(as.data.frame(print(mortality)), "mortality.csv", col.names=TRUE, row.names=TRUE)
 ```
 
 

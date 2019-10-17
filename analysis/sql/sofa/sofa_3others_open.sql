@@ -1,21 +1,19 @@
-CREATE TABLE
-  public.sofa_3others_open AS (
-  WITH
+WITH
     t1f AS (
     SELECT
       patientunitstayid,
       physicalexamoffset,
       MIN(CASE
-          WHEN LOWER(physicalexampath) LIKE '%gcs/eyes%' THEN CAST(physicalexamvalue AS numeric)
+          WHEN LOWER(physicalexampath) LIKE '%gcs/eyes%' THEN CAST(physicalexamvalue AS INT64)
           ELSE NULL END) AS gcs_eyes,
       MIN(CASE
-          WHEN LOWER(physicalexampath) LIKE '%gcs/verbal%' THEN CAST(physicalexamvalue AS numeric)
+          WHEN LOWER(physicalexampath) LIKE '%gcs/verbal%' THEN CAST(physicalexamvalue AS INT64)
           ELSE NULL END) AS gcs_verbal,
       MIN(CASE
-          WHEN LOWER(physicalexampath) LIKE '%gcs/motor%' THEN CAST(physicalexamvalue AS numeric)
+          WHEN LOWER(physicalexampath) LIKE '%gcs/motor%' THEN CAST(physicalexamvalue AS INT64)
           ELSE NULL END) AS gcs_motor
     FROM
-      eicu_crd.physicalexam pe
+      `physionet-data.eicu_crd.physicalexam` pe
     WHERE
       (LOWER(physicalexampath) LIKE '%gcs/eyes%'
         OR LOWER(physicalexampath) LIKE '%gcs/verbal%'
@@ -46,11 +44,11 @@ CREATE TABLE
           WHEN LOWER(labname) LIKE 'platelet%' THEN labresult
           ELSE NULL END) AS plt
     FROM
-      eicu_crd.patient pt
+      `physionet-data.eicu_crd.patient` pt
     LEFT OUTER JOIN
-      eicu_crd.lab
+      `physionet-data.eicu_crd.lab` lb
     ON
-      pt.patientunitstayid=eicu_crd.lab.patientunitstayid
+      pt.patientunitstayid=lb.patientunitstayid
     WHERE
       labresultoffset BETWEEN -1440
       AND 1440
@@ -81,7 +79,7 @@ CREATE TABLE
         WHEN gcs>=3 THEN 4
         ELSE 0 END) AS sofacns
   FROM
-    public.cohort1 pt
+    `physionet-data.eicu_crd.patient` pt
   LEFT OUTER JOIN
     t1
   ON
@@ -96,4 +94,4 @@ CREATE TABLE
     t2.bili,
     t2.plt
   ORDER BY
-    pt.patientunitstayid );
+    pt.patientunitstayid
