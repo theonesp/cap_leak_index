@@ -84,7 +84,7 @@ charlson_score <- run_query(getSQL('sql/charlson_score.sql'))
 ```
 ```{r}
 # SOFA variables
-sofa_cv_day1_to_day4 <- run_query(getSQL("sql/sofa/sofa_cv_day1_to_day4.sql"))
+sofa_cv_day1_to_day4 <- run_query(getSQL("sql/sofa/sofa_cv_open.sql"))
 sofa_renal_open <- run_query(getSQL("sql/sofa/sofa_renal_open.sql"))
 sofa_respi_open <- run_query(getSQL("sql/sofa/sofa_respi_open.sql"))
 sofa_3others_open <- run_query(getSQL("sql/sofa/sofa_3others_open.sql"))
@@ -241,10 +241,8 @@ WHERE
 IO_exclusion.patientunitstayid IS NULL
 ')
 
-Final_dataset<-Reduce(function(...) merge(..., all.x=TRUE), list(selected_cohort, apache_related,hct,AKIlist_final,charlson_score
-))
 # sofa_eicu
-sofa_eicu<-sqldf('
+sofa_total_day1_to_day4<-sqldf('
 SELECT sofa_cv_open.patientunitstayid,
        max(sofa_cv_open.sofa_cv + sofa_respi_open.sofa_respi + sofa_renal_open.sofarenal + sofa_3others_open.sofacoag + sofa_3others_open.sofaliver + sofa_3others_open.sofacns) AS sofatotal
 FROM sofa_cv_open
@@ -255,6 +253,16 @@ INNER JOIN sofa_3others_open  ON sofa_cv_open.patientunitstayid = sofa_3others_o
 GROUP BY sofa_cv_open.patientunitstayid
 ORDER BY sofa_cv_open.patientunitstayid
 ')
+
+Final_dataset<-Reduce(function(...) merge(..., all.x=TRUE), list(
+  selected_cohort
+  ,apache_related
+  ,hct
+  ,AKIlist_final
+  ,charlson_score
+  ,sofa_total_day1_to_day4
+))
+
 # INNER JOIN sofa_cv_open ON pt.patientunitstayid = sofa_cv_open .patientunitstayid
 
 #Creating new variables
