@@ -25,7 +25,7 @@ This chunks also creates the run_query and get_sql function.
 
 ```{r setup, include=FALSE}
 # Updated for our year
-project_id <- "hst-953-2019"
+project_id <- "hst-953-2018"
 options(httr_oauth_cache=FALSE)
 # Function that takes in a sql command and runs it on bigquery
 run_query <- function(query){
@@ -84,7 +84,7 @@ charlson_score <- run_query(getSQL('sql/charlson_score.sql'))
 ```
 ```{r}
 # SOFA variables
-sofa_cv_open <- run_query(getSQL("sql/sofa/sofa_cv_open.sql"))
+sofa_cv_day1_to_day4 <- run_query(getSQL("sql/sofa/sofa_cv_day1_to_day4.sql"))
 sofa_renal_open <- run_query(getSQL("sql/sofa/sofa_renal_open.sql"))
 sofa_respi_open <- run_query(getSQL("sql/sofa/sofa_respi_open.sql"))
 sofa_3others_open <- run_query(getSQL("sql/sofa/sofa_3others_open.sql"))
