@@ -81,7 +81,7 @@ WITH
   FROM
     `physionet-data.eicu_crd.patient` pt
   LEFT OUTER JOIN
-    t1
+    t1_day1
   ON
     t1.patientunitstayid=pt.patientunitstayid
   LEFT OUTER JOIN

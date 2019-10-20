@@ -15,7 +15,7 @@ library(stringr)
 library(sqldf)
 library(dplyr)
 library(tableone)
-library(xlsx)
+# library(xlsx)
 ```
 
 
@@ -25,7 +25,7 @@ This chunks also creates the run_query and get_sql function.
 
 ```{r setup, include=FALSE}
 # Updated for our year
-project_id <- "hst-953-2018"
+project_id <- "hst-953-2019"
 options(httr_oauth_cache=FALSE)
 # Function that takes in a sql command and runs it on bigquery
 run_query <- function(query){
@@ -84,10 +84,10 @@ charlson_score <- run_query(getSQL('sql/charlson_score.sql'))
 ```
 ```{r}
 # SOFA variables
-sofa_cv_day1_to_day4 <- run_query(getSQL("sql/sofa/sofa_cv_open.sql"))
-sofa_renal_open <- run_query(getSQL("sql/sofa/sofa_renal_open.sql"))
-sofa_respi_open <- run_query(getSQL("sql/sofa/sofa_respi_open.sql"))
-sofa_3others_open <- run_query(getSQL("sql/sofa/sofa_3others_open.sql"))
+sofa_cv_day1_to_day4 <- run_query(getSQL("sql/sofa/sofa_cv_day1_to_day4.sql"))
+sofa_renal_day1_to_day4 <- run_query(getSQL("sql/sofa/sofa_renal_day1_to_day4.sql"))
+sofa_respi_day1_to_day4 <- run_query(getSQL("sql/sofa/sofa_respi_day1_to_day4.sql"))
+sofa_3others_day1_to_day4 <- run_query(getSQL("sql/sofa/sofa_3others_day1_to_day4.sql"))
 ```
 
 ## AKI Dataset creation
@@ -228,6 +228,12 @@ We are using a left join to join them
 
 ```{r}
 # inclusion and exclusion based on icd9 code
+ReliableHospitalICUYearFilter <- read_csv("ReliableHospitalICUYearFilter.csv")
+reliable_IO <- sqldf ('SELECT HospitalID AS hospitalid, ICUID AS wardid, UnitAdmitYear AS hospitaldischargeyear FROM ReliableHospitalICUYearFilter')
+
+
+all_reliable <- run_query (getSQL("sql/sofa/reliable_select.sql"))
+
 selected_cohort<-inner_join(demographic,patient_inexcluded_icd9)
 
 #exlusion based on intake output
@@ -243,15 +249,24 @@ IO_exclusion.patientunitstayid IS NULL
 
 # sofa_eicu
 sofa_total_day1_to_day4<-sqldf('
-SELECT sofa_cv_open.patientunitstayid,
-       max(sofa_cv_open.sofa_cv + sofa_respi_open.sofa_respi + sofa_renal_open.sofarenal + sofa_3others_open.sofacoag + sofa_3others_open.sofaliver + sofa_3others_open.sofacns) AS sofatotal
-FROM sofa_cv_open
+SELECT all_reliable.patientunitstayid,
 
-INNER JOIN sofa_respi_open  ON sofa_cv_open.patientunitstayid = sofa_respi_open.patientunitstayid
-INNER JOIN sofa_renal_open  ON sofa_cv_open.patientunitstayid = sofa_renal_open.patientunitstayid
-INNER JOIN sofa_3others_open  ON sofa_cv_open.patientunitstayid = sofa_3others_open.patientunitstayid
-GROUP BY sofa_cv_open.patientunitstayid
-ORDER BY sofa_cv_open.patientunitstayid
+max(sofa_cv_day1_to_day4.sofa_cv_day1 + sofa_respi_day1_to_day4.sofa_respi_day1 + sofa_renal_day1_to_day4.sofarenal_day1 + sofa_3others_day1_to_day4.sofacoag_day1 + sofa_3others_day1_to_day4.sofaliver_day1 + sofa_3others_day1_to_day4.sofacns_day1) AS sofatotal_day1,
+
+max(sofa_cv_day1_to_day4.sofa_cv_day2 + sofa_respi_day1_to_day4.sofa_respi_day2 + sofa_renal_day1_to_day4.sofarenal_day2 + sofa_3others_day1_to_day4.sofacoag_day2 + sofa_3others_day1_to_day4.sofaliver_day2 + sofa_3others_day1_to_day4.sofacns_day2) AS sofatotal_day2,
+
+max(sofa_cv_day1_to_day4.sofa_cv_day3 + sofa_respi_day1_to_day4.sofa_respi_day3 + sofa_renal_day1_to_day4.sofarenal_day3 + sofa_3others_day1_to_day4.sofacoag_day3 + sofa_3others_day1_to_day4.sofaliver_day3 + sofa_3others_day1_to_day4.sofacns_day3) AS sofatotal_day1,
+
+max(sofa_cv_day1_to_day4.sofa_cv_day4 + sofa_respi_day1_to_day4.sofa_respi_day4 + sofa_renal_day1_to_day4.sofarenal_day4 + sofa_3others_day1_to_day4.sofacoag_day4 + sofa_3others_day1_to_day4.sofaliver_day4 + sofa_3others_day1_to_day4.sofacns_day4) AS sofatotal_day4
+
+FROM 
+all_reliable
+INNER JOIN sofa_cv_day1_to_day4 ON  all_reliable.patientunitstayid = sofa_cv_day1_to_day4.patientunitstayid
+INNER JOIN sofa_respi_day1_to_day4  ON all_reliable.patientunitstayid = sofa_renal_day1_to_day4.patientunitstayid
+INNER JOIN sofa_renal_day1_to_day4  ON all_reliable.patientunitstayid = sofa_respi_day1_to_day4.patientunitstayid
+INNER JOIN sofa_3others_day1_to_day4  ON all_reliable.patientunitstayid = sofa_3others_day1_to_day4.patientunitstayid
+GROUP BY all_reliable.patientunitstayid
+ORDER BY all_reliable.patientunitstayid
 ')
 
 Final_dataset<-Reduce(function(...) merge(..., all.x=TRUE), list(
@@ -269,7 +284,7 @@ Final_dataset<-Reduce(function(...) merge(..., all.x=TRUE), list(
 Final_dataset<-Final_dataset%>%
   mutate(
     leakingn_index=((mean_hct_24_36hrs/first_hct_6hrs)-1)*body_surface_area*1561
-    ,delta_sofa=sofa_day1-sofa_day4
+    ,delta_sofa=sofatotal_day1-sofatotal_day4
     ,Q_leakingn_index=as.numeric(cut2(leakingn_index, g=4))
     ,delta_sofa_bin=as.numeric(cut2(delta_sofa, g=2))
 )
