@@ -4,7 +4,7 @@
 --        cap_leak_index, 20190511 NYU Datathon
 --        eICU Collaborative Research Database v2.0.
 -- ------------------------------------------------------------------
-SELECT patientunitstayid
+SELECT DISTINCT patientunitstayid
 FROM 
 `physionet-data.eicu_crd.patient` 
 WHERE patientunitstayid in (
@@ -28,6 +28,11 @@ icd9code  LIKE '%286.6%' OR
 icd9code  LIKE '%570%' OR
 icd9code  LIKE '%573.4%' OR
 icd9code  LIKE '%584%'
+)
+OR patientunitstayid in (
+SELECT DISTINCT patientunitstayid 
+FROM `physionet-data.eicu_crd.admissiondx` 
+WHERE LOWER(admitdxpath) LIKE '%sepsis%' OR LOWER(admitdxpath) LIKE '%septic%'
 )
 --AND patientunitstayid NOT in (
 AND patientunitstayid NOT in (
@@ -363,6 +368,7 @@ icd9code LIKE '%432.1%' OR
 icd9code LIKE '%432.9%'
 )
 )
+
 )
 ORDER BY patientunitstayid
 

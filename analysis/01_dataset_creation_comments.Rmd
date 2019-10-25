@@ -15,6 +15,7 @@ library(stringr)
 library(sqldf)
 library(dplyr)
 library(tableone)
+library (Hmisc)
 # library(xlsx)
 ```
 
@@ -76,11 +77,15 @@ peakcreat7days<-run_query(getSQL('sql/aki/peakcreat7days.sql'))
 # renal replacement therapy
 first_rrt <-run_query(getSQL('sql/aki/first_rrt.sql'))
 # BMI, weight, age, gender, type of unit that patients was admitted, location from admission, length of stay before admission, height
-demographic <- run_query(getSQL('sql/demographics.sql'))
-demographic['body_surface_area']<-round(sqrt((demographic$height*demographic$weight) / 3600),2)
-patient_inexcluded_icd9 <- run_query(getSQL('sql/patient_inexcluded_icd9.sql'))
 IO_exclusion <- run_query(getSQL('sql/IO_exclusion.sql'))
 charlson_score <- run_query(getSQL('sql/charlson_score.sql'))
+```
+``` {r}
+all_reliable <- run_query (getSQL("sql/sofa/reliable_select.sql"))
+```
+```{r}
+demographic <- run_query(getSQL('sql/demographics.sql'))
+demographic['body_surface_area']<-round(sqrt((demographic$height*demographic$weight) / 3600),2)
 ```
 ```{r}
 # SOFA variables
@@ -88,6 +93,9 @@ sofa_cv_day1_to_day4 <- run_query(getSQL("sql/sofa/sofa_cv_day1_to_day4.sql"))
 sofa_renal_day1_to_day4 <- run_query(getSQL("sql/sofa/sofa_renal_day1_to_day4.sql"))
 sofa_respi_day1_to_day4 <- run_query(getSQL("sql/sofa/sofa_respi_day1_to_day4.sql"))
 sofa_3others_day1_to_day4 <- run_query(getSQL("sql/sofa/sofa_3others_day1_to_day4.sql"))
+```
+```{r}
+patient_inexcluded_icd9 <- run_query(getSQL('sql/patient_inexcluded_icd9.sql'))
 ```
 
 ## AKI Dataset creation
@@ -231,14 +239,12 @@ We are using a left join to join them
 ReliableHospitalICUYearFilter <- read_csv("ReliableHospitalICUYearFilter.csv")
 reliable_IO <- sqldf ('SELECT HospitalID AS hospitalid, ICUID AS wardid, UnitAdmitYear AS hospitaldischargeyear FROM ReliableHospitalICUYearFilter')
 
-
-all_reliable <- run_query (getSQL("sql/sofa/reliable_select.sql"))
-
 selected_cohort<-inner_join(demographic,patient_inexcluded_icd9)
 
 #exlusion based on intake output
 selected_cohort<-sqldf('
-SELECT * FROM selected_cohort
+SELECT * FROM 
+selected_cohort
 LEFT JOIN
 IO_exclusion
 USING
@@ -269,30 +275,41 @@ GROUP BY all_reliable.patientunitstayid
 ORDER BY all_reliable.patientunitstayid
 ')
 
+Exp_dataset <- Reduce(function(...)left_join (..., by = NULL), list (selected_cohort, apache_related, hct, charlson_score, sofa_total_day1_to_day4))
+
+# We don't get rid of AKI here
 Final_dataset<-Reduce(function(...) merge(..., all.x=TRUE), list(
   selected_cohort
   ,apache_related
   ,hct
-  ,AKIlist_final
+  # ,AKIlist_final
   ,charlson_score
   ,sofa_total_day1_to_day4
 ))
 
-# INNER JOIN sofa_cv_open ON pt.patientunitstayid = sofa_cv_open .patientunitstayid
+Final_dataset<-sqldf('
+SELECT * FROM
+Final_dataset
+INNER JOIN
+all_reliable
+ON Final_dataset.patientunitstayid = all_reliable.patientunitstayid
+')
+
 
 #Creating new variables
 Final_dataset<-Final_dataset%>%
   mutate(
     leakingn_index=((mean_hct_24_36hrs/first_hct_6hrs)-1)*body_surface_area*1561
     ,delta_sofa=sofatotal_day1-sofatotal_day4
-    ,Q_leakingn_index=as.numeric(cut2(leakingn_index, g=4))
-    ,delta_sofa_bin=as.numeric(cut2(delta_sofa, g=2))
+    ,Q_leakingn_index=as.numeric(cut2(leakingn_index, g=5))
+    ,delta_sofa_bin=as.numeric(cut2(delta_sofa, g=3))
 )
 
 Final_dataset$Q_leakingn_index<-as.factor(Final_dataset$Q_leakingn_index)
+Final_dataset$delta_sofa_bin<-as.factor(Final_dataset$delta_sofa_bin)
 
-Final_dataset$delta_sofa_bin[Final_dataset$delta_sofa_bin==1]<-0
-Final_dataset$delta_sofa_bin[Final_dataset$delta_sofa_bin==2]<-1
+# Final_dataset$delta_sofa_bin[Final_dataset$delta_sofa_bin==1]<-0
+# Final_dataset$delta_sofa_bin[Final_dataset$delta_sofa_bin==2]<-1
 
 Final_dataset$actualhospitalmortality[Final_dataset$actualhospitalmortality=='ALIVE']<-0
 
@@ -307,17 +324,21 @@ Final_dataset$actualhospitalmortality<-as.factor(Final_dataset$actualhospitalmor
 
 ```{r}
 view(dfSummary(Final_dataset[,c('gender','age_fixed','apachescore','Final_Charlson_score')]))
+
+sofamissing = sum(is.na(Final_dataset$sofatotal_day1)) / length (Final_dataset$sofatotal_day1)
+bmimissing = sum(is.na(Final_dataset$BMI)) / length (Final_dataset$BMI)
+weightmissing = sum(is.na(Final_dataset$weight)) / length (Final_dataset$weight)
 ```
 
 # Export dataset
 
 ```{r}
 write.csv(Final_dataset, 'Final_dataset.csv',row.names = F)
-listVarstab1<-c("age_fixed", "gender", "weight", "height", "unitType", "body_surface_area", "apachescore", "actualicumortality", "actualhospitalmortality", "first_hct_6hrs", "mean_hct_24_36hrs", "AKIstage")
+listVarstab1<-c("patientunitstayid", "age_fixed", "gender", "weight", "height", "BMI", "BMI_group", "unitType", "body_surface_area", "apachescore", "unabridgedunitlos", "unabridgedhosplos", "unabridgedactualventdays", "first_hct_6hrs", "mean_hct_24_36hrs", "AKIstage", "delta_sofa", "delta_sofa_bin", "actualhospitalmortality", "HospitalLOS")
 
-catVars<-c("gender", "actualicumortality", "actualhospitalmortality")
+catVars<-c("gender", "actualicumortality", "actualhospitalmortality", "delta_sofa_bin")
 
-mortality <- CreateTableOne(vars = listVarstab1, data = Final_dataset, factorVars = catVars,testNormal=oneway.test, strata="actualhospitalmortality")
+mortality <- CreateTableOne(vars = listVarstab1, data = Final_dataset, factorVars = catVars,testNormal=oneway.test, strata="Q_leakingn_index")
 write.csv(as.data.frame(print(mortality)), "mortality.csv", col.names=TRUE, row.names=TRUE)
 ```
 

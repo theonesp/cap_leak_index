@@ -35,10 +35,9 @@ summary(m)
 ```{r}
 
 mod_multiv<-glm(actualhospitalmortality  ~ 
-                 Q_leakingn_index
+                 # Q_leakingn_index
                 +apachescore
-                +Final_Charlson_score
-                 #+offset(log(duration_Surgery_min))
+                # +Final_Charlson_score
                  ,family='binomial'
                  ,data = Final_dataset
                 )
@@ -57,6 +56,29 @@ boxLabels<-rownames(oddsratios_table)
 
 
 #write.xlsx(as.data.frame(print(oddsratios_table)), "oddsratios_table.xlsx")
+
+```
+```{r}
+
+sofa_multiv<-glm(delta_sofa_bin ~ 
+                 Q_leakingn_index
+                +apachescore
+                +Final_Charlson_score
+                 ,family='binomial'
+                 ,data = Final_dataset
+                )
+
+sofa_multiv
+
+sofaratios_table<-exp(cbind(coef(sofa_multiv), confint(sofa_multiv)))  
+options(scipen=999)
+sofaratios_table<-round(sofaratios_table,4)
+
+sofaratios_table<-as.data.frame(sofaratios_table)
+colnames(sofaratios_table)[1]<-"OR"
+
+sofaratios_table<-sofaratios_table[order(row.names(sofaratios_table)), ]
+boxLabels<-rownames(sofaratios_table)
 
 ```
 
