@@ -35,9 +35,9 @@ summary(m)
 ```{r}
 
 mod_multiv<-glm(actualhospitalmortality  ~ 
-                 # Q_leakingn_index
+                 Q_leakingn_index
                 +apachescore
-                # +Final_Charlson_score
+                +Final_Charlson_score
                  ,family='binomial'
                  ,data = Final_dataset
                 )

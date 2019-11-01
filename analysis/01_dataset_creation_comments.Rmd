@@ -96,6 +96,8 @@ sofa_3others_day1_to_day4 <- run_query(getSQL("sql/sofa/sofa_3others_day1_to_day
 ```
 ```{r}
 patient_inexcluded_icd9 <- run_query(getSQL('sql/patient_inexcluded_icd9.sql'))
+infectAndOrgan = run_query(getSQL('sql/Alistair_sepsis.sql'))
+patient_inexcluded_icd9 <- merge (infectAndOrgan, patient_inexcluded_icd9, all = TRUE)
 ```
 
 ## AKI Dataset creation
@@ -287,13 +289,13 @@ Final_dataset<-Reduce(function(...) merge(..., all.x=TRUE), list(
   ,sofa_total_day1_to_day4
 ))
 
-Final_dataset<-sqldf('
-SELECT * FROM
-Final_dataset
-INNER JOIN
-all_reliable
-ON Final_dataset.patientunitstayid = all_reliable.patientunitstayid
-')
+# Final_dataset<-sqldf('
+# SELECT * FROM
+# Final_dataset
+# INNER JOIN
+# all_reliable
+# ON Final_dataset.patientunitstayid = all_reliable.patientunitstayid
+# ')
 
 
 #Creating new variables

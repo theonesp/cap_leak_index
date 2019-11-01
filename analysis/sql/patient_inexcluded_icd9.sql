@@ -1,9 +1,3 @@
--- ------------------------------------------------------------------
--- Title: Select patients from diagnosis which are included & excluded by icd9codes
--- Notes: cap_leak_index/analysis/sql/patient_inexcluded.sql 
---        cap_leak_index, 20190511 NYU Datathon
---        eICU Collaborative Research Database v2.0.
--- ------------------------------------------------------------------
 SELECT DISTINCT patientunitstayid
 FROM 
 `physionet-data.eicu_crd.patient` 
@@ -34,6 +28,8 @@ SELECT DISTINCT patientunitstayid
 FROM `physionet-data.eicu_crd.admissiondx` 
 WHERE LOWER(admitdxpath) LIKE '%sepsis%' OR LOWER(admitdxpath) LIKE '%septic%'
 )
+-- Sepsis in the first 24 hours using the active problem list
+
 --AND patientunitstayid NOT in (
 AND patientunitstayid NOT in (
 SELECT
