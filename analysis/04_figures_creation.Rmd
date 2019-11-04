@@ -89,7 +89,7 @@ p<-ggplot(df, aes(x = boxOdds
   theme(panel.grid.minor = element_blank()) +
   ylab("Exposure") +
   xlab("Odds ratio") +
-  ggtitle("Impact on mortality")
+  ggtitle("Impact on SOFA Day 4 - SOFA Day 1")
 p<-ggplotly(p)
 p<-ggplotly(p%>%layout(hovermode = 'compare'))
 p
