@@ -26,109 +26,26 @@ library(xlsx)
 # Table 1
 
 ```{r}
-listVarstab1<-c("patientunitstayid", "age_fixed", "gender", "weight", "height", "BMI", "BMI_group", "unitType", "hospitalAdmitSource", "hospLOS_prior_ICUadm_days", "body_surface_area", "apachescore", "actualicumortality", "actualhospitalmortality", "unabridgedunitlos", "unabridgedhosplos", "unabridgedactualventdays", "first_hct_6hrs", "mean_hct_24_36hrs", "AKIstage", "sofa_day1", "sofa_day2", "sofa_day3", "sofa_day4")
+write.csv(Final_dataset, 'Final_dataset.csv',row.names = F)
+listVarstab1<-c("patientunitstayid", "age_fixed", "gender", "weight", "height", "BMI", "BMI_group", "unitType", "body_surface_area", "apachescore", "unabridgedunitlos", "unabridgedhosplos", "unabridgedactualventdays", "first_hct_6hrs", "mean_hct_24_36hrs", "AKIstage", "delta_sofa", "delta_sofa_bin", "actualhospitalmortality", "HospitalLOS")
 
-catVars<-c("gender", "BMI_group", "unitType", "hospitalAdmitSource", "apachescore", "actualicumortality", "actualhospitalmortality", "AKIstage", "sofa_day1", "sofa_day2", "sofa_day3", "sofa_day4")
+catVars<-c("gender", "actualicumortality", "actualhospitalmortality", "delta_sofa_bin")
 
-table1 <- CreateTableOne(vars = listVarstab1, data = Final_dataset, factorVars = catVars,testNormal=oneway.test 
-                        #strata is usefull in case we want several columns to stratify by
-                         )
+table1 <- CreateTableOne(vars = listVarstab1, data = Final_dataset, factorVars = catVars,testNormal=oneway.test)
 
-table1strat <- CreateTableOne(vars = listVarstab1, data = Final_dataset, factorVars = catVars,testNormal=oneway.test 
-                        #strata is usefull in case we want several columns to stratify by
-                         )
-## nonnormal specifies variables to be shown as median [IQR]
-# 
-# testApprox A function used to perform the large sample approximation based tests. The
-# default is chisq.test. This is not recommended when some of the cell have
-# small counts like fewer than 5.
+table1strat <- CreateTableOne(vars = listVarstab1, data = Final_dataset, factorVars = catVars,testNormal=oneway.test, strata="Q_leakingn_index")
 
-# As an aside, the following code may help for your projects, as it improves the presentation of the tables above.  You will still need to update the column and row names manually, but this should paste nicely into Word or LateX!
+table1_printed<-as.data.frame(print(table1
+                                    #, nonnormal= nonnormal
+                                    ))
+table1strat_printed<-as.data.frame(print(table1strat
+                                         #, nonnormal= nonnormal
+                                    ))
 
-write.xlsx(as.data.frame(print(table1)), "table1.csv", col.names=TRUE, row.names=TRUE)
-write.xlsx(as.data.frame(print(table1strat)), "table1strat.csv", col.names=TRUE, row.names=TRUE)
+table1_final<-cbind(table1_printed,table1strat_printed)
 
-#  if(!("dplyr" %in% installed.packages()[,1])) {
-#  install.packages("dplyr")
-#  }
-# library(dplyr)
-# test<-table1 %>% print(
-#   printToggle      = FALSE,
-#   showAllLevels    = TRUE,
-#   cramVars         = "kon"
-# ) %>% 
-# {data.frame(
-#   variable_name             = gsub(" ", "&nbsp;", rownames(.), fixed = TRUE), ., 
-#   row.names        = NULL, 
-#   check.names      = FALSE, 
-#   stringsAsFactors = FALSE)} %>% 
-# knitr::kable()
+write.xlsx(as.data.frame(print(table1_final)), "table1_final.xlsx")
 
 ```
 
-# Table 2
-
-```{r}
-
-
-library(tableone)
-library(magrittr)
-
-listExposures<-c("patientunitstayid", "gender", "rrt_bin", "first_hct_6hrs", "mean_hct_24_36hrs", "AKIstage", "creat1", "creat1offset", "peakcreat48h_offset", "peakcreat48h" ,"peakcreat7d", "peakcreat7d_offset", "peakcreat7d_to_discharge_offsetgap", "first_rrtoffset", "age_fixed", "weight", "height", "BMI", "BMI_group", "unitType", "hospitalAdmitSource", "hospLOS_prior_ICUadm_days", "patienthealthsystemstayid", "age", "ethnicity", "hospitalid", "wardid", "apacheadmissiondx", "admissionheight", "hospitaladmittime24", "hospitaladmitoffset", "hospitaladmitsource", "hospitaldischargeyear", "hospitaldischargetime24", "hospitaldischargeoffset", "hospitaldischargelocation", "hospitaldischargestatus", "unittype", "unitadmittime24", "unitadmitsource", "unitvisitnumber", "unitstaytype", "admissionweight", "dischargeweight", "unitdischargetime24", "unitdischargeoffset", "unitdischargelocation", "unitdischargestatus", "uniquepid" )
-table2all <- CreateTableOne(vars = listExposures, data = FinalHemodynamicsDataset, testNormal=oneway.test)
-
-write.xlsx(as.data.frame(print(table2all)), "table2all.xlsx")
-
-
-table2strat <- CreateTableOne(vars = listExposures, data = FinalHemodynamicsDataset, factorVars = listOutstable2,testNormal=oneway.test 
-                        ,strata = c("Any_MAE") )
-                        
-write.xlsx(as.data.frame(print(table2strat)), "table2strat.xlsx")
-                        
-#strata is usefull in case we want several columns to stratify by
-# nonnormal specifies variables to be shown as median [IQR]
-# testApprox A function used to perform the large sample approximation based tests. The
-# default is chisq.test. This is not recommended when some of the cell have
-# small counts like fewer than 5.
-
-```
-
-#Table 3
-
-```{r}
-
-
-library(tableone)
-library(magrittr)
-
-listOutstable2<-c('Any_MAE',listOuts)
-
-table2all <- CreateTableOne(vars = listOutstable2, data = FinalHemodynamicsDataset, factorVars = listOutstable2,testNormal=oneway.test 
-                         )
-
-table2strat <- CreateTableOne(vars = listOutstable2, data = FinalHemodynamicsDataset, factorVars = listOutstable2,testNormal=oneway.test 
-                        ,strata = c("Any_MAE")
-                        
-write.xlsx(as.data.frame(print(table2strat)), "table2strat.xlsx")
-                        
-                        #strata is usefull in case we want several columns to stratify by
-                         )
-## nonnormal specifies variables to be shown as median [IQR]
-# 
-# testApprox A function used to perform the large sample approximation based tests. The
-# default is chisq.test. This is not recommended when some of the cell have
-# small counts like fewer than 5.
-
-# table2<-print(table2,estApprox=listVars, exact = "stage", quote = TRUE,showAllLevels  = TRUE)
-# 
-# docx( ) %>%
-#     addFlexTable(table2 %>%
-#     FlexTable(header.cell.props = cellProperties( background.color = "#003366"),
-#               header.text.props = textBold( color = "white" ),
-#               add.rownames = TRUE ) %>%
-#               setZebraStyle( odd = "#DDDDDD", even = "#FFFFFF" ) ) %>%
-#     writeDoc(file = "table2.docx")
-# 
-# browseURL("table2.docx") #wordfile
-```
 

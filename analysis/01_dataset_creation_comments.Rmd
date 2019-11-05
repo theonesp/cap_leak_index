@@ -67,37 +67,36 @@ Loads all queries from the sql files in the extraction folder and runs them into
 ```{r}
 apache_related<-run_query(getSQL("sql/apache_related.sql" ))
 hct <- run_query(getSQL("sql/hct.sql" ))
+
 # removes missing values
 hct<-hct[complete.cases(hct),]
+
 #Remove chronic AKI, creat, rrt patients
 chronicAKI<-run_query(getSQL('sql/aki/chronicAKI.sql'))
 baseline_creat<-run_query(getSQL('sql/aki/baseline_creat.sql'))
 peakcreat48h<-run_query(getSQL('sql/aki/peakcreat48h.sql'))
 peakcreat7days<-run_query(getSQL('sql/aki/peakcreat7days.sql'))
+
 # renal replacement therapy
 first_rrt <-run_query(getSQL('sql/aki/first_rrt.sql'))
+
 # BMI, weight, age, gender, type of unit that patients was admitted, location from admission, length of stay before admission, height
 IO_exclusion <- run_query(getSQL('sql/IO_exclusion.sql'))
 charlson_score <- run_query(getSQL('sql/charlson_score.sql'))
-```
-``` {r}
-all_reliable <- run_query (getSQL("sql/sofa/reliable_select.sql"))
-```
-```{r}
+
+all_reliable <- run_query (getSQL("sql/all_reliable.sql"))
 demographic <- run_query(getSQL('sql/demographics.sql'))
 demographic['body_surface_area']<-round(sqrt((demographic$height*demographic$weight) / 3600),2)
-```
-```{r}
+
 # SOFA variables
 sofa_cv_day1_to_day4 <- run_query(getSQL("sql/sofa/sofa_cv_day1_to_day4.sql"))
 sofa_renal_day1_to_day4 <- run_query(getSQL("sql/sofa/sofa_renal_day1_to_day4.sql"))
 sofa_respi_day1_to_day4 <- run_query(getSQL("sql/sofa/sofa_respi_day1_to_day4.sql"))
 sofa_3others_day1_to_day4 <- run_query(getSQL("sql/sofa/sofa_3others_day1_to_day4.sql"))
-```
-```{r}
+
 patient_inexcluded_icd9 <- run_query(getSQL('sql/patient_inexcluded_icd9.sql'))
-infectAndOrgan = run_query(getSQL('sql/Alistair_sepsis.sql'))
-patient_inexcluded_icd9 <- merge (infectAndOrgan, patient_inexcluded_icd9, all = TRUE)
+sepsis <- run_query(getSQL('sql/alistair_sepsis.sql'))
+patient_inexcluded_icd9 <- merge (sepsis, patient_inexcluded_icd9, all = TRUE)
 ```
 
 ## AKI Dataset creation
@@ -232,6 +231,32 @@ AKIlist_final[is.na(AKIlist_final)]<-0
 AKIlist_final$rrt_bin<-NULL
 ```
 
+# SOFA eICU calcuation
+
+```{r}
+sofa_total_day1_to_day4<-sqldf('
+SELECT all_reliable.patientunitstayid,
+
+max(sofa_cv_day1_to_day4.sofa_cv_day1 + sofa_respi_day1_to_day4.sofa_respi_day1 + sofa_renal_day1_to_day4.sofarenal_day1 + sofa_3others_day1_to_day4.sofacoag_day1 + sofa_3others_day1_to_day4.sofaliver_day1 + sofa_3others_day1_to_day4.sofacns_day1) AS sofatotal_day1,
+
+max(sofa_cv_day1_to_day4.sofa_cv_day2 + sofa_respi_day1_to_day4.sofa_respi_day2 + sofa_renal_day1_to_day4.sofarenal_day2 + sofa_3others_day1_to_day4.sofacoag_day2 + sofa_3others_day1_to_day4.sofaliver_day2 + sofa_3others_day1_to_day4.sofacns_day2) AS sofatotal_day2,
+
+max(sofa_cv_day1_to_day4.sofa_cv_day3 + sofa_respi_day1_to_day4.sofa_respi_day3 + sofa_renal_day1_to_day4.sofarenal_day3 + sofa_3others_day1_to_day4.sofacoag_day3 + sofa_3others_day1_to_day4.sofaliver_day3 + sofa_3others_day1_to_day4.sofacns_day3) AS sofatotal_day1,
+
+max(sofa_cv_day1_to_day4.sofa_cv_day4 + sofa_respi_day1_to_day4.sofa_respi_day4 + sofa_renal_day1_to_day4.sofarenal_day4 + sofa_3others_day1_to_day4.sofacoag_day4 + sofa_3others_day1_to_day4.sofaliver_day4 + sofa_3others_day1_to_day4.sofacns_day4) AS sofatotal_day4
+
+FROM 
+all_reliable
+INNER JOIN sofa_cv_day1_to_day4 ON  all_reliable.patientunitstayid = sofa_cv_day1_to_day4.patientunitstayid
+INNER JOIN sofa_respi_day1_to_day4  ON all_reliable.patientunitstayid = sofa_renal_day1_to_day4.patientunitstayid
+INNER JOIN sofa_renal_day1_to_day4  ON all_reliable.patientunitstayid = sofa_respi_day1_to_day4.patientunitstayid
+INNER JOIN sofa_3others_day1_to_day4  ON all_reliable.patientunitstayid = sofa_3others_day1_to_day4.patientunitstayid
+GROUP BY all_reliable.patientunitstayid
+ORDER BY all_reliable.patientunitstayid
+')
+```
+
+
 # Merging all datasets
 
 We are using a left join to join them
@@ -253,28 +278,6 @@ USING
 (patientunitstayid)
 WHERE
 IO_exclusion.patientunitstayid IS NULL
-')
-
-# sofa_eicu
-sofa_total_day1_to_day4<-sqldf('
-SELECT all_reliable.patientunitstayid,
-
-max(sofa_cv_day1_to_day4.sofa_cv_day1 + sofa_respi_day1_to_day4.sofa_respi_day1 + sofa_renal_day1_to_day4.sofarenal_day1 + sofa_3others_day1_to_day4.sofacoag_day1 + sofa_3others_day1_to_day4.sofaliver_day1 + sofa_3others_day1_to_day4.sofacns_day1) AS sofatotal_day1,
-
-max(sofa_cv_day1_to_day4.sofa_cv_day2 + sofa_respi_day1_to_day4.sofa_respi_day2 + sofa_renal_day1_to_day4.sofarenal_day2 + sofa_3others_day1_to_day4.sofacoag_day2 + sofa_3others_day1_to_day4.sofaliver_day2 + sofa_3others_day1_to_day4.sofacns_day2) AS sofatotal_day2,
-
-max(sofa_cv_day1_to_day4.sofa_cv_day3 + sofa_respi_day1_to_day4.sofa_respi_day3 + sofa_renal_day1_to_day4.sofarenal_day3 + sofa_3others_day1_to_day4.sofacoag_day3 + sofa_3others_day1_to_day4.sofaliver_day3 + sofa_3others_day1_to_day4.sofacns_day3) AS sofatotal_day1,
-
-max(sofa_cv_day1_to_day4.sofa_cv_day4 + sofa_respi_day1_to_day4.sofa_respi_day4 + sofa_renal_day1_to_day4.sofarenal_day4 + sofa_3others_day1_to_day4.sofacoag_day4 + sofa_3others_day1_to_day4.sofaliver_day4 + sofa_3others_day1_to_day4.sofacns_day4) AS sofatotal_day4
-
-FROM 
-all_reliable
-INNER JOIN sofa_cv_day1_to_day4 ON  all_reliable.patientunitstayid = sofa_cv_day1_to_day4.patientunitstayid
-INNER JOIN sofa_respi_day1_to_day4  ON all_reliable.patientunitstayid = sofa_renal_day1_to_day4.patientunitstayid
-INNER JOIN sofa_renal_day1_to_day4  ON all_reliable.patientunitstayid = sofa_respi_day1_to_day4.patientunitstayid
-INNER JOIN sofa_3others_day1_to_day4  ON all_reliable.patientunitstayid = sofa_3others_day1_to_day4.patientunitstayid
-GROUP BY all_reliable.patientunitstayid
-ORDER BY all_reliable.patientunitstayid
 ')
 
 Exp_dataset <- Reduce(function(...)left_join (..., by = NULL), list (selected_cohort, apache_related, hct, charlson_score, sofa_total_day1_to_day4))
@@ -335,13 +338,7 @@ weightmissing = sum(is.na(Final_dataset$weight)) / length (Final_dataset$weight)
 # Export dataset
 
 ```{r}
-write.csv(Final_dataset, 'Final_dataset.csv',row.names = F)
-listVarstab1<-c("patientunitstayid", "age_fixed", "gender", "weight", "height", "BMI", "BMI_group", "unitType", "body_surface_area", "apachescore", "unabridgedunitlos", "unabridgedhosplos", "unabridgedactualventdays", "first_hct_6hrs", "mean_hct_24_36hrs", "AKIstage", "delta_sofa", "delta_sofa_bin", "actualhospitalmortality", "HospitalLOS")
-
-catVars<-c("gender", "actualicumortality", "actualhospitalmortality", "delta_sofa_bin")
-
-mortality <- CreateTableOne(vars = listVarstab1, data = Final_dataset, factorVars = catVars,testNormal=oneway.test, strata="Q_leakingn_index")
-write.csv(as.data.frame(print(mortality)), "mortality.csv", col.names=TRUE, row.names=TRUE)
+write.csv(Final_dataset,'Final_dataset.csv')
 ```
 
 
