@@ -44,7 +44,7 @@ table1strat_printed<-as.data.frame(print(table1strat
 
 table1_final<-cbind(table1_printed,table1strat_printed)
 
-write.xlsx(as.data.frame(print(table1_final)), "table1_final.xlsx")
+write.csv2(as.data.frame(print(table1_final)), "table1_final.csv")
 
 ```
 

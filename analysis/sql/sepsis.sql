@@ -140,4 +140,4 @@ SELECT
   patientunitstayid
 FROM
   SeInOr
-WHERE
+WHERE (sepsis = 1)

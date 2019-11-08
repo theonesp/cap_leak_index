@@ -24,9 +24,7 @@ library(officer)
 ## Main model
 
 ```{r}
-#Generate plots
-
-# df <- oddsratios_table
+#Generate plot of the odds ratio for quartiles of CLI measured against mortality
 
 labels<-c('Apache Score', 'Charlson Score', 'CLI Q2', 'CLI Q3', 'CLI Q4', 'CLI Q5')
 number_of_exposures<-length(labels)+1
@@ -60,7 +58,7 @@ p
 
 ```
 ```{r}
-#Generate plots
+#Generates odds ratio plot for CLI quartiles against change in SOFA Score from day 1 to day 4
 
 # df <- oddsratios_table
 

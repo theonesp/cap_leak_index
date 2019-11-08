@@ -95,7 +95,7 @@ sofa_respi_day1_to_day4 <- run_query(getSQL("sql/sofa/sofa_respi_day1_to_day4.sq
 sofa_3others_day1_to_day4 <- run_query(getSQL("sql/sofa/sofa_3others_day1_to_day4.sql"))
 
 patient_inexcluded_icd9 <- run_query(getSQL('sql/patient_inexcluded_icd9.sql'))
-sepsis <- run_query(getSQL('sql/alistair_sepsis.sql'))
+sepsis <- run_query(getSQL('sql/sepsis.sql'))
 patient_inexcluded_icd9 <- merge (sepsis, patient_inexcluded_icd9, all = TRUE)
 ```
 
@@ -292,13 +292,13 @@ Final_dataset<-Reduce(function(...) merge(..., all.x=TRUE), list(
   ,sofa_total_day1_to_day4
 ))
 
-Final_dataset<-sqldf('
-SELECT * FROM
-Final_dataset
-INNER JOIN
-all_reliable
-ON Final_dataset.patientunitstayid = all_reliable.patientunitstayid
-')
+# Final_dataset<-sqldf('
+# SELECT * FROM
+# Final_dataset
+# INNER JOIN
+# all_reliable
+# ON Final_dataset.patientunitstayid = all_reliable.patientunitstayid
+# ')
 
 
 #Creating new variables
@@ -321,8 +321,8 @@ Final_dataset$actualhospitalmortality[Final_dataset$actualhospitalmortality=='AL
 Final_dataset$actualhospitalmortality[Final_dataset$actualhospitalmortality=='EXPIRED']<-1
 Final_dataset$actualhospitalmortality<-as.factor(Final_dataset$actualhospitalmortality)
 
-# Final_dataset<-Final_dataset%>%
-#   filter(!is.na(leakingn_index))
+Final_dataset<-Final_dataset%>%
+  filter(!is.na(leakingn_index))
 ```
 
 # Dataset report
