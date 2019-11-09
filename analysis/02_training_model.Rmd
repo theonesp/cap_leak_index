@@ -13,6 +13,9 @@ require(ggplot2)
 require(MASS)
 require(Hmisc)
 require(reshape2)
+require(caret)
+require(boot)
+require(pROC)
 ```
 
 
@@ -33,13 +36,20 @@ summary(m)
 # Training logistic regression model
 
 ```{r}
+# Separates data into training and testing data
+intrain<-createDataPartition(y=Final_dataset$patientunitstayid,p=0.7,list=FALSE)
+training<-Final_dataset[intrain,]
+testing<-Final_dataset[-intrain,]
+```
 
+```{r}
+# trains the logistic model
 mod_multiv<-glm(actualhospitalmortality  ~ 
                  Q_leakingn_index
                 +apachescore
                 +Final_Charlson_score
                  ,family='binomial'
-                 ,data = Final_dataset
+                 ,data = training
                 )
 
 mod_multiv
@@ -59,7 +69,7 @@ boxLabels<-rownames(oddsratios_table)
 
 ```
 ```{r}
-
+# trains
 sofa_multiv<-glm(delta_sofa_bin ~ 
                  Q_leakingn_index
                 +apachescore
@@ -81,6 +91,22 @@ sofaratios_table<-sofaratios_table[order(row.names(sofaratios_table)), ]
 boxLabels<-rownames(sofaratios_table)
 
 ```
+# Testing the shape of the outcome variables
+```{r}
+# test <- filter(Final_dataset, sofatotal_day4 != 0)
+# test <- test$sofatotal_day4
+# hist(test)
+```
 
+# Attempts to Validate the Regression Model
 
+```{r}
+# Final_dataset<-Final_dataset%>%
+#   filter(!is.na(apachescore) & !is.na(Final_Charlson_score) & !is.na(actualhospitalmortality))
+# cv.glm (Final_dataset, mod_multiv, K = 2)
+
+auc(Final_dataset$actualhospitalmortality, Final_dataset$apachescore)
+Predicted = predict (mod_multiv, testing)
+auc(testing$actualhospitalmortality, Predicted)
+```
 

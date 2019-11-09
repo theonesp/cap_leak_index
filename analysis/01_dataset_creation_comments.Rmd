@@ -72,13 +72,13 @@ hct <- run_query(getSQL("sql/hct.sql" ))
 hct<-hct[complete.cases(hct),]
 
 #Remove chronic AKI, creat, rrt patients
-chronicAKI<-run_query(getSQL('sql/aki/chronicAKI.sql'))
-baseline_creat<-run_query(getSQL('sql/aki/baseline_creat.sql'))
-peakcreat48h<-run_query(getSQL('sql/aki/peakcreat48h.sql'))
-peakcreat7days<-run_query(getSQL('sql/aki/peakcreat7days.sql'))
+# chronicAKI<-run_query(getSQL('sql/aki/chronicAKI.sql'))
+# baseline_creat<-run_query(getSQL('sql/aki/baseline_creat.sql'))
+# peakcreat48h<-run_query(getSQL('sql/aki/peakcreat48h.sql'))
+# peakcreat7days<-run_query(getSQL('sql/aki/peakcreat7days.sql'))
 
 # renal replacement therapy
-first_rrt <-run_query(getSQL('sql/aki/first_rrt.sql'))
+# first_rrt <-run_query(getSQL('sql/aki/first_rrt.sql'))
 
 # BMI, weight, age, gender, type of unit that patients was admitted, location from admission, length of stay before admission, height
 IO_exclusion <- run_query(getSQL('sql/IO_exclusion.sql'))
@@ -103,10 +103,10 @@ patient_inexcluded_icd9 <- merge (sepsis, patient_inexcluded_icd9, all = TRUE)
 
 ```{r}
 #We need to exclude patients who already had AKI before ICU admin)
-AKIdevelopment<-subset(baseline_creat, !(baseline_creat$patientunitstayid %in% chronicAKI$patientunitstayid) )
-AKIdevelopment<-left_join(AKIdevelopment, peakcreat7days)
-AKIdevelopment<-left_join(AKIdevelopment, peakcreat48h)
-AKIdevelopment$position<-NULL
+# AKIdevelopment<-subset(baseline_creat, !(baseline_creat$patientunitstayid %in% chronicAKI$patientunitstayid) )
+# AKIdevelopment<-left_join(AKIdevelopment, peakcreat7days)
+# AKIdevelopment<-left_join(AKIdevelopment, peakcreat48h)
+# AKIdevelopment$position<-NULL
 ```
 
 ### Windsorization
@@ -115,27 +115,27 @@ Clean data by means of winsorization, i.e., by shrinking outlying observations t
 The creatinine values have been winsorize replacing the extreme observations using 95% and 5% percentiles.
 
 ```{r}
-AKIdevelopmentW<-AKIdevelopment
-## Winsorization: Replace the extreme observations using 95% and 5% percentiles
-winsorize_x = function(x, cut = 0.05){
-  cut_point_top <- quantile(x, 1 - cut, na.rm = T)
-  cut_point_bottom <- quantile(x, cut, na.rm = T)
-  i = which(x >= cut_point_top) 
-  x[i] = cut_point_top
-  j = which(x <= cut_point_bottom) 
-  x[j] = cut_point_bottom
-  return(x)
-}
-
-AKIdevelopmentW$creat1<-winsorize_x(AKIdevelopmentW$creat1)
-AKIdevelopmentW$peakcreat7d<-winsorize_x(AKIdevelopmentW$peakcreat7d)
-AKIdevelopmentW$peakcreat48h<-winsorize_x(AKIdevelopmentW$peakcreat48h)
-
-#Now we turn all emptpy values into 0
-
-AKIdevelopmentW$creat1[is.na(AKIdevelopmentW$creat1)]<-0
-AKIdevelopmentW$peakcreat7d[is.na(AKIdevelopmentW$peakcreat7d)]<-0
-AKIdevelopmentW$peakcreat48h[is.na(AKIdevelopmentW$peakcreat48h)]<-0
+# AKIdevelopmentW<-AKIdevelopment
+# ## Winsorization: Replace the extreme observations using 95% and 5% percentiles
+# winsorize_x = function(x, cut = 0.05){
+#   cut_point_top <- quantile(x, 1 - cut, na.rm = T)
+#   cut_point_bottom <- quantile(x, cut, na.rm = T)
+#   i = which(x >= cut_point_top) 
+#   x[i] = cut_point_top
+#   j = which(x <= cut_point_bottom) 
+#   x[j] = cut_point_bottom
+#   return(x)
+# }
+# 
+# AKIdevelopmentW$creat1<-winsorize_x(AKIdevelopmentW$creat1)
+# AKIdevelopmentW$peakcreat7d<-winsorize_x(AKIdevelopmentW$peakcreat7d)
+# AKIdevelopmentW$peakcreat48h<-winsorize_x(AKIdevelopmentW$peakcreat48h)
+# 
+# #Now we turn all emptpy values into 0
+# 
+# AKIdevelopmentW$creat1[is.na(AKIdevelopmentW$creat1)]<-0
+# AKIdevelopmentW$peakcreat7d[is.na(AKIdevelopmentW$peakcreat7d)]<-0
+# AKIdevelopmentW$peakcreat48h[is.na(AKIdevelopmentW$peakcreat48h)]<-0
 
 
 ```
@@ -144,63 +144,63 @@ AKIdevelopmentW$peakcreat48h[is.na(AKIdevelopmentW$peakcreat48h)]<-0
 
 ```{r}
 
-AKIdevelopmentW['cr7undercreat1']<-AKIdevelopmentW$peakcreat7d/AKIdevelopmentW$creat1
-AKIdevelopmentW['cr48hdundercreat1']<-AKIdevelopmentW$peakcreat48h-AKIdevelopmentW$creat1
-AKIdevelopmentW['AKIoffset']<-NA
-AKIdevelopmentW['AKIstage']<-NA
-
-#nested if else function
-
-i <- function(if_stat, then) {
-  if_stat <- lazyeval::expr_text(if_stat)
-  then    <- lazyeval::expr_text(then)
-  sprintf("ifelse(%s, %s, ", if_stat, then)
-}
-
-e <- function(else_ret) {
-  else_ret <- lazyeval::expr_text(else_ret)
-  else_ret
-}
-
-ie <- function(...) {
-  args <- list(...)
-  
-  for (i in 1:(length(args) - 1) ) {
-      if (substr(args[[i]], 1, 6) != "ifelse") {
-        stop("All but the last argument, need to be i functions.", call. = FALSE)
-      }
-  }
-  if (substr(args[[length(args)]], 1, 6) == "ifelse"){
-    stop("Last argument needs to be an e function.", call. = FALSE)
-  }
-  args$final <- paste(rep(')', length(args) - 1), collapse = '')
-  eval_string <- do.call('paste', args)
-  eval(parse(text = eval_string))
-}
-
-AKIdevelopmentW$AKIstage <- 
-  ie(
-    i(AKIdevelopmentW$cr7undercreat1>=3,   3),
-    i(AKIdevelopmentW$cr7undercreat1>=2,   2),
-    i(AKIdevelopmentW$cr7undercreat1>=1.5,   1),
-    i(AKIdevelopmentW$cr48hdundercreat1>=0.3,   1),
-    e(0)
-  )
-
-AKIdevelopmentW$AKIoffset <- 
-  ie(
-    i(AKIdevelopmentW$cr7undercreat1>=3,AKIdevelopmentW$peakcreat7d_offset),
-    i(AKIdevelopmentW$cr7undercreat1>=2,AKIdevelopmentW$peakcreat7d_offset),
-    i(AKIdevelopmentW$cr7undercreat1>=1.5,AKIdevelopmentW$peakcreat7d_offset),
-    i(AKIdevelopmentW$cr48hdundercreat1>=0.3,   AKIdevelopmentW$peakcreat48h_offset),
-    e(0)
-  )
-
-library(dplyr)
-AKIlist<-AKIdevelopmentW %>%
-  select(patientunitstayid,AKIstage
-         # ,AKIoffset The nephrologist suggested not to use this variable since we can not infer when AKI was developed from it. Removing it to avoid confusion.
-         )
+# AKIdevelopmentW['cr7undercreat1']<-AKIdevelopmentW$peakcreat7d/AKIdevelopmentW$creat1
+# AKIdevelopmentW['cr48hdundercreat1']<-AKIdevelopmentW$peakcreat48h-AKIdevelopmentW$creat1
+# AKIdevelopmentW['AKIoffset']<-NA
+# AKIdevelopmentW['AKIstage']<-NA
+# 
+# #nested if else function
+# 
+# i <- function(if_stat, then) {
+#   if_stat <- lazyeval::expr_text(if_stat)
+#   then    <- lazyeval::expr_text(then)
+#   sprintf("ifelse(%s, %s, ", if_stat, then)
+# }
+# 
+# e <- function(else_ret) {
+#   else_ret <- lazyeval::expr_text(else_ret)
+#   else_ret
+# }
+# 
+# ie <- function(...) {
+#   args <- list(...)
+#   
+#   for (i in 1:(length(args) - 1) ) {
+#       if (substr(args[[i]], 1, 6) != "ifelse") {
+#         stop("All but the last argument, need to be i functions.", call. = FALSE)
+#       }
+#   }
+#   if (substr(args[[length(args)]], 1, 6) == "ifelse"){
+#     stop("Last argument needs to be an e function.", call. = FALSE)
+#   }
+#   args$final <- paste(rep(')', length(args) - 1), collapse = '')
+#   eval_string <- do.call('paste', args)
+#   eval(parse(text = eval_string))
+# }
+# 
+# AKIdevelopmentW$AKIstage <- 
+#   ie(
+#     i(AKIdevelopmentW$cr7undercreat1>=3,   3),
+#     i(AKIdevelopmentW$cr7undercreat1>=2,   2),
+#     i(AKIdevelopmentW$cr7undercreat1>=1.5,   1),
+#     i(AKIdevelopmentW$cr48hdundercreat1>=0.3,   1),
+#     e(0)
+#   )
+# 
+# AKIdevelopmentW$AKIoffset <- 
+#   ie(
+#     i(AKIdevelopmentW$cr7undercreat1>=3,AKIdevelopmentW$peakcreat7d_offset),
+#     i(AKIdevelopmentW$cr7undercreat1>=2,AKIdevelopmentW$peakcreat7d_offset),
+#     i(AKIdevelopmentW$cr7undercreat1>=1.5,AKIdevelopmentW$peakcreat7d_offset),
+#     i(AKIdevelopmentW$cr48hdundercreat1>=0.3,   AKIdevelopmentW$peakcreat48h_offset),
+#     e(0)
+#   )
+# 
+# library(dplyr)
+# AKIlist<-AKIdevelopmentW %>%
+#   select(patientunitstayid,AKIstage
+#          # ,AKIoffset The nephrologist suggested not to use this variable since we can not infer when AKI was developed from it. Removing it to avoid confusion.
+#          )
 ```
 
 ### Final List of patients with AKI and offset (with RRT)
@@ -210,32 +210,32 @@ Offset is not reliable so we exclude it.
 ```{r}
 # Dr Danziger said the offset is not reliable for telling when the patient exactly developed AKI so he adviced not to use it
 
-AKIlist_final<-left_join(AKIlist,first_rrt)
-
-
-AKIlist_final$AKIstage <- 
-  ie(
-    i(!is.na(AKIlist_final$first_rrtoffset),   3),
-    e(AKIlist_final$AKIstage)
-  )
-
-# The nephrologist suggested not to use this variable since we can not infer when AKI was developed from it. Removing it to avoid confusion.
-# AKIlist_final$AKIoffset <- 
+# AKIlist_final<-left_join(AKIlist,first_rrt)
+# 
+# 
+# AKIlist_final$AKIstage <- 
 #   ie(
-#     i(!is.na(AKIlist_final$first_rrtoffset), AKIlist_final$first_rrtoffset),
-#     e(AKIlist_final$AKIoffset)
+#     i(!is.na(AKIlist_final$first_rrtoffset),   3),
+#     e(AKIlist_final$AKIstage)
 #   )
-
-AKIlist_final$first_rrtoffset<-NULL
-AKIlist_final[is.na(AKIlist_final)]<-0
-AKIlist_final$rrt_bin<-NULL
+# 
+# # The nephrologist suggested not to use this variable since we can not infer when AKI was developed from it. Removing it to avoid confusion.
+# # AKIlist_final$AKIoffset <- 
+# #   ie(
+# #     i(!is.na(AKIlist_final$first_rrtoffset), AKIlist_final$first_rrtoffset),
+# #     e(AKIlist_final$AKIoffset)
+# #   )
+# 
+# AKIlist_final$first_rrtoffset<-NULL
+# AKIlist_final[is.na(AKIlist_final)]<-0
+# AKIlist_final$rrt_bin<-NULL
 ```
 
 # SOFA eICU calcuation
 
 ```{r}
 sofa_total_day1_to_day4<-sqldf('
-SELECT all_reliable.patientunitstayid,
+SELECT selected_cohort.patientunitstayid,
 
 max(sofa_cv_day1_to_day4.sofa_cv_day1 + sofa_respi_day1_to_day4.sofa_respi_day1 + sofa_renal_day1_to_day4.sofarenal_day1 + sofa_3others_day1_to_day4.sofacoag_day1 + sofa_3others_day1_to_day4.sofaliver_day1 + sofa_3others_day1_to_day4.sofacns_day1) AS sofatotal_day1,
 
@@ -246,13 +246,13 @@ max(sofa_cv_day1_to_day4.sofa_cv_day3 + sofa_respi_day1_to_day4.sofa_respi_day3 
 max(sofa_cv_day1_to_day4.sofa_cv_day4 + sofa_respi_day1_to_day4.sofa_respi_day4 + sofa_renal_day1_to_day4.sofarenal_day4 + sofa_3others_day1_to_day4.sofacoag_day4 + sofa_3others_day1_to_day4.sofaliver_day4 + sofa_3others_day1_to_day4.sofacns_day4) AS sofatotal_day4
 
 FROM 
-all_reliable
-INNER JOIN sofa_cv_day1_to_day4 ON  all_reliable.patientunitstayid = sofa_cv_day1_to_day4.patientunitstayid
-INNER JOIN sofa_respi_day1_to_day4  ON all_reliable.patientunitstayid = sofa_renal_day1_to_day4.patientunitstayid
-INNER JOIN sofa_renal_day1_to_day4  ON all_reliable.patientunitstayid = sofa_respi_day1_to_day4.patientunitstayid
-INNER JOIN sofa_3others_day1_to_day4  ON all_reliable.patientunitstayid = sofa_3others_day1_to_day4.patientunitstayid
-GROUP BY all_reliable.patientunitstayid
-ORDER BY all_reliable.patientunitstayid
+selected_cohort
+INNER JOIN sofa_cv_day1_to_day4 ON  selected_cohort.patientunitstayid = sofa_cv_day1_to_day4.patientunitstayid
+INNER JOIN sofa_respi_day1_to_day4  ON selected_cohort.patientunitstayid = sofa_renal_day1_to_day4.patientunitstayid
+INNER JOIN sofa_renal_day1_to_day4  ON selected_cohort.patientunitstayid = sofa_respi_day1_to_day4.patientunitstayid
+INNER JOIN sofa_3others_day1_to_day4  ON selected_cohort.patientunitstayid = sofa_3others_day1_to_day4.patientunitstayid
+GROUP BY selected_cohort.patientunitstayid
+ORDER BY selected_cohort.patientunitstayid
 ')
 ```
 
