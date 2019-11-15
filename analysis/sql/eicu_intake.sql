@@ -5,86 +5,51 @@
 --        eICU Collaborative Research Database v2.0.
 -- ------------------------------------------------------------------
 
--- Attempt 1/2
+-- attempt 3 (most accurate)
 WITH
 first_intake_6hrs AS (
   SELECT
   patientunitstayid,
-  intaketotal AS first_intake_6hrs,
-  ROW_NUMBER() OVER (PARTITION BY patientunitstayid ORDER BY intakeoutputoffset ASC) AS position1,
+  intaketotal AS intake_6hrs,
+  intakeoutputoffset AS intakeoutputoffset1,
   cellpath
   FROM
   `physionet-data.eicu_crd.intakeoutput`
   WHERE
   intakeoutputoffset BETWEEN -6*60
-  AND 6*60 ),
-intake_24hrs AS (
+  AND 6*60 AND LOWER (cellpath) LIKE '%crystalloids%' OR LOWER (cellpath) LIKE '%saline%' OR LOWER (cellpath) LIKE '%ringer%' OR LOWER (cellpath) LIKE '%ivf%' OR LOWER (cellpath) LIKE  '% ns %'),
+first_intake_24hrs AS (
   SELECT
   patientunitstayid,
-  intakeoutputoffset, 
-  intaketotal AS first_intake_24hrs,
-  ROW_NUMBER() OVER (PARTITION BY patientunitstayid ORDER BY intakeoutputoffset ASC) AS position2
+  intakeoutputoffset AS intakeoutputoffset2, 
+  intaketotal AS intake_24hrs,
+  cellpath
   FROM
   `physionet-data.eicu_crd.intakeoutput`
   WHERE
   intakeoutputoffset BETWEEN 24*60
-  AND 30*60)
+  AND 28*60),
+inter_6hrs AS (
+SELECT patientunitstayid,
+  intake_6hrs,
+  intakeoutputoffset1,
+  cellpath, 
+  ROW_NUMBER() OVER (PARTITION BY patientunitstayid ORDER BY intakeoutputoffset1 ASC) AS position1 
+  FROM first_intake_6hrs ),
+inter_24hrs AS (
+SELECT patientunitstayid,
+  intakeoutputoffset2, 
+  intake_24hrs,
+  cellpath, ROW_NUMBER() OVER (PARTITION BY patientunitstayid ORDER BY intakeoutputoffset2 ASC) AS position2 
+  FROM first_intake_24hrs), 
+real_6hrs AS (SELECT * FROM inter_6hrs WHERE position1 = 1),
+real_24hrs AS (SELECT * FROM inter_24hrs WHERE position2 = 1)
 SELECT
-io1.patientunitstayid AS patientunitstayid,
-first_intake_24hrs, 
-first_intake_6hrs
-position2, position1, intakeoutputoffset
+patientunitstayid, intake_24hrs, intake_6hrs, intakeoutputoffset2, intakeoutputoffset1, intake_24hrs + intake_6hrs AS added
 FROM
-first_intake_6hrs io1
+real_6hrs
 INNER JOIN
-intake_24hrs io2
-ON
-io2.patientunitstayid = io1.patientunitstayid
-WHERE  LOWER (cellpath) LIKE '%crystalloids%' OR LOWER (cellpath) LIKE '%saline%' OR LOWER (cellpath) LIKE '%ringer%' OR LOWER (cellpath) LIKE '%ivf%' OR LOWER (cellpath) LIKE '% ns %'
-AND position1 = 1 AND position2 = 1
-ORDER BY io1.patientunitstayid
-
--- Attemp 2/2
-WITH
-first_intake_6hrs AS (
-  SELECT
-  patientunitstayid,
-  intaketotal AS first_intake_6hrs,
-  intakeoutputoffset,
-  ROW_NUMBER() OVER (PARTITION BY patientunitstayid ORDER BY intakeoutputoffset ASC) AS position1,
-  cellpath
-  FROM
-  `physionet-data.eicu_crd.intakeoutput`
-  WHERE
-  intakeoutputoffset BETWEEN -6*60
-  AND 6*60 ),
-intake_24hrs AS (
-  SELECT
-  patientunitstayid,
-  intakeoutputoffset, 
-  intaketotal AS first_intake_24hrs,
-  cellpath,
-  ROW_NUMBER() OVER (PARTITION BY patientunitstayid ORDER BY intakeoutputoffset ASC) AS position2
-  FROM
-  `physionet-data.eicu_crd.intakeoutput`
-  WHERE
-  intakeoutputoffset BETWEEN 24*60
-  AND 30*60)
-SELECT
-patientunitstayid, 
-position1,
-intakeoutputoffset
-FROM
-first_intake_6hrs
-WHERE  LOWER (cellpath) LIKE '%crystalloids%' OR LOWER (cellpath) LIKE '%saline%' OR LOWER (cellpath) LIKE '%ringer%' OR LOWER (cellpath) LIKE '%ivf%' OR LOWER (cellpath) LIKE '% ns %'
-AND position1 = 1
-UNION ALL
-SELECT
-patientunitstayid,
-position2, 
-intakeoutputoffset
-FROM
-intake_24hrs
-WHERE  LOWER (cellpath) LIKE '%crystalloids%' OR LOWER (cellpath) LIKE '%saline%' OR LOWER (cellpath) LIKE '%ringer%' OR LOWER (cellpath) LIKE '%ivf%' OR LOWER (cellpath) LIKE '% ns %'
-AND position2 = 1
+real_24hrs
+USING
+(patientunitstayid) 
 ORDER BY patientunitstayid
