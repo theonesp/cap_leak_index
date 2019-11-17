@@ -84,6 +84,7 @@ hct<-hct[complete.cases(hct),]
 IO_exclusion <- run_query(getSQL('sql/IO_exclusion.sql'))
 charlson_score <- run_query(getSQL('sql/charlson_score.sql'))
 
+# gathers patientunitstayids with reliable fluid data
 all_reliable <- run_query (getSQL("sql/all_reliable.sql"))
 demographic <- run_query(getSQL('sql/demographics.sql'))
 demographic['body_surface_area']<-round(sqrt((demographic$height*demographic$weight) / 3600),2)
@@ -94,7 +95,9 @@ sofa_renal_day1_to_day4 <- run_query(getSQL("sql/sofa/sofa_renal_day1_to_day4.sq
 sofa_respi_day1_to_day4 <- run_query(getSQL("sql/sofa/sofa_respi_day1_to_day4.sql"))
 sofa_3others_day1_to_day4 <- run_query(getSQL("sql/sofa/sofa_3others_day1_to_day4.sql"))
 
+# Gathers sepsis patients and excludes patients that are bleeding
 patient_inexcluded_icd9 <- run_query(getSQL('sql/patient_inexcluded_icd9.sql'))
+# Sepsis patients according to angus criteria
 sepsis <- run_query(getSQL('sql/sepsis.sql'))
 patient_inexcluded_icd9 <- merge (sepsis, patient_inexcluded_icd9, all = TRUE)
 ```
@@ -231,8 +234,23 @@ Offset is not reliable so we exclude it.
 # AKIlist_final$rrt_bin<-NULL
 ```
 
-# SOFA eICU calcuation
+# Gathers the patients with sepsis and relevant demographics
+```{r}
+selected_cohort<-inner_join(demographic,patient_inexcluded_icd9)
 
+#exlusion based on intake output
+selected_cohort<-sqldf('
+SELECT * FROM 
+selected_cohort
+LEFT JOIN
+IO_exclusion
+USING
+(patientunitstayid)
+WHERE
+IO_exclusion.patientunitstayid IS NULL
+')
+```
+# SOFA eICU calcuation
 ```{r}
 sofa_total_day1_to_day4<-sqldf('
 SELECT selected_cohort.patientunitstayid,
@@ -263,22 +281,6 @@ We are using a left join to join them
 
 ```{r}
 
-selected_cohort<-inner_join(demographic,patient_inexcluded_icd9)
-
-#exlusion based on intake output
-selected_cohort<-sqldf('
-SELECT * FROM 
-selected_cohort
-LEFT JOIN
-IO_exclusion
-USING
-(patientunitstayid)
-WHERE
-IO_exclusion.patientunitstayid IS NULL
-')
-
-Exp_dataset <- Reduce(function(...)left_join (..., by = NULL), list (selected_cohort, apache_related, hct, charlson_score, sofa_total_day1_to_day4))
-
 # We don't get rid of AKI here
 Final_dataset<-Reduce(function(...) merge(..., all.x=TRUE), list(
   selected_cohort
@@ -289,6 +291,7 @@ Final_dataset<-Reduce(function(...) merge(..., all.x=TRUE), list(
   ,sofa_total_day1_to_day4
 ))
 
+# Ensures that patients have reliable fluid data
 # Final_dataset<-sqldf('
 # SELECT * FROM
 # Final_dataset

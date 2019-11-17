@@ -5,8 +5,23 @@
 --        eICU Collaborative Research Database v2.0.
 -- ------------------------------------------------------------------
 
--- attempt 3 (most accurate)
-WITH
+-- attempt 3 (most accurate- however, the intake values seem to be off significantly
+with t1 as (
+SELECT
+*
+FROM
+`physionet-data.eicu_crd.intakeoutput`
+WHERE
+intakeoutputoffset BETWEEN -6*60
+AND 6*60),
+t2 as (
+SELECT
+*
+FROM
+`physionet-data.eicu_crd.intakeoutput`
+WHERE
+intakeoutputoffset BETWEEN 24*60
+AND 30*60),
 first_intake_6hrs AS (
   SELECT
   patientunitstayid,
@@ -14,21 +29,19 @@ first_intake_6hrs AS (
   intakeoutputoffset AS intakeoutputoffset1,
   cellpath
   FROM
-  `physionet-data.eicu_crd.intakeoutput`
+  t1
   WHERE
-  intakeoutputoffset BETWEEN -6*60
-  AND 6*60 AND LOWER (cellpath) LIKE '%crystalloids%' OR LOWER (cellpath) LIKE '%saline%' OR LOWER (cellpath) LIKE '%ringer%' OR LOWER (cellpath) LIKE '%ivf%' OR LOWER (cellpath) LIKE  '% ns %'),
-first_intake_24hrs AS (
+  LOWER (cellpath) LIKE '%crystalloids%' OR LOWER (cellpath) LIKE '%saline%' OR LOWER (cellpath) LIKE '%ringer%' OR LOWER (cellpath) LIKE '%ivf%' OR LOWER (cellpath) LIKE  '% ns %'),
+  first_intake_24hrs AS (
   SELECT
   patientunitstayid,
   intakeoutputoffset AS intakeoutputoffset2, 
   intaketotal AS intake_24hrs,
   cellpath
   FROM
-  `physionet-data.eicu_crd.intakeoutput`
+  t2
   WHERE
-  intakeoutputoffset BETWEEN 24*60
-  AND 28*60),
+  LOWER (cellpath) LIKE '%crystalloids%' OR LOWER (cellpath) LIKE '%saline%' OR LOWER (cellpath) LIKE '%ringer%' OR LOWER (cellpath) LIKE '%ivf%' OR LOWER (cellpath) LIKE  '% ns %'),
 inter_6hrs AS (
 SELECT patientunitstayid,
   intake_6hrs,
