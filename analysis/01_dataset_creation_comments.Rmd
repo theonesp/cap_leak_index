@@ -273,6 +273,12 @@ GROUP BY selected_cohort.patientunitstayid
 ORDER BY selected_cohort.patientunitstayid
 ')
 ```
+# Extracts fluid data
+```{r}
+fluidIntake <- run_query(getSQL("sql/eicu_intakeV2.sql" ))
+names(fluidIntake)[names(fluidIntake) == "f0_"] <- "total_intake"
+fluidIntake<-fluidIntake[complete.cases(fluidIntake),]
+```
 
 
 # Merging all datasets
@@ -286,25 +292,27 @@ Final_dataset<-Reduce(function(...) merge(..., all.x=TRUE), list(
   selected_cohort
   ,apache_related
   ,hct
+  ,fluidIntake
   # ,AKIlist_final
   ,charlson_score
   ,sofa_total_day1_to_day4
 ))
 
 # Ensures that patients have reliable fluid data
-# Final_dataset<-sqldf('
-# SELECT * FROM
-# Final_dataset
-# INNER JOIN
-# all_reliable
-# ON Final_dataset.patientunitstayid = all_reliable.patientunitstayid
-# ')
+Final_dataset<-sqldf('
+SELECT * FROM
+Final_dataset
+INNER JOIN
+all_reliable
+ON Final_dataset.patientunitstayid = all_reliable.patientunitstayid
+')
 
 
 #Creating new variables
 Final_dataset<-Final_dataset%>%
   mutate(
-    leakingn_index=((mean_hct_24_36hrs/first_hct_6hrs)-1)*body_surface_area*1561
+    # leakingn_index=((mean_hct_24_36hrs/first_hct_6hrs)-1)*body_surface_area*1561
+    leakingn_index=((mean_hct_24_36hrs-first_hct_6hrs) / total_intake)
     ,delta_sofa=sofatotal_day4-sofatotal_day1
     ,Q_leakingn_index=as.numeric(cut2(leakingn_index, g=5))
     ,delta_sofa_bin=as.numeric(cut2(delta_sofa, g=3))
@@ -323,6 +331,8 @@ Final_dataset$actualhospitalmortality<-as.factor(Final_dataset$actualhospitalmor
 
 Final_dataset<-Final_dataset%>%
   filter(!is.na(leakingn_index))
+Final_dataset<-Final_dataset%>%
+  filter(!is.infinite(leakingn_index))
 ```
 
 # Dataset report

@@ -45,9 +45,9 @@ testing<-Final_dataset[-intrain,]
 ```{r}
 # trains the logistic model
 mod_multiv<-glm(actualhospitalmortality  ~ 
-                 Q_leakingn_index
-                +apachescore
-                +Final_Charlson_score
+                 leakingn_index
+                # +apachescore
+                # +Final_Charlson_score
                  ,family='binomial'
                  ,data = training
                 )
@@ -72,8 +72,8 @@ boxLabels<-rownames(oddsratios_table)
 # trains
 sofa_multiv<-glm(sofatotal_day2 ~ 
                  Q_leakingn_index
-                +apachescore
-                +Final_Charlson_score
+                # +apachescore
+                # +Final_Charlson_score
                  ,family='gaussian'
                  ,data = Final_dataset
                 )
