@@ -262,9 +262,6 @@ ORDER BY selected_cohort.patientunitstayid
 We are using a left join to join them
 
 ```{r}
-# inclusion and exclusion based on icd9 code
-ReliableHospitalICUYearFilter <- read_csv("ReliableHospitalICUYearFilter.csv")
-reliable_IO <- sqldf ('SELECT HospitalID AS hospitalid, ICUID AS wardid, UnitAdmitYear AS hospitaldischargeyear FROM ReliableHospitalICUYearFilter')
 
 selected_cohort<-inner_join(demographic,patient_inexcluded_icd9)
 

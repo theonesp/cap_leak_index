@@ -70,11 +70,11 @@ boxLabels<-rownames(oddsratios_table)
 ```
 ```{r}
 # trains
-sofa_multiv<-glm(delta_sofa_bin ~ 
+sofa_multiv<-glm(sofatotal_day2 ~ 
                  Q_leakingn_index
                 +apachescore
                 +Final_Charlson_score
-                 ,family='binomial'
+                 ,family='gaussian'
                  ,data = Final_dataset
                 )
 
@@ -93,9 +93,9 @@ boxLabels<-rownames(sofaratios_table)
 ```
 # Testing the shape of the outcome variables
 ```{r}
-# test <- filter(Final_dataset, sofatotal_day4 != 0)
-# test <- test$sofatotal_day4
-# hist(test)
+test <- filter(Final_dataset, sofatotal_day1 != 0)
+test <- test$sofatotal_day4
+hist(test)
 ```
 
 # Attempts to Validate the Regression Model
@@ -108,5 +108,8 @@ boxLabels<-rownames(sofaratios_table)
 auc(Final_dataset$actualhospitalmortality, Final_dataset$apachescore)
 Predicted = predict (mod_multiv, testing)
 auc(testing$actualhospitalmortality, Predicted)
+
+Predicted = predict (sofa_multiv, testing)
+auc(testing$sofatotal_day1, Predicted)
 ```
 
