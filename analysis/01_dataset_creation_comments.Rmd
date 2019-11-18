@@ -315,11 +315,11 @@ Final_dataset<-Final_dataset%>%
     leakingn_index=((mean_hct_24_36hrs-first_hct_6hrs) / total_intake)
     ,delta_sofa=sofatotal_day4-sofatotal_day1
     ,Q_leakingn_index=as.numeric(cut2(leakingn_index, g=5))
-    ,delta_sofa_bin=as.numeric(cut2(delta_sofa, g=3))
+    ,delta_sofa_Q=as.numeric(cut2(delta_sofa, g=3))
 )
 
 Final_dataset$Q_leakingn_index<-as.factor(Final_dataset$Q_leakingn_index)
-Final_dataset$delta_sofa_bin<-as.factor(Final_dataset$delta_sofa_bin)
+Final_dataset$delta_sofa_Q<-as.factor(Final_dataset$delta_sofa_Q)
 
 # Final_dataset$delta_sofa_bin[Final_dataset$delta_sofa_bin==1]<-0
 # Final_dataset$delta_sofa_bin[Final_dataset$delta_sofa_bin==2]<-1
