@@ -1,11 +1,11 @@
 ---
 title: "01_dataset_creation"
-author: "Miguel Armengol"
+author: "Miguel Ángel Armengol de la Hoz"
 date: "10/5/2019"
 output: html_document
 ---
 
-# Libraries
+# Environment
 
 ```{r}
 library(bigrquery)
@@ -16,6 +16,7 @@ library(sqldf)
 library(dplyr)
 library(tableone)
 library(Hmisc)
+library(caret)
 ```
 
 
@@ -327,15 +328,12 @@ cap_leak_index_dataset<-cap_leak_index_dataset%>%
 )
 
 cap_leak_index_dataset$q_leaking_index<-as.factor(cap_leak_index_dataset$q_leaking_index)
-cap_leak_index_dataset$delta_sofa_bin<-as.factor(cap_leak_index_dataset$delta_sofa_bin)
-
-# cap_leak_index_dataset$delta_sofa_bin[cap_leak_index_dataset$delta_sofa_bin==1]<-0
-# cap_leak_index_dataset$delta_sofa_bin[cap_leak_index_dataset$delta_sofa_bin==2]<-1
+cap_leak_index_dataset$q_delta_sofa<-as.factor(cap_leak_index_dataset$q_delta_sofa)
 
 # actualhospitalmortality mapping
-cap_leak_index_dataset$actualhospitalmortality[cap_leak_index_dataset$actualhospitalmortality=='ALIVE']<-0
-cap_leak_index_dataset$actualhospitalmortality[cap_leak_index_dataset$actualhospitalmortality=='EXPIRED']<-1
-cap_leak_index_dataset$actualhospitalmortality<-as.factor(cap_leak_index_dataset$actualhospitalmortality)
+#cap_leak_index_dataset$actualhospitalmortality[cap_leak_index_dataset$actualhospitalmortality=='ALIVE']<-0
+#cap_leak_index_dataset$actualhospitalmortality[cap_leak_index_dataset$actualhospitalmortality=='EXPIRED']<-1
+#cap_leak_index_dataset$actualhospitalmortality<-as.factor(cap_leak_index_dataset$actualhospitalmortality)
 
 # gender mapping
 cap_leak_index_dataset$gender[cap_leak_index_dataset$gender=='Male']<-1
@@ -373,8 +371,9 @@ selected_df <- cap_leak_index_dataset%>%dplyr::select(
 ,BMI
 ,actualhospitalmortality
 ,final_charlson_score
-,leaking_index
-,delta_sofa
+,apachescore
+,q_leaking_index
+,q_delta_sofa
 )
 selected_df<-selected_df[complete.cases(selected_df),]
 ```
