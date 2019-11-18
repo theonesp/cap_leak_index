@@ -14,7 +14,8 @@ library(readr)
 library(stringr)
 library(sqldf)
 library(dplyr)
-
+library(tableone)
+library(Hmisc)
 ```
 
 
@@ -23,9 +24,10 @@ library(dplyr)
 This chunks also creates the run_query and get_sql function.
 
 ```{r setup, include=FALSE}
-
+# Updated for our year
 project_id <- "hst-953-2018"
 options(httr_oauth_cache=FALSE)
+# Function that takes in a sql command and runs it on bigquery
 run_query <- function(query){
   data <- query_exec(query, project=project_id, use_legacy_sql=FALSE,max_pages = Inf)
   return(data)
@@ -64,27 +66,54 @@ Loads all queries from the sql files in the extraction folder and runs them into
 ```{r}
 apache_related<-run_query(getSQL("sql/apache_related.sql" ))
 hct <- run_query(getSQL("sql/hct.sql" ))
+
+# removes missing values
 hct<-hct[complete.cases(hct),]
-chronicAKI<-run_query(getSQL('sql/aki/chronicAKI.sql'))
-baseline_creat<-run_query(getSQL('sql/aki/baseline_creat.sql'))
-peakcreat48h<-run_query(getSQL('sql/aki/peakcreat48h.sql'))
-peakcreat7days<-run_query(getSQL('sql/aki/peakcreat7days.sql'))
-first_rrt <-run_query(getSQL('sql/aki/first_rrt.sql'))
-demographic <- run_query(getSQL('sql/demographics.sql'))
-demographic['body_surface_area']<-round(sqrt((demographic$height*demographic$weight) / 3600),2)
-patient_inexcluded_icd9 <- run_query(getSQL('sql/patient_inexcluded_icd9.sql'))
+
+#Remove chronic AKI, creat, rrt patients
+# chronicAKI<-run_query(getSQL('sql/aki/chronicAKI.sql'))
+# baseline_creat<-run_query(getSQL('sql/aki/baseline_creat.sql'))
+# peakcreat48h<-run_query(getSQL('sql/aki/peakcreat48h.sql'))
+# peakcreat7days<-run_query(getSQL('sql/aki/peakcreat7days.sql'))
+
+# renal replacement therapy
+# first_rrt <-run_query(getSQL('sql/aki/first_rrt.sql'))
+
+# BMI, weight, age, gender, type of unit that patients was admitted, location from admission, length of stay before admission, height
 IO_exclusion <- run_query(getSQL('sql/IO_exclusion.sql'))
 charlson_score <- run_query(getSQL('sql/charlson_score.sql'))
+
+# gathers patientunitstayids with reliable fluid data
+all_reliable <- run_query (getSQL("sql/all_reliable.sql"))
+
+#demographic
+demographic <- run_query(getSQL('sql/demographics.sql'))
+demographic['body_surface_area']<-round(sqrt((demographic$height*demographic$weight) / 3600),2)
+
+# SOFA variables
+sofa_cv_day1_to_day4 <- run_query(getSQL("sql/sofa/sofa_cv_day1_to_day4.sql"))
+sofa_renal_day1_to_day4 <- run_query(getSQL("sql/sofa/sofa_renal_day1_to_day4.sql"))
+sofa_respi_day1_to_day4 <- run_query(getSQL("sql/sofa/sofa_respi_day1_to_day4.sql"))
+sofa_3others_day1_to_day4 <- run_query(getSQL("sql/sofa/sofa_3others_day1_to_day4.sql"))
+
+# Gathers sepsis patients and excludes patients that are bleeding
+patient_inexcluded_icd9 <- run_query(getSQL('sql/patient_inexcluded_icd9.sql'))
+# Sepsis patients according to angus criteria
+sepsis <- run_query(getSQL('sql/sepsis.sql'))
+patient_inexcluded_icd9 <- merge (sepsis, patient_inexcluded_icd9, all = TRUE)
+
+# Fluid data
+fluidIntake <- run_query(getSQL("sql/eicu_intakeV2.sql" ))
 ```
 
 ## AKI Dataset creation
 
 ```{r}
 #We need to exclude patients who already had AKI before ICU admin)
-AKIdevelopment<-subset(baseline_creat, !(baseline_creat$patientunitstayid %in% chronicAKI$patientunitstayid) )
-AKIdevelopment<-left_join(AKIdevelopment, peakcreat7days)
-AKIdevelopment<-left_join(AKIdevelopment, peakcreat48h)
-AKIdevelopment$position<-NULL
+# AKIdevelopment<-subset(baseline_creat, !(baseline_creat$patientunitstayid %in% chronicAKI$patientunitstayid) )
+# AKIdevelopment<-left_join(AKIdevelopment, peakcreat7days)
+# AKIdevelopment<-left_join(AKIdevelopment, peakcreat48h)
+# AKIdevelopment$position<-NULL
 ```
 
 ### Windsorization
@@ -93,27 +122,27 @@ Clean data by means of winsorization, i.e., by shrinking outlying observations t
 The creatinine values have been winsorize replacing the extreme observations using 95% and 5% percentiles.
 
 ```{r}
-AKIdevelopmentW<-AKIdevelopment
-## Winsorization: Replace the extreme observations using 95% and 5% percentiles
-winsorize_x = function(x, cut = 0.05){
-  cut_point_top <- quantile(x, 1 - cut, na.rm = T)
-  cut_point_bottom <- quantile(x, cut, na.rm = T)
-  i = which(x >= cut_point_top) 
-  x[i] = cut_point_top
-  j = which(x <= cut_point_bottom) 
-  x[j] = cut_point_bottom
-  return(x)
-}
-
-AKIdevelopmentW$creat1<-winsorize_x(AKIdevelopmentW$creat1)
-AKIdevelopmentW$peakcreat7d<-winsorize_x(AKIdevelopmentW$peakcreat7d)
-AKIdevelopmentW$peakcreat48h<-winsorize_x(AKIdevelopmentW$peakcreat48h)
-
-#Now we turn all emptpy values into 0
-
-AKIdevelopmentW$creat1[is.na(AKIdevelopmentW$creat1)]<-0
-AKIdevelopmentW$peakcreat7d[is.na(AKIdevelopmentW$peakcreat7d)]<-0
-AKIdevelopmentW$peakcreat48h[is.na(AKIdevelopmentW$peakcreat48h)]<-0
+# AKIdevelopmentW<-AKIdevelopment
+# ## Winsorization: Replace the extreme observations using 95% and 5% percentiles
+# winsorize_x = function(x, cut = 0.05){
+#   cut_point_top <- quantile(x, 1 - cut, na.rm = T)
+#   cut_point_bottom <- quantile(x, cut, na.rm = T)
+#   i = which(x >= cut_point_top) 
+#   x[i] = cut_point_top
+#   j = which(x <= cut_point_bottom) 
+#   x[j] = cut_point_bottom
+#   return(x)
+# }
+# 
+# AKIdevelopmentW$creat1<-winsorize_x(AKIdevelopmentW$creat1)
+# AKIdevelopmentW$peakcreat7d<-winsorize_x(AKIdevelopmentW$peakcreat7d)
+# AKIdevelopmentW$peakcreat48h<-winsorize_x(AKIdevelopmentW$peakcreat48h)
+# 
+# #Now we turn all emptpy values into 0
+# 
+# AKIdevelopmentW$creat1[is.na(AKIdevelopmentW$creat1)]<-0
+# AKIdevelopmentW$peakcreat7d[is.na(AKIdevelopmentW$peakcreat7d)]<-0
+# AKIdevelopmentW$peakcreat48h[is.na(AKIdevelopmentW$peakcreat48h)]<-0
 
 
 ```
@@ -122,63 +151,63 @@ AKIdevelopmentW$peakcreat48h[is.na(AKIdevelopmentW$peakcreat48h)]<-0
 
 ```{r}
 
-AKIdevelopmentW['cr7undercreat1']<-AKIdevelopmentW$peakcreat7d/AKIdevelopmentW$creat1
-AKIdevelopmentW['cr48hdundercreat1']<-AKIdevelopmentW$peakcreat48h-AKIdevelopmentW$creat1
-AKIdevelopmentW['AKIoffset']<-NA
-AKIdevelopmentW['AKIstage']<-NA
-
-#nested if else function
-
-i <- function(if_stat, then) {
-  if_stat <- lazyeval::expr_text(if_stat)
-  then    <- lazyeval::expr_text(then)
-  sprintf("ifelse(%s, %s, ", if_stat, then)
-}
-
-e <- function(else_ret) {
-  else_ret <- lazyeval::expr_text(else_ret)
-  else_ret
-}
-
-ie <- function(...) {
-  args <- list(...)
-  
-  for (i in 1:(length(args) - 1) ) {
-      if (substr(args[[i]], 1, 6) != "ifelse") {
-        stop("All but the last argument, need to be i functions.", call. = FALSE)
-      }
-  }
-  if (substr(args[[length(args)]], 1, 6) == "ifelse"){
-    stop("Last argument needs to be an e function.", call. = FALSE)
-  }
-  args$final <- paste(rep(')', length(args) - 1), collapse = '')
-  eval_string <- do.call('paste', args)
-  eval(parse(text = eval_string))
-}
-
-AKIdevelopmentW$AKIstage <- 
-  ie(
-    i(AKIdevelopmentW$cr7undercreat1>=3,   3),
-    i(AKIdevelopmentW$cr7undercreat1>=2,   2),
-    i(AKIdevelopmentW$cr7undercreat1>=1.5,   1),
-    i(AKIdevelopmentW$cr48hdundercreat1>=0.3,   1),
-    e(0)
-  )
-
-AKIdevelopmentW$AKIoffset <- 
-  ie(
-    i(AKIdevelopmentW$cr7undercreat1>=3,AKIdevelopmentW$peakcreat7d_offset),
-    i(AKIdevelopmentW$cr7undercreat1>=2,AKIdevelopmentW$peakcreat7d_offset),
-    i(AKIdevelopmentW$cr7undercreat1>=1.5,AKIdevelopmentW$peakcreat7d_offset),
-    i(AKIdevelopmentW$cr48hdundercreat1>=0.3,   AKIdevelopmentW$peakcreat48h_offset),
-    e(0)
-  )
-
-library(dplyr)
-AKIlist<-AKIdevelopmentW %>%
-  select(patientunitstayid,AKIstage
-         # ,AKIoffset The nephrologist suggested not to use this variable since we can not infer when AKI was developed from it. Removing it to avoid confusion.
-         )
+# AKIdevelopmentW['cr7undercreat1']<-AKIdevelopmentW$peakcreat7d/AKIdevelopmentW$creat1
+# AKIdevelopmentW['cr48hdundercreat1']<-AKIdevelopmentW$peakcreat48h-AKIdevelopmentW$creat1
+# AKIdevelopmentW['AKIoffset']<-NA
+# AKIdevelopmentW['AKIstage']<-NA
+# 
+# #nested if else function
+# 
+# i <- function(if_stat, then) {
+#   if_stat <- lazyeval::expr_text(if_stat)
+#   then    <- lazyeval::expr_text(then)
+#   sprintf("ifelse(%s, %s, ", if_stat, then)
+# }
+# 
+# e <- function(else_ret) {
+#   else_ret <- lazyeval::expr_text(else_ret)
+#   else_ret
+# }
+# 
+# ie <- function(...) {
+#   args <- list(...)
+#   
+#   for (i in 1:(length(args) - 1) ) {
+#       if (substr(args[[i]], 1, 6) != "ifelse") {
+#         stop("All but the last argument, need to be i functions.", call. = FALSE)
+#       }
+#   }
+#   if (substr(args[[length(args)]], 1, 6) == "ifelse"){
+#     stop("Last argument needs to be an e function.", call. = FALSE)
+#   }
+#   args$final <- paste(rep(')', length(args) - 1), collapse = '')
+#   eval_string <- do.call('paste', args)
+#   eval(parse(text = eval_string))
+# }
+# 
+# AKIdevelopmentW$AKIstage <- 
+#   ie(
+#     i(AKIdevelopmentW$cr7undercreat1>=3,   3),
+#     i(AKIdevelopmentW$cr7undercreat1>=2,   2),
+#     i(AKIdevelopmentW$cr7undercreat1>=1.5,   1),
+#     i(AKIdevelopmentW$cr48hdundercreat1>=0.3,   1),
+#     e(0)
+#   )
+# 
+# AKIdevelopmentW$AKIoffset <- 
+#   ie(
+#     i(AKIdevelopmentW$cr7undercreat1>=3,AKIdevelopmentW$peakcreat7d_offset),
+#     i(AKIdevelopmentW$cr7undercreat1>=2,AKIdevelopmentW$peakcreat7d_offset),
+#     i(AKIdevelopmentW$cr7undercreat1>=1.5,AKIdevelopmentW$peakcreat7d_offset),
+#     i(AKIdevelopmentW$cr48hdundercreat1>=0.3,   AKIdevelopmentW$peakcreat48h_offset),
+#     e(0)
+#   )
+# 
+# library(dplyr)
+# AKIlist<-AKIdevelopmentW %>%
+#   select(patientunitstayid,AKIstage
+#          # ,AKIoffset The nephrologist suggested not to use this variable since we can not infer when AKI was developed from it. Removing it to avoid confusion.
+#          )
 ```
 
 ### Final List of patients with AKI and offset (with RRT)
@@ -188,38 +217,36 @@ Offset is not reliable so we exclude it.
 ```{r}
 # Dr Danziger said the offset is not reliable for telling when the patient exactly developed AKI so he adviced not to use it
 
-AKIlist_final<-left_join(AKIlist,first_rrt)
-
-
-AKIlist_final$AKIstage <- 
-  ie(
-    i(!is.na(AKIlist_final$first_rrtoffset),   3),
-    e(AKIlist_final$AKIstage)
-  )
-
-# The nephrologist suggested not to use this variable since we can not infer when AKI was developed from it. Removing it to avoid confusion.
-# AKIlist_final$AKIoffset <- 
+# AKIlist_final<-left_join(AKIlist,first_rrt)
+# 
+# 
+# AKIlist_final$AKIstage <- 
 #   ie(
-#     i(!is.na(AKIlist_final$first_rrtoffset), AKIlist_final$first_rrtoffset),
-#     e(AKIlist_final$AKIoffset)
+#     i(!is.na(AKIlist_final$first_rrtoffset),   3),
+#     e(AKIlist_final$AKIstage)
 #   )
-
-AKIlist_final$first_rrtoffset<-NULL
-AKIlist_final[is.na(AKIlist_final)]<-0
-AKIlist_final$rrt_bin<-NULL
+# 
+# # The nephrologist suggested not to use this variable since we can not infer when AKI was developed from it. Removing it to avoid confusion.
+# # AKIlist_final$AKIoffset <- 
+# #   ie(
+# #     i(!is.na(AKIlist_final$first_rrtoffset), AKIlist_final$first_rrtoffset),
+# #     e(AKIlist_final$AKIoffset)
+# #   )
+# 
+# AKIlist_final$first_rrtoffset<-NULL
+# AKIlist_final[is.na(AKIlist_final)]<-0
+# AKIlist_final$rrt_bin<-NULL
 ```
 
-# Merging all datasets
-
-We are using a left join to join them
+## Patients with sepsis and demographics
 
 ```{r}
-# inclusion and exclusion based on icd9 code
 selected_cohort<-inner_join(demographic,patient_inexcluded_icd9)
 
 #exlusion based on intake output
 selected_cohort<-sqldf('
-SELECT * FROM selected_cohort
+SELECT * FROM 
+selected_cohort
 LEFT JOIN
 IO_exclusion
 USING
@@ -227,44 +254,170 @@ USING
 WHERE
 IO_exclusion.patientunitstayid IS NULL
 ')
+```
 
-Final_dataset<-Reduce(function(...) merge(..., all.x=TRUE), list(selected_cohort, apache_related,hct,AKIlist_final,sofa_eicu,charlson_score
+## SOFA eICU calcuation
+
+```{r}
+sofa_total_day1_to_day4<-sqldf('
+SELECT selected_cohort.patientunitstayid,
+
+max(sofa_cv_day1_to_day4.sofa_cv_day1 + sofa_respi_day1_to_day4.sofa_respi_day1 + sofa_renal_day1_to_day4.sofarenal_day1 + sofa_3others_day1_to_day4.sofacoag_day1 + sofa_3others_day1_to_day4.sofaliver_day1 + sofa_3others_day1_to_day4.sofacns_day1) AS sofatotal_day1,
+
+max(sofa_cv_day1_to_day4.sofa_cv_day2 + sofa_respi_day1_to_day4.sofa_respi_day2 + sofa_renal_day1_to_day4.sofarenal_day2 + sofa_3others_day1_to_day4.sofacoag_day2 + sofa_3others_day1_to_day4.sofaliver_day2 + sofa_3others_day1_to_day4.sofacns_day2) AS sofatotal_day2,
+
+max(sofa_cv_day1_to_day4.sofa_cv_day3 + sofa_respi_day1_to_day4.sofa_respi_day3 + sofa_renal_day1_to_day4.sofarenal_day3 + sofa_3others_day1_to_day4.sofacoag_day3 + sofa_3others_day1_to_day4.sofaliver_day3 + sofa_3others_day1_to_day4.sofacns_day3) AS sofatotal_day3,
+
+max(sofa_cv_day1_to_day4.sofa_cv_day4 + sofa_respi_day1_to_day4.sofa_respi_day4 + sofa_renal_day1_to_day4.sofarenal_day4 + sofa_3others_day1_to_day4.sofacoag_day4 + sofa_3others_day1_to_day4.sofaliver_day4 + sofa_3others_day1_to_day4.sofacns_day4) AS sofatotal_day4
+
+FROM 
+selected_cohort
+INNER JOIN sofa_cv_day1_to_day4 ON  selected_cohort.patientunitstayid = sofa_cv_day1_to_day4.patientunitstayid
+INNER JOIN sofa_respi_day1_to_day4  ON selected_cohort.patientunitstayid = sofa_renal_day1_to_day4.patientunitstayid
+INNER JOIN sofa_renal_day1_to_day4  ON selected_cohort.patientunitstayid = sofa_respi_day1_to_day4.patientunitstayid
+INNER JOIN sofa_3others_day1_to_day4  ON selected_cohort.patientunitstayid = sofa_3others_day1_to_day4.patientunitstayid
+GROUP BY selected_cohort.patientunitstayid
+ORDER BY selected_cohort.patientunitstayid
+')
+```
+
+## Fluid data
+
+```{r}
+names(fluidIntake)[names(fluidIntake) == "f0_"] <- "total_intake"
+fluidIntake<-fluidIntake[complete.cases(fluidIntake),]
+```
+
+
+# Merging all datasets
+
+```{r}
+# We are using a left join to join them
+cap_leak_index_dataset<-Reduce(function(...) merge(..., all.x=TRUE), list(
+  selected_cohort
+  ,apache_related
+  ,hct
+  ,fluidIntake
+  # ,AKIlist_final
+  ,charlson_score
+  ,sofa_total_day1_to_day4
 ))
 
+# Ensures that patients have reliable fluid data
+cap_leak_index_dataset<-sqldf('
+SELECT cap_leak_index_dataset.* FROM
+cap_leak_index_dataset
+INNER JOIN
+all_reliable
+USING(patientunitstayid)
+')
+```
+
 # Creating new variables
-Final_dataset<-Final_dataset%>%
+
+```{r}
+
+cap_leak_index_dataset<-cap_leak_index_dataset%>%
   mutate(
-    leakingn_index=((mean_hct_24_36hrs/first_hct_6hrs)-1)*body_surface_area*1561
-    ,delta_sofa=sofa_day1-sofa_day4
-    ,Q_leakingn_index=as.numeric(cut2(leakingn_index, g=4))
-    ,delta_sofa_bin=as.numeric(cut2(delta_sofa, g=2))
+    # leaking_index=((mean_hct_24_36hrs/first_hct_6hrs)-1)*body_surface_area*1561
+    leaking_index=((mean_hct_24_36hrs-first_hct_6hrs) / total_intake)
+    ,delta_sofa=sofatotal_day4-sofatotal_day1
+    ,q_leaking_index=as.numeric(cut2(leaking_index, g=4))
+    ,q_delta_sofa=as.numeric(cut2(delta_sofa, g=4))
 )
 
-Final_dataset$Q_leakingn_index<-as.factor(Final_dataset$Q_leakingn_index)
+cap_leak_index_dataset$q_leaking_index<-as.factor(cap_leak_index_dataset$q_leaking_index)
+cap_leak_index_dataset$delta_sofa_bin<-as.factor(cap_leak_index_dataset$delta_sofa_bin)
 
-Final_dataset$delta_sofa_bin[Final_dataset$delta_sofa_bin==1]<-0
-Final_dataset$delta_sofa_bin[Final_dataset$delta_sofa_bin==2]<-1
+# cap_leak_index_dataset$delta_sofa_bin[cap_leak_index_dataset$delta_sofa_bin==1]<-0
+# cap_leak_index_dataset$delta_sofa_bin[cap_leak_index_dataset$delta_sofa_bin==2]<-1
 
-Final_dataset$actualhospitalmortality[Final_dataset$actualhospitalmortality=='ALIVE']<-0
+# actualhospitalmortality mapping
+cap_leak_index_dataset$actualhospitalmortality[cap_leak_index_dataset$actualhospitalmortality=='ALIVE']<-0
+cap_leak_index_dataset$actualhospitalmortality[cap_leak_index_dataset$actualhospitalmortality=='EXPIRED']<-1
+cap_leak_index_dataset$actualhospitalmortality<-as.factor(cap_leak_index_dataset$actualhospitalmortality)
 
-Final_dataset$actualhospitalmortality[Final_dataset$actualhospitalmortality=='EXPIRED']<-1
-Final_dataset$actualhospitalmortality<-as.factor(Final_dataset$actualhospitalmortality)
+# gender mapping
+cap_leak_index_dataset$gender[cap_leak_index_dataset$gender=='Male']<-1
+cap_leak_index_dataset$gender[cap_leak_index_dataset$gender=='Female']<-2
+cap_leak_index_dataset$gender<-as.factor(cap_leak_index_dataset$gender)
 
-Final_dataset<-Final_dataset%>%
-  filter(!is.na(leakingn_index))
+cap_leak_index_dataset<-cap_leak_index_dataset%>%
+  filter(!is.na(leaking_index))
+cap_leak_index_dataset<-cap_leak_index_dataset%>%
+  filter(!is.infinite(leaking_index))
 ```
 
 # Dataset report
 
 ```{r}
-view(dfSummary(Final_dataset[,c('gender','age_fixed','apachescore','Final_Charlson_score')]))
+view(dfSummary(cap_leak_index_dataset))
+
+sofamissing = sum(is.na(cap_leak_index_dataset$sofatotal_day1)) / length (cap_leak_index_dataset$sofatotal_day1)
+bmimissing = sum(is.na(cap_leak_index_dataset$BMI)) / length (cap_leak_index_dataset$BMI)
+weightmissing = sum(is.na(cap_leak_index_dataset$weight)) / length (cap_leak_index_dataset$weight)
 ```
 
 # Export dataset
 
 ```{r}
-write.csv(Final_dataset, 'Final_dataset.csv',row.names = F)
+write.csv(cap_leak_index_dataset,'cap_leak_index_dataset.csv')
 ```
+
+# Selecting/Imputing/removing data
+
+```{r}
+selected_df <- cap_leak_index_dataset%>%dplyr::select(
+ age_fixed
+,gender
+,BMI
+,actualhospitalmortality
+,final_charlson_score
+,leaking_index
+,delta_sofa
+)
+selected_df<-selected_df[complete.cases(selected_df),]
+```
+
+# Train and test dataset creation
+
+## Creating de-identified id 
+
+```{r}
+selected_df['id']<- seq.int(nrow(selected_df))
+```
+
+## Spliting de-identified data into testing and training, balanced version.
+
+We want the data to be sampled randomly but always the same way and we want to be sure that train and test must be balanced.
+
+```{r}
+## set the seed to make our partition reproducible
+set.seed(123)
+# createDataPartition: "the random sampling is done within the levels of y when y is a factor in an attempt to balance the class distributions within the splits."
+## 75% of the sample size
+train_idx <- createDataPartition(as.factor(selected_df$actualhospitalmortality), times = 1, p = 0.75, list=F)
+
+train <- selected_df[train_idx, ]
+test <- selected_df[-train_idx, ]
+
+#Checking outcome is actually balanced
+round(prop.table(table(train$actualhospitalmortality)),2)
+round(prop.table(table(test$actualhospitalmortality)),2)
+```
+
+## Separating datasets into outcome and exposures
+
+```{r}
+# train dataset
+train_X<-train[, names(train)!= "actualhospitalmortality"]
+train_Y<-train$actualhospitalmortality
+  
+# test dataset
+test_X<-test[, names(test)!= "actualhospitalmortality"]
+test_Y<-test$actualhospitalmortality  
+```
+
 
 
 
