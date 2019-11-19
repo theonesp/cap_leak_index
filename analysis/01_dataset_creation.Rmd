@@ -303,15 +303,16 @@ cap_leak_index_dataset<-Reduce(function(...) merge(..., all.x=TRUE), list(
   ,charlson_score
   ,sofa_total_day1_to_day4
 ))
+cap_leak_index_dataset <- unique (cap_leak_index_dataset)
 
-# Ensures that patients have reliable fluid data
-cap_leak_index_dataset<-sqldf('
-SELECT cap_leak_index_dataset.* FROM
-cap_leak_index_dataset
-INNER JOIN
-all_reliable
-USING(patientunitstayid)
-')
+# # Ensures that patients have reliable fluid data
+# cap_leak_index_dataset<-sqldf('
+# SELECT cap_leak_index_dataset.* FROM
+# cap_leak_index_dataset
+# INNER JOIN
+# all_reliable
+# USING(patientunitstayid)
+# ')
 ```
 
 # Creating new variables
@@ -336,9 +337,10 @@ cap_leak_index_dataset$q_delta_sofa<-as.factor(cap_leak_index_dataset$q_delta_so
 #cap_leak_index_dataset$actualhospitalmortality<-as.factor(cap_leak_index_dataset$actualhospitalmortality)
 
 # gender mapping
+cap_leak_index_dataset<-cap_leak_index_dataset%>% filter(!(gender == ''))
 cap_leak_index_dataset$gender[cap_leak_index_dataset$gender=='Male']<-1
 cap_leak_index_dataset$gender[cap_leak_index_dataset$gender=='Female']<-2
-cap_leak_index_dataset$gender<-as.factor(cap_leak_index_dataset$gender)
+# cap_leak_index_dataset$gender<-as.factor(cap_leak_index_dataset$gender)
 
 cap_leak_index_dataset<-cap_leak_index_dataset%>%
   filter(!is.na(leaking_index))
@@ -349,6 +351,7 @@ cap_leak_index_dataset<-cap_leak_index_dataset%>%
 # Dataset report
 
 ```{r}
+cap_leak_index_dataset <- cap_leak_index_dataset[order(cap_leak_index_dataset$patientunitstayid),]
 view(dfSummary(cap_leak_index_dataset))
 
 sofamissing = sum(is.na(cap_leak_index_dataset$sofatotal_day1)) / length (cap_leak_index_dataset$sofatotal_day1)

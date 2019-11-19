@@ -3,9 +3,12 @@ title: "02_training_model"
 author: "Miguel Ángel Armengol de la Hoz"
 date: "11/5/2019"
 output:
+  html_document:
+    df_print: paged
+    toc: yes
   html_notebook:
-    toc: TRUE
     theme: united
+    toc: yes
 ---
 
 # Environment
@@ -51,7 +54,7 @@ gbmFit <- train(
                 + gender
                 + apachescore
                 + final_charlson_score
-                + q_leaking_index 
+                + q_leaking_index
   ,data = train,
   method = "gbm",
   trControl = fitControl,
@@ -65,7 +68,7 @@ svmFit <- train(
                 + gender
                 + apachescore
                 + final_charlson_score
-                + q_leaking_index 
+                # + q_leaking_index 
   ,
   data = train,
   method = "svmRadial",
@@ -91,8 +94,8 @@ We can see GBM is performing better.
 
 ```{r}
 # we save the best performing model and its name
-selected_model<-gbmFit3
-selected_model_name<-deparse(substitute(gbmFit3)) # extracts name as string from model
+selected_model<-gbmFit
+selected_model_name<-deparse(substitute(gbmFit)) # extracts name as string from model
 # we can plot what the best performing parameters are.
 selected_model$bestTune
 ```
@@ -100,14 +103,11 @@ selected_model$bestTune
 # Evaluating the predictor on our test dataset
 
 ```{r}
-
-  
-  
 prediction_probabilities<-predict(selected_model, newdata = test,type = "prob") # We create the probabilities dataset using our best performing model.
 
 final_predictions<-cbind(test_Y,prediction_probabilities) # we bind our prediction with the actual data
 final_predictions<-rename(final_predictions, obs = test_Y)
-final_predictions['pred']<-ifelse(final_predictions$ALIVE > .5 # we have set the threshold in .5 this can be optimized until best performance is achieved
+final_predictions['pred']<-ifelse(final_predictions$ALIVE > .4 # we have set the threshold in .5 this can be optimized until best performance is achieved
                                   , 'ALIVE','EXPIRED'
 )
 
@@ -139,9 +139,9 @@ evaluation_insights['Insights']<-rownames(evaluation_insights)
 
 p <- plot_ly(
   data = evaluation_insights,
-  x = ~gbmFit3,
+  x = ~gbmFit,
   y = ~Insights,
-  text = ~gbmFit3,
+  text = ~gbmFit,
   textposition='auto',
   type = "bar") %>%
   layout( title = paste(selected_model_name,"Model Insights"))
