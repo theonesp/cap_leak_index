@@ -1,11 +1,14 @@
 ---
 title: "02_training_model"
 author: "Miguel Ángel Armengol de la Hoz"
-date: "May 11, 2019"
-output: html_document
+date: "11/5/2019"
+output:
+  html_notebook:
+    toc: TRUE
+    theme: united
 ---
 
-# Libraries
+# Environment
 
 ```{r}
 require(foreign)
@@ -17,8 +20,15 @@ require(caret)
 require(boot)
 require(pROC)
 library(mlbench)
+library(MLmetrics )
+library(plotly)
 ```
 
+# Random Hyperparameter Search
+
+The default method for optimizing tuning parameters in train is to use a grid search. This approach is usually effective but, in cases when there are many tuning parameters, it can be inefficient. An alternative is to use a combination of grid search and racing. Another is to use a random selection of tuning parameter combinations to cover the parameter space to a lesser extent.
+
+_We can adress later the tuning parameters approach_
 
 ```{r}
 fitControl <- trainControl(method = "repeatedcv",
@@ -31,113 +41,113 @@ fitControl <- trainControl(method = "repeatedcv",
 
 ## Random selection of tuning parameter combinations
 
-```{r}
-set.seed(123)
-rda_fit <- train(actualhospitalmortality ~ ., data = train, 
-                  method = "rda",
-                  metric = "ROC",
-                  tuneLength = 30,
-                  trControl = fitControl)
-rda_fit
-```
-
-
-
-# Training ordered logit model
+Here we are first adressing gbm and svmRadial methods.
+We can also try with the rest.
 
 ```{r}
-## fit ordered logit model and store results 'm'
-m <- polr(as.factor(delta_sofa) ~ 
-            Q_leakingn_index
-          +apachescore
-          +Final_Charlson_score
-          , data = Final_dataset, Hess=TRUE)
+gbmFit <- train(
+  actualhospitalmortality ~ 
+                  age_fixed
+                + gender
+                + apachescore
+                + final_charlson_score
+                + q_leaking_index 
+  ,data = train,
+  method = "gbm",
+  trControl = fitControl,
+  verbose = FALSE,
+  metric = "ROC" ## Specify which metric to optimize
+)
 
-## view a summary of the model
-summary(m)
-```
+svmFit <- train(
+  actualhospitalmortality ~ 
+                  age_fixed
+                + gender
+                + apachescore
+                + final_charlson_score
+                + q_leaking_index 
+  ,
+  data = train,
+  method = "svmRadial",
+  trControl = fitControl,
+  preProc = c("center", "scale"),
+  tuneLength = 8,
+  metric = "ROC" ## Specify which metric to optimize
+)
 
-# Training logistic regression model
-
-```{r}
-# Separates data into training and testing data
-intrain<-createDataPartition(y=Final_dataset$patientunitstayid,p=0.7,list=FALSE)
-training<-Final_dataset[intrain,]
-testing<-Final_dataset[-intrain,]
-```
-
-```{r}
-# trains the logistic model
-mod_multiv<-glm(actualhospitalmortality  ~ 
-                 leaking_index
-                # +apachescore
-                # +Final_Charlson_score
-                 ,family='binomial'
-                 ,data = train
-                )
-
-mod_multiv
-
-oddsratios_table<-exp(cbind(coef(mod_multiv), confint(mod_multiv)))  
-options(scipen=999)
-oddsratios_table<-round(oddsratios_table,4)
-
-oddsratios_table<-as.data.frame(oddsratios_table)
-colnames(oddsratios_table)[1]<-"OR"
-
-oddsratios_table<-oddsratios_table[order(row.names(oddsratios_table)), ]
-boxLabels<-rownames(oddsratios_table)
-
-
-#write.xlsx(as.data.frame(print(oddsratios_table)), "oddsratios_table.xlsx")
 
 ```
 
+## Best models comprarision
 
 ```{r}
-# trains
-sofa_multiv<-glm(sofatotal_day2 ~ 
-                 Q_leakingn_index
-                # +apachescore
-                # +Final_Charlson_score
-                 ,family='gaussian'
-                 ,data = Final_dataset
-                )
-
-sofa_multiv
-
-sofaratios_table<-exp(cbind(coef(sofa_multiv), confint(sofa_multiv)))  
-options(scipen=999)
-sofaratios_table<-round(sofaratios_table,4)
-
-sofaratios_table<-as.data.frame(sofaratios_table)
-colnames(sofaratios_table)[1]<-"OR"
-
-sofaratios_table<-sofaratios_table[order(row.names(sofaratios_table)), ]
-boxLabels<-rownames(sofaratios_table)
-
+resamps <- resamples(list( GBM = gbmFit
+                          ,SVM = svmFit))
+summary(resamps)
 ```
+We can see GBM is performing better.
 
-# Testing the shape of the outcome variables
+# Selecting the best performing method
 
 ```{r}
-test <- filter(Final_dataset, sofatotal_day1 != 0)
-test <- test$sofatotal_day4
-hist(test)
+# we save the best performing model and its name
+selected_model<-gbmFit3
+selected_model_name<-deparse(substitute(gbmFit3)) # extracts name as string from model
+# we can plot what the best performing parameters are.
+selected_model$bestTune
 ```
 
-# Attempts to Validate the Regression Model
+# Evaluating the predictor on our test dataset
 
 ```{r}
-# Final_dataset<-Final_dataset%>%
-#   filter(!is.na(apachescore) & !is.na(Final_Charlson_score) & !is.na(actualhospitalmortality))
-# cv.glm (Final_dataset, mod_multiv, K = 2)
 
-auc(Final_dataset$actualhospitalmortality, Final_dataset$apachescore)
-Predicted = predict (mod_multiv, testing)
-auc(testing$actualhospitalmortality, Predicted)
+  
+  
+prediction_probabilities<-predict(selected_model, newdata = test,type = "prob") # We create the probabilities dataset using our best performing model.
 
-Predicted = predict (sofa_multiv, testing)
-auc(testing$sofatotal_day1, Predicted)
+final_predictions<-cbind(test_Y,prediction_probabilities) # we bind our prediction with the actual data
+final_predictions<-rename(final_predictions, obs = test_Y)
+final_predictions['pred']<-ifelse(final_predictions$ALIVE > .5 # we have set the threshold in .5 this can be optimized until best performance is achieved
+                                  , 'ALIVE','EXPIRED'
+)
+
+# Setting proper data types
+final_predictions$obs<-as.factor(final_predictions$obs)
+final_predictions$pred<-as.factor(final_predictions$pred)
 ```
+
+## Geting evaluation insights
+
+```{r}
+insights_1<-as.data.frame(twoClassSummary(final_predictions, lev = levels(final_predictions$obs)))
+names(insights_1)<-selected_model_name
+insights_1<-t(insights_1) # we traspose it for better merging it.
+
+insights_2<-as.data.frame(prSummary(final_predictions, lev = levels(final_predictions$obs)))
+names(insights_2)<-selected_model_name
+insights_2<-t(insights_2) # we traspose it for better merging it.
+
+evaluation_insights<-cbind(insights_1,insights_2)
+evaluation_insights<-as.data.frame(evaluation_insights)
+evaluation_insights<-round(evaluation_insights,2)
+evaluation_insights$AUC<-NULL # We select the ROC from the first package so we remove this parameter
+
+# we traspose the data for its representation
+evaluation_insights<-t(evaluation_insights)
+evaluation_insights<-as.data.frame(evaluation_insights)
+evaluation_insights['Insights']<-rownames(evaluation_insights)
+
+p <- plot_ly(
+  data = evaluation_insights,
+  x = ~gbmFit3,
+  y = ~Insights,
+  text = ~gbmFit3,
+  textposition='auto',
+  type = "bar") %>%
+  layout( title = paste(selected_model_name,"Model Insights"))
+
+p
+```
+
+
 

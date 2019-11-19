@@ -4,3 +4,5 @@ sofa_eicu.ipynb
 *.RData
 *.xslx
 satoshi_residual.ipynb
+*.nb.html
+*.html
