@@ -27,7 +27,7 @@ library(ggthemr)
 library(xgboost)
 ```
 
-# Random Hyperparameter Search
+# Random Hyperparameter Tunning
 
 The default method for optimizing tuning parameters in train is to use a grid search. This approach is usually effective but, in cases when there are many tuning parameters, it can be inefficient. An alternative is to use a combination of grid search and racing. Another is to use a random selection of tuning parameter combinations to cover the parameter space to a lesser extent.
 
@@ -134,9 +134,9 @@ summary_resamps<-summary(resamps)
 summary_resamps<-as.data.frame(summary_resamps$statistics)
 summary_resamps
 ```
-We can see GBM is performing better.
 
-# Selecting the best performing method
+
+# Selecting the model with the best performance
 
 ```{r}
 # we save the best performing model (based on its ROC) and its name
@@ -144,18 +144,23 @@ best_performing_model<-get(
   rownames(summary_resamps[which(summary_resamps$ROC.Median==max(summary_resamps$ROC.Median))]
 )
 )
-best_performing_model_name<-deparse(substitute(best_performing_model)) # extracts name as string from model
-# we can plot what the best performing parameters are.
-selected_model$bestTune
+best_performing_model_name<-best_performing_model$method # extracts name as string from model
 ```
 
+We can see **`r best_performing_model_name`** is the model with the best performance, with a Median AUROC of **`r max(summary_resamps$ROC.Median)`**.  
+
+Its best Random Hyperparameter Tune was:  
+`r selected_model$bestTune`
+
 # Evaluating the predictor on our test dataset
+
+## Creating prediction-probabilities dataset
 
 ```{r}
 prediction_probabilities<-predict(best_performing_model, newdata = test,type = "prob") # We create the probabilities dataset using our best performing model.
 
 final_predictions<-cbind(test_Y,prediction_probabilities) # we bind our prediction with the actual data
-final_predictions<-rename(final_predictions, obs = test_Y)
+final_predictions<-rename(final_predictions, obs = test_Y) # the function twoClassSummary reads the actual outcome as 'obs'
 final_predictions['pred']<-ifelse(final_predictions$ALIVE > .9 # we have set the threshold in .5 this can be optimized until best performance is achieved
                                   , 'ALIVE','EXPIRED'
 )
@@ -206,7 +211,7 @@ p
 
 # Variables Importance
 
-```{r}
+```{r message=TRUE, warning=TRUE}
 ggthemr('flat')
 varimp<-ggplot(varImp(gbmFit, scale = T))+theme_minimal() 
 ggplotly(varimp)
