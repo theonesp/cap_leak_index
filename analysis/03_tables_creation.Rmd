@@ -26,14 +26,14 @@ library(xlsx)
 # Table 1
 
 ```{r}
-write.csv(Final_dataset, 'Final_dataset.csv',row.names = F)
-listVarstab1<-c("patientunitstayid", "age_fixed", "gender", "weight", "height", "BMI", "BMI_group", "unitType", "body_surface_area", "apachescore", "unabridgedunitlos", "unabridgedhosplos", "unabridgedactualventdays", "first_hct_6hrs", "mean_hct_24_36hrs", "AKIstage", "delta_sofa", "delta_sofa_bin", "actualhospitalmortality", "HospitalLOS")
+write.csv(cap_leak_index_dataset, 'Final_dataset.csv',row.names = F)
+listVarstab1<-c("patientunitstayid", "age_fixed", "gender", "weight", "height", "BMI", "BMI_group", "unitType", "body_surface_area", "apachescore", "unabridgedunitlos", "unabridgedhosplos", "unabridgedactualventdays", "first_hct_6hrs", "mean_hct_24_36hrs", "AKIstage", "delta_sofa", "delta_sofa_bin", "actualhospitalmortality", "HospitalLOS", "totalFluid")
 
 catVars<-c("gender", "actualicumortality", "actualhospitalmortality", "delta_sofa_bin")
 
-table1 <- CreateTableOne(vars = listVarstab1, data = Final_dataset, factorVars = catVars,testNormal=oneway.test)
+table1 <- CreateTableOne(vars = listVarstab1, data = cap_leak_index_dataset, factorVars = catVars,testNormal=oneway.test)
 
-table1strat <- CreateTableOne(vars = listVarstab1, data = Final_dataset, factorVars = catVars,testNormal=oneway.test, strata="Q_leakingn_index")
+table1strat <- CreateTableOne(vars = listVarstab1, data = cap_leak_index_dataset, factorVars = catVars,testNormal=oneway.test, strata="q_leaking_index")
 
 table1_printed<-as.data.frame(print(table1
                                     #, nonnormal= nonnormal

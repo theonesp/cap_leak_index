@@ -26,7 +26,7 @@ This chunks also creates the run_query and get_sql function.
 
 ```{r setup, include=FALSE}
 # Updated for our year
-project_id <- "hst-953-2018"
+project_id <- "hst-953-2019"
 options(httr_oauth_cache=FALSE)
 # Function that takes in a sql command and runs it on bigquery
 run_query <- function(query){
@@ -104,7 +104,7 @@ sepsis <- run_query(getSQL('sql/sepsis.sql'))
 patient_inexcluded_icd9 <- merge (sepsis, patient_inexcluded_icd9, all = TRUE)
 
 # Fluid data
-fluidIntake <- run_query(getSQL("sql/eicu_intakeV2.sql" ))
+fluidIntake <- run_query(getSQL("sql/intake_output.sql" ))
 ```
 
 ## AKI Dataset creation
@@ -285,8 +285,11 @@ ORDER BY selected_cohort.patientunitstayid
 ## Fluid data
 
 ```{r}
-names(fluidIntake)[names(fluidIntake) == "f0_"] <- "total_intake"
+# fluidIntake <- run_query(getSQL("sql/intake_output.sql" ))
 fluidIntake<-fluidIntake[complete.cases(fluidIntake),]
+fluidIntake[is.null(fluidIntake)] <- 0
+fluidIntake<-fluidIntake%>%
+  mutate( totalFluid = (intakes - outputs))
 ```
 
 
@@ -305,13 +308,13 @@ cap_leak_index_dataset<-Reduce(function(...) merge(..., all.x=TRUE), list(
 ))
 
 #Ensures that patients have reliable fluid data
-cap_leak_index_dataset<-sqldf('
-SELECT cap_leak_index_dataset.* FROM
-cap_leak_index_dataset
-INNER JOIN
-all_reliable
-USING(patientunitstayid)
-')
+# cap_leak_index_dataset<-sqldf('
+# SELECT cap_leak_index_dataset.* FROM
+# cap_leak_index_dataset
+# INNER JOIN
+# all_reliable
+# USING(patientunitstayid)
+# ')
 ```
 
 # Creating new variables
@@ -321,7 +324,7 @@ USING(patientunitstayid)
 cap_leak_index_dataset<-cap_leak_index_dataset%>%
   mutate(
     # leaking_index=((mean_hct_24_36hrs/first_hct_6hrs)-1)*body_surface_area*1561
-    leaking_index=((mean_hct_24_36hrs-first_hct_6hrs) / total_intake)
+    leaking_index=((mean_hct_24_36hrs-first_hct_6hrs) / totalFluid) * body_surface_area
     ,delta_sofa=sofatotal_day4-sofatotal_day1
     ,q_leaking_index=as.numeric(cut2(leaking_index, g=4))
     ,q_delta_sofa=as.numeric(cut2(delta_sofa, g=4))
