@@ -13,8 +13,7 @@ first_hct_6hrs AS (
   FROM
   `physionet-data.eicu_crd_derived.pivoted_lab` pivoted_lab
   WHERE
-  chartoffset BETWEEN -6*60
-  AND 6*60 ),
+  chartoffset BETWEEN -6*60 AND 6*60 ),
 mean_hct_24_36hrs AS (
   SELECT
   patientunitstayid,

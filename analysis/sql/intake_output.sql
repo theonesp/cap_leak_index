@@ -3,7 +3,11 @@ SELECT
 distinct patientunitstayid
 FROM
 `physionet-data.eicu_crd.intakeoutput`
-WHERE LOWER (cellpath) LIKE '%crystalloids%' OR LOWER (cellpath) LIKE '%saline%' OR LOWER (cellpath) LIKE '%ringer%' OR LOWER (cellpath) LIKE '%ivf%' OR LOWER (cellpath) LIKE  '% ns %'),
+WHERE LOWER (cellpath) LIKE '%crystalloids%' 
+OR LOWER (cellpath) LIKE '%saline%' 
+OR LOWER (cellpath) LIKE '%ringer%' 
+OR LOWER (cellpath) LIKE '%ivf%' 
+OR LOWER (cellpath) LIKE  '% ns %'),
 
 t2 as (
 SELECT
@@ -11,8 +15,7 @@ SELECT
 FROM
 `physionet-data.eicu_crd.intakeoutput`
 WHERE
-intakeoutputoffset BETWEEN -6*60
-AND 30*60),
+intakeoutputoffset BETWEEN -6*60 AND 30*60),
 
 t3 as (
 SELECT
@@ -40,9 +43,9 @@ FROM
 t1
 LEFT JOIN 
 t3
-using (patientunitstayid)
+USING (patientunitstayid)
 LEFT JOIN
 t4
-using (patientunitstayid)
-WHERE intakes is not NULL or outputs is not null
+USING (patientunitstayid)
+WHERE intakes IS NOT NULL or outputs IS NOT null
 ORDER BY patientunitstayid
