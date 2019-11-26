@@ -67,7 +67,6 @@ Loads all queries from the sql files in the extraction folder and runs them into
 ```{r}
 apache_related<-run_query(getSQL("sql/apache_related.sql" ))
 hct <- run_query(getSQL("sql/hct.sql" ))
-
 # removes missing values
 hct<-hct[complete.cases(hct),]
 
@@ -324,7 +323,7 @@ cap_leak_index_dataset<-Reduce(function(...) merge(..., all.x=TRUE), list(
 cap_leak_index_dataset<-cap_leak_index_dataset%>%
   mutate(
     # leaking_index=((mean_hct_24_36hrs/first_hct_6hrs)-1)*body_surface_area*1561
-    leaking_index=((mean_hct_24_36hrs-first_hct_6hrs) / totalFluid) * body_surface_area
+    leaking_index=((mean_hct_24_36hrs - first_hct_6hrs) / totalFluid) * body_surface_area
     ,delta_sofa=sofatotal_day4-sofatotal_day1
     ,q_leaking_index=as.numeric(cut2(leaking_index, g=4))
     ,q_delta_sofa=as.numeric(cut2(delta_sofa, g=4))
