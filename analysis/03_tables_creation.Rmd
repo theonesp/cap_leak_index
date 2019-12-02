@@ -47,5 +47,27 @@ table1_final<-cbind(table1_printed,table1strat_printed)
 write.csv2(as.data.frame(print(table1_final)), "table1_final.csv")
 
 ```
+```{r}
+# Experimental
+listVarstab1<-c("apachescore", "final_charlson_score", "q_leaking_index")
+
+catVars<-c("actualhospitalmortality")
+
+table1 <- CreateTableOne(vars = listVarstab1, data = cap_leak_index_dataset, factorVars = catVars,testNormal=oneway.test)
+
+table1strat <- CreateTableOne(vars = listVarstab1, data = selected_df, factorVars = catVars,testNormal=oneway.test, strata="actualhospitalmortality")
+
+table1_printed<-as.data.frame(print(table1
+                                    #, nonnormal= nonnormal
+                                    ))
+table1strat_printed<-as.data.frame(print(table1strat
+                                         #, nonnormal= nonnormal
+                                    ))
+
+table1_final<-cbind(table1_printed,table1strat_printed)
+
+write.csv2(as.data.frame(print(table1_final)), "table2_final.csv")
+
+```
 
 

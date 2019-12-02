@@ -3,6 +3,9 @@ title: "02_training_model"
 author: "Miguel Ángel Armengol de la Hoz"
 date: "11/5/2019"
 output:
+  html_document:
+    df_print: paged
+    toc: yes
   html_notebook:
     theme: united
     toc: yes
@@ -61,10 +64,10 @@ gbmFit <- train( actualhospitalmortality ~
                 metric = "ROC" ## Specify which metric to optimize
 )
 
-svmFit <- train( actualhospitalmortality ~ 
+svmFit <- train( actualhospitalmortality ~
                 + apachescore
                 + final_charlson_score
-                + q_leaking_index 
+                + q_leaking_index
                 ,data = train,
                 method = "svmRadial",
                 trControl = fitControl,
@@ -117,6 +120,28 @@ lrFit <- train( actualhospitalmortality ~
                 verbose = FALSE,
                 metric = "ROC" ## Specify which metric to optimize
 )
+```
+
+```{r}
+# Odds Ratio Calculations
+cap_leak_index_dataset$actualhospitalmortality[cap_leak_index_dataset$actualhospitalmortality=='ALIVE']<-0
+cap_leak_index_dataset$actualhospitalmortality[cap_leak_index_dataset$actualhospitalmortality=='EXPIRED']<-1
+cap_leak_index_dataset$actualhospitalmortality<-as.factor(cap_leak_index_dataset$actualhospitalmortality)
+mod_multiv<-glm(actualhospitalmortality  ~ 
+                 q_leaking_index
+                +apachescore
+                +final_charlson_score
+                 ,family='binomial'
+                 ,data = cap_leak_index_dataset
+                )
+mod_multiv
+oddsratios_table<-exp(cbind(coef(mod_multiv), confint(mod_multiv)))  
+options(scipen=999)
+oddsratios_table<-round(oddsratios_table,4)
+oddsratios_table<-as.data.frame(oddsratios_table)
+colnames(oddsratios_table)[1]<-"OR"
+oddsratios_table<-oddsratios_table[order(row.names(oddsratios_table)), ]
+boxLabels<-rownames(oddsratios_table)
 ```
 
 ## Best models comprarision

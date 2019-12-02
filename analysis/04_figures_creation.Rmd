@@ -26,7 +26,7 @@ library(officer)
 ```{r}
 #Generate plot of the odds ratio for quartiles of CLI measured against mortality
 
-labels<-c('Apache Score', 'Charlson Score', 'CLI Q2', 'CLI Q3', 'CLI Q4', 'CLI Q5')
+labels<-c('Apache Score', 'Charlson Score', 'CLI Q2', 'CLI Q3', 'CLI Q4')
 number_of_exposures<-length(labels)+1
 
 df <- data.frame(yAxis = 2:number_of_exposures,
