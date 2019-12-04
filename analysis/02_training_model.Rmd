@@ -3,9 +3,6 @@ title: "02_training_model"
 author: "Miguel Ángel Armengol de la Hoz"
 date: "11/5/2019"
 output:
-  html_document:
-    df_print: paged
-    toc: yes
   html_notebook:
     theme: united
     toc: yes
@@ -28,6 +25,7 @@ library(plotly)
 library(gbm)
 library(ggthemr)
 library(xgboost)
+library(oddsratio)
 ```
 
 # Random Hyperparameter Tunning
@@ -44,6 +42,7 @@ fitControl <- trainControl(method = "repeatedcv",
                            repeats = 10,
                            classProbs = TRUE,
                            summaryFunction = twoClassSummary,
+                           lambda =
                            search = "random")
 ```
 
@@ -120,6 +119,17 @@ lrFit <- train( actualhospitalmortality ~
                 verbose = FALSE,
                 metric = "ROC" ## Specify which metric to optimize
 )
+
+gamFit <- train( actualhospitalmortality ~ 
+                + apachescore
+                + final_charlson_score
+                + q_leaking_index
+                ,data = train,
+                method = "gam",
+                trControl = fitControl,
+                verbose = FALSE,
+                metric = "ROC" ## Specify which metric to optimize
+)
 ```
 
 ```{r}
@@ -157,6 +167,7 @@ resamps <- resamples(list( gbmFit = gbmFit
                           ,xgbFit = xgbFit
                           ,nnFit = nnFit
                           ,lrFit = lrFit
+                          ,gamFit = gamFit
                           ))
 summary_resamps<-summary(resamps)
 
@@ -173,6 +184,8 @@ best_performing_model<-get(
   rownames(summary_resamps[which(summary_resamps$ROC.Median==max(summary_resamps$ROC.Median))]
 )
 )
+#manually select it
+best_performing_model<-gamFit
 best_performing_model_name<-best_performing_model$method # extracts name as string from model
 ```
 
@@ -203,11 +216,11 @@ final_predictions$pred<-as.factor(final_predictions$pred)
 
 ```{r}
 insights_1<-as.data.frame(twoClassSummary(final_predictions, lev = levels(final_predictions$obs)))
-names(insights_1)<-selected_model_name
+names(insights_1)<-best_performing_model_name
 insights_1<-t(insights_1) # we traspose it for better merging it.
 
 insights_2<-as.data.frame(prSummary(final_predictions, lev = levels(final_predictions$obs)))
-names(insights_2)<-selected_model_name
+names(insights_2)<-best_performing_model_name
 insights_2<-t(insights_2) # we traspose it for better merging it.
 
 evaluation_insights<-cbind(insights_1,insights_2)
@@ -228,12 +241,12 @@ evaluation_insights$Insights <- factor(evaluation_insights$Insights, levels = un
 
 p <- plot_ly(
   data = evaluation_insights,
-  x = ~gbmFit,
+  x = evaluation_insights[,1],
   y = ~Insights,
-  text = ~gbmFit,
+  text = evaluation_insights[,1],
   textposition='auto',
   type = "bar") %>%
-  layout( title = paste(selected_model_name,"Model Insights"))
+  layout( title = paste(best_performing_model_name,"Model Insights"))
 
 p
 ```
@@ -242,8 +255,20 @@ p
 
 ```{r message=TRUE, warning=TRUE}
 ggthemr('flat')
-varimp<-ggplot(varImp(gbmFit, scale = T))+theme_minimal() 
+varimp<-ggplot(varImp(best_performing_model, scale = T))+theme_minimal() 
 ggplotly(varimp)
 ```
+
+# Odds ratio (work in progress)
+
+Valid for gam logreg and glm.
+
+```{r}
+oddsratio::or_gam(data=train,model= best_performing_model)
+
+summary(best_performing_model)
+```
+
+
 
 
