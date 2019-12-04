@@ -91,10 +91,10 @@ demographic <- run_query(getSQL('sql/demographics.sql'))
 demographic['body_surface_area']<-round(sqrt((demographic$height*demographic$weight) / 3600),2)
 
 # SOFA variables
-# sofa_cv_day1_to_day4 <- run_query(getSQL("sql/sofa/sofa_cv_day1_to_day4.sql"))
-# sofa_renal_day1_to_day4 <- run_query(getSQL("sql/sofa/sofa_renal_day1_to_day4.sql"))
-# sofa_respi_day1_to_day4 <- run_query(getSQL("sql/sofa/sofa_respi_day1_to_day4.sql"))
-# sofa_3others_day1_to_day4 <- run_query(getSQL("sql/sofa/sofa_3others_day1_to_day4.sql"))
+sofa_cv_day1_to_day4 <- run_query(getSQL("sql/sofa/sofa_cv_day1_to_day4.sql"))
+sofa_renal_day1_to_day4 <- run_query(getSQL("sql/sofa/sofa_renal_day1_to_day4.sql"))
+sofa_respi_day1_to_day4 <- run_query(getSQL("sql/sofa/sofa_respi_day1_to_day4.sql"))
+sofa_3others_day1_to_day4 <- run_query(getSQL("sql/sofa/sofa_3others_day1_to_day4.sql"))
 
 # Gathers sepsis patients and excludes patients that are bleeding
 patient_inexcluded_icd9 <- run_query(getSQL('sql/patient_inexcluded_icd9.sql'))
@@ -304,7 +304,7 @@ cap_leak_index_dataset<-Reduce(function(...) merge(..., all.x=TRUE), list(
   ,sofa_total_day1_to_day4
 ))
 
-# # Ensures that patients have reliable fluid data
+# Ensures that patients have reliable fluid data
 # cap_leak_index_dataset<-sqldf('
 # SELECT cap_leak_index_dataset.* FROM
 # cap_leak_index_dataset
@@ -312,6 +312,15 @@ cap_leak_index_dataset<-Reduce(function(...) merge(..., all.x=TRUE), list(
 # all_reliable
 # USING(patientunitstayid)
 # ')
+
+# Ensures fluid intake is greater than 0.
+cap_leak_index_dataset<-sqldf('
+SELECT cap_leak_index_dataset.* FROM
+cap_leak_index_dataset
+INNER JOIN
+all_reliable
+USING(patientunitstayid)
+WHERE totalFluid > 0 ')
 ```
 
 # Creating new variables

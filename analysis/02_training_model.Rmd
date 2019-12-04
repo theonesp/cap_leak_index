@@ -42,7 +42,6 @@ fitControl <- trainControl(method = "repeatedcv",
                            repeats = 10,
                            classProbs = TRUE,
                            summaryFunction = twoClassSummary,
-                           lambda =
                            search = "random")
 ```
 
@@ -63,17 +62,17 @@ gbmFit <- train( actualhospitalmortality ~
                 metric = "ROC" ## Specify which metric to optimize
 )
 
-# svmFit <- train( actualhospitalmortality ~
-#                 + apachescore
-#                 + final_charlson_score
-#                 + q_leaking_index
-#                 ,data = train,
-#                 method = "svmRadial",
-#                 trControl = fitControl,
-#                 preProc = c("center", "scale"),
-#                 tuneLength = 8,
-#                 metric = "ROC" ## Specify which metric to optimize
-# )
+svmFit <- train( actualhospitalmortality ~
+                + apachescore
+                + final_charlson_score
+                + q_leaking_index
+                ,data = train,
+                method = "svmRadial",
+                trControl = fitControl,
+                preProc = c("center", "scale"),
+                tuneLength = 8,
+                metric = "ROC" ## Specify which metric to optimize
+)
 
 rfFit <- train( actualhospitalmortality ~
                 + apachescore
@@ -162,7 +161,7 @@ auc(cap_leak_index_dataset$actualhospitalmortality, Predicted)
 
 ```{r}
 resamps <- resamples(list( gbmFit = gbmFit
-                          # ,svmFit = svmFit
+                          ,svmFit = svmFit
                           ,rfFit  = rfFit
                           ,xgbFit = xgbFit
                           ,nnFit = nnFit
