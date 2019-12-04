@@ -64,19 +64,19 @@ gbmFit <- train( actualhospitalmortality ~
                 metric = "ROC" ## Specify which metric to optimize
 )
 
-svmFit <- train( actualhospitalmortality ~
-                + apachescore
-                + final_charlson_score
-                + q_leaking_index
-                ,data = train,
-                method = "svmRadial",
-                trControl = fitControl,
-                preProc = c("center", "scale"),
-                tuneLength = 8,
-                metric = "ROC" ## Specify which metric to optimize
-)
+# svmFit <- train( actualhospitalmortality ~
+#                 + apachescore
+#                 + final_charlson_score
+#                 + q_leaking_index
+#                 ,data = train,
+#                 method = "svmRadial",
+#                 trControl = fitControl,
+#                 preProc = c("center", "scale"),
+#                 tuneLength = 8,
+#                 metric = "ROC" ## Specify which metric to optimize
+# )
 
-rfFit <- train( actualhospitalmortality ~ 
+rfFit <- train( actualhospitalmortality ~
                 + apachescore
                 + final_charlson_score
                 + q_leaking_index
@@ -87,7 +87,7 @@ rfFit <- train( actualhospitalmortality ~
                 metric = "ROC" ## Specify which metric to optimize
 )
 
-xgbFit <- train( actualhospitalmortality ~ 
+xgbFit <- train( actualhospitalmortality ~
                 + apachescore
                 + final_charlson_score
                 + q_leaking_index
@@ -98,7 +98,7 @@ xgbFit <- train( actualhospitalmortality ~
                 metric = "ROC" ## Specify which metric to optimize
 )
 
-nnFit <- train( actualhospitalmortality ~ 
+nnFit <- train( actualhospitalmortality ~
                 + apachescore
                 + final_charlson_score
                 + q_leaking_index
@@ -110,7 +110,7 @@ nnFit <- train( actualhospitalmortality ~
 )
 
 
-lrFit <- train( actualhospitalmortality ~ 
+lrFit <- train( actualhospitalmortality ~
                 + apachescore
                 + final_charlson_score
                 + q_leaking_index
@@ -142,13 +142,17 @@ oddsratios_table<-as.data.frame(oddsratios_table)
 colnames(oddsratios_table)[1]<-"OR"
 oddsratios_table<-oddsratios_table[order(row.names(oddsratios_table)), ]
 boxLabels<-rownames(oddsratios_table)
+
+auc(cap_leak_index_dataset$actualhospitalmortality, cap_leak_index_dataset$apachescore)
+Predicted = predict (mod_multiv, cap_leak_index_dataset)
+auc(cap_leak_index_dataset$actualhospitalmortality, Predicted)
 ```
 
 ## Best models comprarision
 
 ```{r}
 resamps <- resamples(list( gbmFit = gbmFit
-                          ,svmFit = svmFit
+                          # ,svmFit = svmFit
                           ,rfFit  = rfFit
                           ,xgbFit = xgbFit
                           ,nnFit = nnFit

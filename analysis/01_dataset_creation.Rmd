@@ -91,17 +91,16 @@ demographic <- run_query(getSQL('sql/demographics.sql'))
 demographic['body_surface_area']<-round(sqrt((demographic$height*demographic$weight) / 3600),2)
 
 # SOFA variables
-sofa_cv_day1_to_day4 <- run_query(getSQL("sql/sofa/sofa_cv_day1_to_day4.sql"))
-sofa_renal_day1_to_day4 <- run_query(getSQL("sql/sofa/sofa_renal_day1_to_day4.sql"))
-sofa_respi_day1_to_day4 <- run_query(getSQL("sql/sofa/sofa_respi_day1_to_day4.sql"))
-sofa_3others_day1_to_day4 <- run_query(getSQL("sql/sofa/sofa_3others_day1_to_day4.sql"))
+# sofa_cv_day1_to_day4 <- run_query(getSQL("sql/sofa/sofa_cv_day1_to_day4.sql"))
+# sofa_renal_day1_to_day4 <- run_query(getSQL("sql/sofa/sofa_renal_day1_to_day4.sql"))
+# sofa_respi_day1_to_day4 <- run_query(getSQL("sql/sofa/sofa_respi_day1_to_day4.sql"))
+# sofa_3others_day1_to_day4 <- run_query(getSQL("sql/sofa/sofa_3others_day1_to_day4.sql"))
 
 # Gathers sepsis patients and excludes patients that are bleeding
 patient_inexcluded_icd9 <- run_query(getSQL('sql/patient_inexcluded_icd9.sql'))
 # Sepsis patients according to angus criteria
 sepsis <- run_query(getSQL('sql/sepsis.sql'))
 patient_inexcluded_icd9 <- merge (sepsis, patient_inexcluded_icd9, all = TRUE)
-
 # Fluid data
 fluidIntake <- run_query(getSQL("sql/intake_output.sql"))
 ```
@@ -286,9 +285,8 @@ ORDER BY selected_cohort.patientunitstayid
 ```{r}
 # fluidIntake <- run_query(getSQL("sql/intake_output.sql" ))
 fluidIntake<-fluidIntake[complete.cases(fluidIntake),]
-fluidIntake[is.null(fluidIntake)] <- 0
 fluidIntake<-fluidIntake%>%
-  mutate( totalFluid = (intakes - outputs))
+  mutate( totalFluid = (intakes-outputs))
 ```
 
 
@@ -306,14 +304,14 @@ cap_leak_index_dataset<-Reduce(function(...) merge(..., all.x=TRUE), list(
   ,sofa_total_day1_to_day4
 ))
 
-# Ensures that patients have reliable fluid data
-cap_leak_index_dataset<-sqldf('
-SELECT cap_leak_index_dataset.* FROM
-cap_leak_index_dataset
-INNER JOIN
-all_reliable
-USING(patientunitstayid)
-')
+# # Ensures that patients have reliable fluid data
+# cap_leak_index_dataset<-sqldf('
+# SELECT cap_leak_index_dataset.* FROM
+# cap_leak_index_dataset
+# INNER JOIN
+# all_reliable
+# USING(patientunitstayid)
+# ')
 ```
 
 # Creating new variables

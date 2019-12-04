@@ -15,7 +15,7 @@ SELECT
 FROM
 `physionet-data.eicu_crd.intakeoutput`
 WHERE
-intakeoutputoffset BETWEEN -6*60 AND 30*60),
+intakeoutputoffset BETWEEN -6*60 AND 36*60),
 
 t3 as (
 SELECT
@@ -47,5 +47,5 @@ USING (patientunitstayid)
 LEFT JOIN
 t4
 USING (patientunitstayid)
-WHERE intakes IS NOT NULL or outputs IS NOT null
+WHERE intakes IS NOT NULL
 ORDER BY patientunitstayid

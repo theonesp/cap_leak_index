@@ -19,7 +19,7 @@ mean_hct_24_36hrs_pivoted_lab AS (
   SELECT
   patientunitstayid,
   ROUND( AVG (CASE
-              WHEN chartoffset BETWEEN 18*60 AND 42*60 AND hematocrit IS NOT NULL THEN hematocrit
+              WHEN chartoffset BETWEEN 24*60 AND 36*60 AND hematocrit IS NOT NULL THEN hematocrit
               END
   ),2) AS mean_hct_24_36hrs
   FROM
@@ -38,7 +38,7 @@ mean_hct_24_36hrs_lab AS (
 SELECT
   patientunitstayid,
   ROUND( AVG (CASE
-        WHEN labresultoffset BETWEEN 18*60 AND 42*60 AND labname ='Hct' THEN labresult
+        WHEN labresultoffset BETWEEN 24*60 AND 36*60 AND labname ='Hct' THEN labresult
     END
       ),2) AS mean_hct_24_36hrs
 FROM
