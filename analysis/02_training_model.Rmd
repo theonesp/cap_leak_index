@@ -131,32 +131,6 @@ gamFit <- train( actualhospitalmortality ~
 )
 ```
 
-```{r}
-# Odds Ratio Calculations
-cap_leak_index_dataset$actualhospitalmortality[cap_leak_index_dataset$actualhospitalmortality=='ALIVE']<-0
-cap_leak_index_dataset$actualhospitalmortality[cap_leak_index_dataset$actualhospitalmortality=='EXPIRED']<-1
-cap_leak_index_dataset$actualhospitalmortality<-as.factor(cap_leak_index_dataset$actualhospitalmortality)
-mod_multiv<-glm(actualhospitalmortality  ~ 
-                 q_leaking_index
-                +apachescore
-                +final_charlson_score
-                 ,family='binomial'
-                 ,data = cap_leak_index_dataset
-                )
-mod_multiv
-oddsratios_table<-exp(cbind(coef(mod_multiv), confint(mod_multiv)))  
-options(scipen=999)
-oddsratios_table<-round(oddsratios_table,4)
-oddsratios_table<-as.data.frame(oddsratios_table)
-colnames(oddsratios_table)[1]<-"OR"
-oddsratios_table<-oddsratios_table[order(row.names(oddsratios_table)), ]
-boxLabels<-rownames(oddsratios_table)
-
-auc(cap_leak_index_dataset$actualhospitalmortality, cap_leak_index_dataset$apachescore)
-Predicted = predict (mod_multiv, cap_leak_index_dataset)
-auc(cap_leak_index_dataset$actualhospitalmortality, Predicted)
-```
-
 ## Best models comprarision
 
 ```{r}
@@ -266,6 +240,20 @@ Valid for gam logreg and glm.
 oddsratio::or_gam(data=train,model= best_performing_model)
 
 summary(best_performing_model)
+```
+
+```{r}
+# Odds Ratio Calculations
+
+oddsratios_table<-exp(cbind(coef(best_performing_model), confint(best_performing_model)))  
+options(scipen=999)
+oddsratios_table<-round(oddsratios_table,4)
+oddsratios_table<-as.data.frame(oddsratios_table)
+colnames(oddsratios_table)[1]<-"OR"
+oddsratios_table<-oddsratios_table[order(row.names(oddsratios_table)), ]
+boxLabels<-rownames(oddsratios_table)
+
+
 ```
 
 

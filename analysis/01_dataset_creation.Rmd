@@ -26,7 +26,7 @@ This chunks also creates the run_query and get_sql function.
 
 ```{r setup, include=FALSE}
 # Updated for our year
-project_id <- "hst-953-2019"
+project_id <- "hst-953-2018"
 options(httr_oauth_cache=FALSE)
 # Function that takes in a sql command and runs it on bigquery
 run_query <- function(query){
@@ -105,144 +105,12 @@ patient_inexcluded_icd9 <- merge (sepsis, patient_inexcluded_icd9, all = TRUE)
 fluidIntake <- run_query(getSQL("sql/intake_output.sql"))
 ```
 
-## AKI Dataset creation
-
-```{r}
-#We need to exclude patients who already had AKI before ICU admin)
-# AKIdevelopment<-subset(baseline_creat, !(baseline_creat$patientunitstayid %in% chronicAKI$patientunitstayid) )
-# AKIdevelopment<-left_join(AKIdevelopment, peakcreat7days)
-# AKIdevelopment<-left_join(AKIdevelopment, peakcreat48h)
-# AKIdevelopment$position<-NULL
-```
-
-### Windsorization
-
-Clean data by means of winsorization, i.e., by shrinking outlying observations to the border of the main part of the data.
-The creatinine values have been winsorize replacing the extreme observations using 95% and 5% percentiles.
-
-```{r}
-# AKIdevelopmentW<-AKIdevelopment
-# ## Winsorization: Replace the extreme observations using 95% and 5% percentiles
-# winsorize_x = function(x, cut = 0.05){
-#   cut_point_top <- quantile(x, 1 - cut, na.rm = T)
-#   cut_point_bottom <- quantile(x, cut, na.rm = T)
-#   i = which(x >= cut_point_top) 
-#   x[i] = cut_point_top
-#   j = which(x <= cut_point_bottom) 
-#   x[j] = cut_point_bottom
-#   return(x)
-# }
-# 
-# AKIdevelopmentW$creat1<-winsorize_x(AKIdevelopmentW$creat1)
-# AKIdevelopmentW$peakcreat7d<-winsorize_x(AKIdevelopmentW$peakcreat7d)
-# AKIdevelopmentW$peakcreat48h<-winsorize_x(AKIdevelopmentW$peakcreat48h)
-# 
-# #Now we turn all emptpy values into 0
-# 
-# AKIdevelopmentW$creat1[is.na(AKIdevelopmentW$creat1)]<-0
-# AKIdevelopmentW$peakcreat7d[is.na(AKIdevelopmentW$peakcreat7d)]<-0
-# AKIdevelopmentW$peakcreat48h[is.na(AKIdevelopmentW$peakcreat48h)]<-0
-
-
-```
-
-###List of patients with AKI and offset
-
-```{r}
-
-# AKIdevelopmentW['cr7undercreat1']<-AKIdevelopmentW$peakcreat7d/AKIdevelopmentW$creat1
-# AKIdevelopmentW['cr48hdundercreat1']<-AKIdevelopmentW$peakcreat48h-AKIdevelopmentW$creat1
-# AKIdevelopmentW['AKIoffset']<-NA
-# AKIdevelopmentW['AKIstage']<-NA
-# 
-# #nested if else function
-# 
-# i <- function(if_stat, then) {
-#   if_stat <- lazyeval::expr_text(if_stat)
-#   then    <- lazyeval::expr_text(then)
-#   sprintf("ifelse(%s, %s, ", if_stat, then)
-# }
-# 
-# e <- function(else_ret) {
-#   else_ret <- lazyeval::expr_text(else_ret)
-#   else_ret
-# }
-# 
-# ie <- function(...) {
-#   args <- list(...)
-#   
-#   for (i in 1:(length(args) - 1) ) {
-#       if (substr(args[[i]], 1, 6) != "ifelse") {
-#         stop("All but the last argument, need to be i functions.", call. = FALSE)
-#       }
-#   }
-#   if (substr(args[[length(args)]], 1, 6) == "ifelse"){
-#     stop("Last argument needs to be an e function.", call. = FALSE)
-#   }
-#   args$final <- paste(rep(')', length(args) - 1), collapse = '')
-#   eval_string <- do.call('paste', args)
-#   eval(parse(text = eval_string))
-# }
-# 
-# AKIdevelopmentW$AKIstage <- 
-#   ie(
-#     i(AKIdevelopmentW$cr7undercreat1>=3,   3),
-#     i(AKIdevelopmentW$cr7undercreat1>=2,   2),
-#     i(AKIdevelopmentW$cr7undercreat1>=1.5,   1),
-#     i(AKIdevelopmentW$cr48hdundercreat1>=0.3,   1),
-#     e(0)
-#   )
-# 
-# AKIdevelopmentW$AKIoffset <- 
-#   ie(
-#     i(AKIdevelopmentW$cr7undercreat1>=3,AKIdevelopmentW$peakcreat7d_offset),
-#     i(AKIdevelopmentW$cr7undercreat1>=2,AKIdevelopmentW$peakcreat7d_offset),
-#     i(AKIdevelopmentW$cr7undercreat1>=1.5,AKIdevelopmentW$peakcreat7d_offset),
-#     i(AKIdevelopmentW$cr48hdundercreat1>=0.3,   AKIdevelopmentW$peakcreat48h_offset),
-#     e(0)
-#   )
-# 
-# library(dplyr)
-# AKIlist<-AKIdevelopmentW %>%
-#   select(patientunitstayid,AKIstage
-#          # ,AKIoffset The nephrologist suggested not to use this variable since we can not infer when AKI was developed from it. Removing it to avoid confusion.
-#          )
-```
-
-### Final List of patients with AKI and offset (with RRT)
-
-Offset is not reliable so we exclude it.
-
-```{r}
-# Dr Danziger said the offset is not reliable for telling when the patient exactly developed AKI so he adviced not to use it
-
-# AKIlist_final<-left_join(AKIlist,first_rrt)
-# 
-# 
-# AKIlist_final$AKIstage <- 
-#   ie(
-#     i(!is.na(AKIlist_final$first_rrtoffset),   3),
-#     e(AKIlist_final$AKIstage)
-#   )
-# 
-# # The nephrologist suggested not to use this variable since we can not infer when AKI was developed from it. Removing it to avoid confusion.
-# # AKIlist_final$AKIoffset <- 
-# #   ie(
-# #     i(!is.na(AKIlist_final$first_rrtoffset), AKIlist_final$first_rrtoffset),
-# #     e(AKIlist_final$AKIoffset)
-# #   )
-# 
-# AKIlist_final$first_rrtoffset<-NULL
-# AKIlist_final[is.na(AKIlist_final)]<-0
-# AKIlist_final$rrt_bin<-NULL
-```
-
-## Patients with sepsis and demographics
+## Patients with sepsis and demographics and too much output
 
 ```{r}
 selected_cohort<-inner_join(demographic,patient_inexcluded_icd9)
 
-#exlusion based on intake output
+#exlusion based on output amount
 selected_cohort<-sqldf('
 SELECT * FROM 
 selected_cohort
