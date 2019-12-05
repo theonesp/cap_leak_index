@@ -1,4 +1,3 @@
-### NYU Langone's Health Tech Datathon, May 10 and 11, 2019
 # Is capillary leak index (CLI) a marker of severity of illness in sepsis?
 Study to test if capillary leak index (CLI) is a marker of severity of illness in sepsis.  
  - Sepsis is an important cause of morbidity and mortality.
