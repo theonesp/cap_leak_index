@@ -14,7 +14,7 @@ first_hct_6hrs_pivoted_lab AS (
   FROM
   `physionet-data.eicu_crd_derived.pivoted_lab` pivoted_lab
   WHERE
-  chartoffset BETWEEN -6*60 AND 12*60 ),
+  chartoffset BETWEEN -6*60 AND 6*60 ),
 mean_hct_24_36hrs_pivoted_lab AS (
   SELECT
   patientunitstayid,
@@ -32,7 +32,7 @@ SELECT
   labresult AS first_hct_6hrs,
   ROW_NUMBER() OVER (PARTITION BY patientunitstayid ORDER BY labresultoffset ASC) AS position
 FROM `physionet-data.eicu_crd.lab` WHERE labname ='Hct'
-AND  labresultoffset BETWEEN -6*60 AND 12*60 
+AND  labresultoffset BETWEEN -6*60 AND 6*60 
 ),
 mean_hct_24_36hrs_lab AS (
 SELECT

@@ -7,7 +7,16 @@ WHERE LOWER (cellpath) LIKE '%crystalloids%'
 OR LOWER (cellpath) LIKE '%saline%' 
 OR LOWER (cellpath) LIKE '%ringer%' 
 OR LOWER (cellpath) LIKE '%ivf%' 
-OR LOWER (cellpath) LIKE  '% ns %'),
+OR LOWER (cellpath) LIKE  '% ns %'
+OR LOWER (cellpath) LIKE '%nacl%'
+OR LOWER (cellpath) LIKE '%free%'
+OR LOWER (cellpath) LIKE '%kcl%'
+OR LOWER (cellpath) LIKE '%dextrose%'
+OR LOWER (cellpath) LIKE '%potassium%'
+OR LOWER (cellpath) LIKE '%sodium%'
+OR LOWER (cellpath) LIKE '%calcium%'
+OR LOWER (cellpath) LIKE '%d5%'
+OR LOWER (cellpath) LIKE '%lr%'),
 
 t2 as (
 SELECT

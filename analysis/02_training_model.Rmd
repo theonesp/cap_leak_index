@@ -202,7 +202,7 @@ prediction_probabilities<-predict(best_performing_model, newdata = test,type = "
 
 final_predictions<-cbind(test_Y,prediction_probabilities) # we bind our prediction with the actual data
 final_predictions<-rename(final_predictions, obs = test_Y) # the function twoClassSummary reads the actual outcome as 'obs'
-final_predictions['pred']<-ifelse(final_predictions$ALIVE > .9 # we have set the threshold in .5 this can be optimized until best performance is achieved
+final_predictions['pred']<-ifelse(final_predictions$ALIVE > .83 # we have set the threshold in .5 this can be optimized until best performance is achieved
                                   , 'ALIVE','EXPIRED'
 )
 

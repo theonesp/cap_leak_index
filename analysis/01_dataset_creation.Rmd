@@ -305,21 +305,18 @@ cap_leak_index_dataset<-Reduce(function(...) merge(..., all.x=TRUE), list(
 ))
 
 # Ensures that patients have reliable fluid data
-# cap_leak_index_dataset<-sqldf('
-# SELECT cap_leak_index_dataset.* FROM
-# cap_leak_index_dataset
-# INNER JOIN
-# all_reliable
-# USING(patientunitstayid)
-# ')
-
-# Ensures fluid intake is greater than 0.
 cap_leak_index_dataset<-sqldf('
-SELECT cap_leak_index_dataset.* FROM
+SELECT * FROM
 cap_leak_index_dataset
 INNER JOIN
 all_reliable
 USING(patientunitstayid)
+')
+
+# Ensures fluid intake is greater than 0.
+cap_leak_index_dataset<-sqldf('
+SELECT * FROM
+cap_leak_index_dataset
 WHERE totalFluid > 0 ')
 ```
 
@@ -352,6 +349,9 @@ cap_leak_index_dataset$gender[cap_leak_index_dataset$gender=='Female']<-2
 
 cap_leak_index_dataset<-cap_leak_index_dataset%>%
   filter(!is.na(leaking_index))
+# Filters no fluid data patients
+# cap_leak_index_dataset<-cap_leak_index_dataset%>%
+#   filter(!is.na(totalFluid))
 cap_leak_index_dataset<-cap_leak_index_dataset%>%
   filter(!is.infinite(leaking_index))
 
