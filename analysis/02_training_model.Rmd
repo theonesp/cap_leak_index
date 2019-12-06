@@ -126,7 +126,7 @@ gamFit <- train( actualhospitalmortality ~
                 ,data = train,
                 method = "gam",
                 trControl = fitControl,
-                verbose = FALSE,
+                verbose = T,
                 metric = "ROC" ## Specify which metric to optimize
 )
 ```
@@ -165,7 +165,7 @@ best_performing_model_name<-best_performing_model$method # extracts name as stri
 We can see **`r best_performing_model_name`** is the model with the best performance, with a Median AUROC of **`r max(summary_resamps$ROC.Median)`**.  
 
 Its best Random Hyperparameter Tune was:  
-`r selected_model$bestTune`
+`r best_performing_model$bestTune`
 
 # Evaluating the predictor on our test dataset
 
@@ -207,19 +207,20 @@ evaluation_insights<-evaluation_insights%>%rename(AUROC = ROC)
 # we traspose the data for its representation
 evaluation_insights<-t(evaluation_insights)
 evaluation_insights<-as.data.frame(evaluation_insights)
-evaluation_insights['Insights']<-rownames(evaluation_insights)
+evaluation_insights['Metrics']<-rownames(evaluation_insights)
 
 # how to order the bars
-evaluation_insights$Insights <- factor(evaluation_insights$Insights, levels = unique(evaluation_insights$Insights)[order(evaluation_insights$Insights, decreasing = T)])
+evaluation_insights$Insights <- factor(evaluation_insights$Metrics
+                     , levels = unique(evaluation_insights$Insights)[order(evaluation_insights$Metrics, decreasing = T)])
 
 p <- plot_ly(
   data = evaluation_insights,
   x = evaluation_insights[,1],
-  y = ~Insights,
+  y = ~Metrics,
   text = evaluation_insights[,1],
   textposition='auto',
   type = "bar") %>%
-  layout( title = paste(best_performing_model_name,"Model Insights"))
+  layout( title = paste(best_performing_model_name,"Model Metrics"))
 
 p
 ```
@@ -232,28 +233,41 @@ varimp<-ggplot(varImp(best_performing_model, scale = T))+theme_minimal()
 ggplotly(varimp)
 ```
 
-# Odds ratio (work in progress)
+# Odds ratio 
 
 Valid for gam logreg and glm.
 
-```{r}
-oddsratio::or_gam(data=train,model= best_performing_model)
-
-summary(best_performing_model)
-```
+We are using the or_gam function
 
 ```{r}
 # Odds Ratio Calculations
 
-oddsratios_table<-exp(cbind(coef(best_performing_model), confint(best_performing_model)))  
-options(scipen=999)
-oddsratios_table<-round(oddsratios_table,4)
-oddsratios_table<-as.data.frame(oddsratios_table)
-colnames(oddsratios_table)[1]<-"OR"
-oddsratios_table<-oddsratios_table[order(row.names(oddsratios_table)), ]
-boxLabels<-rownames(oddsratios_table)
+train_for_or_calculation<-train
+# or_gam only deals with numerical vars
+train_for_or_calculation$actualhospitalmortality[train_for_or_calculation$actualhospitalmortality=='ALIVE']<-0 
+train_for_or_calculation$actualhospitalmortality[train_for_or_calculation$actualhospitalmortality=='EXPIRED']<-1
+train_for_or_calculation$actualhospitalmortality<-as.numeric(train_for_or_calculation$actualhospitalmortality)
 
+# We need to run the gam separately (the function I am using is not compatible with th gam object caret creates, so I am training a new model just using gam().
 
+gam_for_or_calculation<-gam(actualhospitalmortality ~ 
+                + apachescore
+                + final_charlson_score
+                + q_leaking_index
+                ,data = train_for_or_calculation)
+
+# every exposure needs to be addressed separately the min value as a reference.
+# every factor in the categorical exposures need to be addressed separately taking into account the min value as a reference.
+
+# q_leaking_index Ors
+or_gam(data = train_for_or_calculation, model = gam_for_or_calculation, pred = "q_leaking_index",values = c("1", "2"))
+or_gam(data = train_for_or_calculation, model = gam_for_or_calculation, pred = "q_leaking_index",values = c("1", "3"))
+or_gam(data = train_for_or_calculation, model = gam_for_or_calculation, pred = "q_leaking_index",values = c("1", "4"))
+
+# rest of the exposures
+
+or_gam(data = train_for_or_calculation, model = gam_for_or_calculation, pred = "apachescore",values = c(min(train_for_or_calculation$apachescore), max(train_for_or_calculation$apachescore)))
+or_gam(data = train_for_or_calculation, model = gam_for_or_calculation, pred = "final_charlson_score",values = c(min(train_for_or_calculation$final_charlson_score), max(train_for_or_calculation$final_charlson_score)))
 ```
 
 

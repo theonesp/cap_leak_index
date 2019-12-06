@@ -172,6 +172,9 @@ cap_leak_index_dataset<-Reduce(function(...) merge(..., all.x=TRUE), list(
   ,sofa_total_day1_to_day4
 ))
 
+nrow(cap_leak_index_dataset)
+a<-nrow(cap_leak_index_dataset)
+
 # Ensures that patients have reliable fluid data
 cap_leak_index_dataset<-sqldf('
 SELECT * FROM
@@ -180,6 +183,11 @@ INNER JOIN
 all_reliable
 USING(patientunitstayid)
 ')
+nrow(cap_leak_index_dataset)
+b<-nrow(cap_leak_index_dataset)
+
+
+a-b
 
 # Ensures fluid intake is greater than 0.
 cap_leak_index_dataset<-sqldf('
@@ -204,7 +212,7 @@ cap_leak_index_dataset<-cap_leak_index_dataset%>%
 cap_leak_index_dataset$q_leaking_index<-as.factor(cap_leak_index_dataset$q_leaking_index)
 cap_leak_index_dataset$q_delta_sofa<-as.factor(cap_leak_index_dataset$q_delta_sofa)
 
-# actualhospitalmortality mapping
+# actualhospitalmortality mapping (some models are not properly handling facros so they need to be mapped to numbers)
 #cap_leak_index_dataset$actualhospitalmortality[cap_leak_index_dataset$actualhospitalmortality=='ALIVE']<-0
 #cap_leak_index_dataset$actualhospitalmortality[cap_leak_index_dataset$actualhospitalmortality=='EXPIRED']<-1
 #cap_leak_index_dataset$actualhospitalmortality<-as.factor(cap_leak_index_dataset$actualhospitalmortality)
@@ -228,6 +236,20 @@ outliers <- boxplot(cap_leak_index_dataset$leaking_index, plot=FALSE)$out
 cap_leak_index_dataset <- cap_leak_index_dataset[-which(cap_leak_index_dataset$leaking_index %in% outliers),]
 ```
 
+# Selecting/Imputing/removing data
+
+```{r}
+selected_df <- cap_leak_index_dataset%>%dplyr::select(
+ actualhospitalmortality
+,age_fixed
+,gender
+,final_charlson_score
+,apachescore
+,q_leaking_index
+)
+selected_df<-selected_df[complete.cases(selected_df),]
+```
+
 # Dataset report
 
 ```{r}
@@ -243,18 +265,6 @@ weightmissing = sum(is.na(cap_leak_index_dataset$weight)) / length (cap_leak_ind
 
 ```{r}
 write.csv(cap_leak_index_dataset,'cap_leak_index_dataset.csv')
-```
-
-# Selecting/Imputing/removing data
-
-```{r}
-selected_df <- cap_leak_index_dataset%>%dplyr::select(
- actualhospitalmortality
-,final_charlson_score
-,apachescore
-,q_leaking_index
-)
-selected_df<-selected_df[complete.cases(selected_df),]
 ```
 
 # Train and test datasets creation
