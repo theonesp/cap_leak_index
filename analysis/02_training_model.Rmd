@@ -223,6 +223,14 @@ p <- plot_ly(
 
 p
 ```
+```{r}
+library(ROCR)
+df <- cbind(list(1- final_predictions$ALIVE), list(as.numeric(final_predictions$obs) - 1))
+pred <- prediction(df[1], df[2])
+perf <- performance(pred,"tpr","fpr")
+plot(perf,colorize=TRUE)
+```
+
 
 # Variables Importance
 
