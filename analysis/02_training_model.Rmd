@@ -51,6 +51,7 @@ Here we are first adressing several Machine Learning methods.
 There are more methods that can be addressed [Available Models in caret::train](https://rdrr.io/cran/caret/man/models.html)
 
 ```{r}
+# Machine learning methods
 gbmFit <- train( actualhospitalmortality ~ 
                 + apachescore
                 + final_charlson_score
@@ -224,6 +225,8 @@ p <- plot_ly(
 
 p
 ```
+
+# ROC Plot
 ```{r}
 library(ROCR)
 df <- cbind(list(1- final_predictions$ALIVE), list(as.numeric(final_predictions$obs) - 1))

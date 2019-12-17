@@ -70,13 +70,13 @@ hct <- run_query(getSQL("sql/hct.sql" ))
 # removes missing values
 hct<-hct[complete.cases(hct),]
 
-#Remove chronic AKI, creat, rrt patients
+#Remove chronic AKI, creat, rrt patients, not necessary
 # chronicAKI<-run_query(getSQL('sql/aki/chronicAKI.sql'))
 # baseline_creat<-run_query(getSQL('sql/aki/baseline_creat.sql'))
 # peakcreat48h<-run_query(getSQL('sql/aki/peakcreat48h.sql'))
 # peakcreat7days<-run_query(getSQL('sql/aki/peakcreat7days.sql'))
 
-# renal replacement therapy
+# renal replacement therapy, not necessary
 # first_rrt <-run_query(getSQL('sql/aki/first_rrt.sql'))
 
 # BMI, weight, age, gender, type of unit that patients was admitted, location from admission, length of stay before admission, height
@@ -108,6 +108,7 @@ fluidIntake <- run_query(getSQL("sql/intake_output.sql"))
 ## Patients with sepsis and demographics and too much output
 
 ```{r}
+# sepsis patients
 selected_cohort<-inner_join(demographic,patient_inexcluded_icd9)
 
 #exlusion based on output amount
@@ -126,6 +127,7 @@ IO_exclusion.patientunitstayid IS NULL
 ## SOFA eICU calcuation
 
 ```{r}
+# sofa calculations
 sofa_total_day1_to_day4<-sqldf('
 SELECT selected_cohort.patientunitstayid,
 
@@ -152,6 +154,7 @@ ORDER BY selected_cohort.patientunitstayid
 
 ```{r}
 # fluidIntake <- run_query(getSQL("sql/intake_output.sql" ))
+#
 fluidIntake<-fluidIntake[complete.cases(fluidIntake),]
 fluidIntake<-fluidIntake%>%
   mutate( totalFluid = (intakes-outputs))
@@ -207,7 +210,7 @@ WHERE totalFluid > 0 ')
 # Creating new variables
 
 ```{r}
-
+# merges the datasets
 cap_leak_index_dataset<-cap_leak_index_dataset%>%
   mutate(
     # leaking_index=((mean_hct_24_36hrs/first_hct_6hrs)-1)*body_surface_area*1561
@@ -217,13 +220,9 @@ cap_leak_index_dataset<-cap_leak_index_dataset%>%
     ,q_delta_sofa=as.numeric(cut2(delta_sofa, g=4))
 )
 
+# makes variables a factor
 cap_leak_index_dataset$q_leaking_index<-as.factor(cap_leak_index_dataset$q_leaking_index)
 cap_leak_index_dataset$q_delta_sofa<-as.factor(cap_leak_index_dataset$q_delta_sofa)
-
-# actualhospitalmortality mapping (some models are not properly handling facros so they need to be mapped to numbers)
-#cap_leak_index_dataset$actualhospitalmortality[cap_leak_index_dataset$actualhospitalmortality=='ALIVE']<-0
-#cap_leak_index_dataset$actualhospitalmortality[cap_leak_index_dataset$actualhospitalmortality=='EXPIRED']<-1
-#cap_leak_index_dataset$actualhospitalmortality<-as.factor(cap_leak_index_dataset$actualhospitalmortality)
 
 # gender mapping
 cap_leak_index_dataset<-cap_leak_index_dataset%>% filter(!(gender == ''))
@@ -231,6 +230,7 @@ cap_leak_index_dataset$gender[cap_leak_index_dataset$gender=='Male']<-1
 cap_leak_index_dataset$gender[cap_leak_index_dataset$gender=='Female']<-2
 # cap_leak_index_dataset$gender<-as.factor(cap_leak_index_dataset$gender)
 
+# filters the missing data
 cap_leak_index_dataset<-cap_leak_index_dataset%>%
   filter(!is.na(leaking_index))
 cap_leak_index_dataset<-cap_leak_index_dataset%>%
@@ -244,6 +244,7 @@ cap_leak_index_dataset <- cap_leak_index_dataset[-which(cap_leak_index_dataset$l
 # Selecting/Imputing/removing data
 
 ```{r}
+# creates the final dataset
 selected_df <- cap_leak_index_dataset%>%dplyr::select(
  actualhospitalmortality
 ,age_fixed
