@@ -17,4 +17,4 @@ CLI (quartiles of severity).
 In-hospital mortality.
 
 ## Model
-Marginal Structural model.
+Generalized Additive Model
