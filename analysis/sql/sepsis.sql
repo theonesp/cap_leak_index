@@ -1,6 +1,6 @@
   -- ------------------------------------------------------------------
   -- Title: Select patients from diagnosis which are included & excluded by icd9codes
-  -- Notes: cap_leak_index/analysis/sql/Alistair_sepsis.sql
+  -- Notes: cap_leak_index/analysis/sql/Alistair_sepsis.sql + admissiondx sepsis
   --        cap_leak_index, 20190511 NYU Datathon
   --        eICU Collaborative Research Database v2.0.
   -- ------------------------------------------------------------------
@@ -140,4 +140,14 @@ SELECT
   patientunitstayid
 FROM
   SeInOr
-WHERE (sepsis = 1)
+WHERE
+  (sepsis = 1) 
+  UNION DISTINCT
+SELECT 
+  DISTINCT patientunitstayid
+FROM
+  `physionet-data.eicu_crd.admissiondx`
+WHERE
+  LOWER(admitdxpath) LIKE '%sepsis%'
+  OR
+  LOWER(admitdxpath) LIKE '%septic%'

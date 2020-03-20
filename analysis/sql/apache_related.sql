@@ -8,7 +8,6 @@ SELECT
   patientunitstayid
 , MAX(apachescore) AS apachescore
 , MAX(actualicumortality) AS actualicumortality
-, MAX(actualhospitalmortality) AS actualhospitalmortality
 , MAX(unabridgedunitlos) AS unabridgedunitlos
 , MAX(unabridgedhosplos) AS unabridgedhosplos
 , MAX(unabridgedactualventdays) AS unabridgedactualventdays

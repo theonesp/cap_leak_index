@@ -1,13 +1,21 @@
 ---
 title: "01_dataset_creation"
-author: "Miguel Ángel Armengol de la Hoz"
-date: "10/5/2019"
-output: html_document
+author: "Miguel Ángel Armengol"
+date: '`r format(Sys.Date(), "%B %d, %Y")`'
+output:
+  html_notebook:
+    code_folding: hide
+    number_sections: yes
+    theme: flatly
+    toc: yes
+    toc_float: yes
+
+knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, encoding = encoding, output_file = paste0(substr(inputFile,1,nchar(inputFile)-4)," ",Sys.Date(),'.html')) })
 ---
 
 # Environment
 
-```{r}
+```{r message=FALSE, warning=FALSE}
 library(bigrquery)
 library(summarytools)
 library(readr)
@@ -17,6 +25,7 @@ library(dplyr)
 library(tableone)
 library(Hmisc)
 library(caret)
+library(plotly)
 ```
 
 
@@ -26,7 +35,7 @@ This chunks also creates the run_query and get_sql function.
 
 ```{r setup, include=FALSE}
 # Updated for our year
-project_id <- "hst-953-2019"
+project_id <- "hst-953-2018"
 options(httr_oauth_cache=FALSE)
 # Function that takes in a sql command and runs it on bigquery
 run_query <- function(query){
@@ -58,6 +67,8 @@ getSQL <- function(filepath){
   close(con)
   return(sql.string)
 }
+
+'%!in%' <- function(x,y)!('%in%'(x,y))
 ```
 
 # Loading queries and extracting the data
@@ -70,13 +81,13 @@ hct <- run_query(getSQL("sql/hct.sql" ))
 # removes missing values
 hct<-hct[complete.cases(hct),]
 
-#Remove chronic AKI, creat, rrt patients, not necessary
+#Remove chronic AKI, creat, rrt patients
 # chronicAKI<-run_query(getSQL('sql/aki/chronicAKI.sql'))
 # baseline_creat<-run_query(getSQL('sql/aki/baseline_creat.sql'))
 # peakcreat48h<-run_query(getSQL('sql/aki/peakcreat48h.sql'))
 # peakcreat7days<-run_query(getSQL('sql/aki/peakcreat7days.sql'))
 
-# renal replacement therapy, not necessary
+# renal replacement therapy
 # first_rrt <-run_query(getSQL('sql/aki/first_rrt.sql'))
 
 # BMI, weight, age, gender, type of unit that patients was admitted, location from admission, length of stay before admission, height
@@ -88,46 +99,26 @@ all_reliable <- run_query (getSQL("sql/all_reliable.sql"))
 
 #demographic
 demographic <- run_query(getSQL('sql/demographics.sql'))
-demographic['body_surface_area']<-round(sqrt((demographic$height*demographic$weight) / 3600),2)
 
-# SOFA variables
+# SOFA related variables
 sofa_cv_day1_to_day4 <- run_query(getSQL("sql/sofa/sofa_cv_day1_to_day4.sql"))
 sofa_renal_day1_to_day4 <- run_query(getSQL("sql/sofa/sofa_renal_day1_to_day4.sql"))
 sofa_respi_day1_to_day4 <- run_query(getSQL("sql/sofa/sofa_respi_day1_to_day4.sql"))
 sofa_3others_day1_to_day4 <- run_query(getSQL("sql/sofa/sofa_3others_day1_to_day4.sql"))
 
-# Gathers sepsis patients and excludes patients that are bleeding
+# List of patients that are bleeding we want to exclude.
 patient_inexcluded_icd9 <- run_query(getSQL('sql/patient_inexcluded_icd9.sql'))
+
 # Sepsis patients according to angus criteria
 sepsis <- run_query(getSQL('sql/sepsis.sql'))
-patient_inexcluded_icd9 <- merge (sepsis, patient_inexcluded_icd9, all = TRUE)
+
 # Fluid data
 fluidIntake <- run_query(getSQL("sql/intake_output.sql"))
-```
-
-## Patients with sepsis and demographics and too much output
-
-```{r}
-# sepsis patients
-selected_cohort<-inner_join(demographic,patient_inexcluded_icd9)
-
-#exlusion based on output amount
-selected_cohort<-sqldf('
-SELECT * FROM 
-selected_cohort
-LEFT JOIN
-IO_exclusion
-USING
-(patientunitstayid)
-WHERE
-IO_exclusion.patientunitstayid IS NULL
-')
 ```
 
 ## SOFA eICU calcuation
 
 ```{r}
-# sofa calculations
 sofa_total_day1_to_day4<-sqldf('
 SELECT selected_cohort.patientunitstayid,
 
@@ -154,19 +145,58 @@ ORDER BY selected_cohort.patientunitstayid
 
 ```{r}
 # fluidIntake <- run_query(getSQL("sql/intake_output.sql" ))
-#
 fluidIntake<-fluidIntake[complete.cases(fluidIntake),]
 fluidIntake<-fluidIntake%>%
   mutate( totalFluid = (intakes-outputs))
 ```
 
-
 # Merging all datasets
+
+## Patients with sepsis (not bleeding) 
+
+```{r}
+# we want to include septic patients that are not bleeding.
+
+print('Septic patients:')
+nrow(sepsis)
+
+print('Patients bleeding')
+nrow(patient_inexcluded_icd9)
+
+patient_included_vector <- sepsis[sepsis$patientunitstayid %!in% patient_inexcluded_icd9$patientUnitStayID  ,]
+patient_included <- data.frame(patientunitstayid=integer(length(patient_included_vector))) 
+patient_included$patientunitstayid<-patient_included_vector
+
+print('Septic patients that are not bleeding')
+nrow(patient_included)
+
+```
+
+
+## demographics and too much output
+
+```{r}
+selected_cohort<-inner_join(demographic,patient_included)
+
+#exlusion based on output amount
+selected_cohort<-sqldf('
+SELECT * FROM 
+selected_cohort
+LEFT JOIN
+IO_exclusion
+USING
+(patientunitstayid)
+WHERE
+IO_exclusion.patientunitstayid IS NULL
+')
+```
+
+# Final Join
 
 ```{r}
 # We are using a left join to join them
-cap_leak_index_dataset<-Reduce(function(...) merge(..., all.x=TRUE), list(
-  selected_cohort
+vol_leak_index_dataset<-Reduce(function(...) merge(..., all.x=TRUE), list(
+   selected_cohort
   ,apache_related
   ,hct
   ,fluidIntake
@@ -175,116 +205,157 @@ cap_leak_index_dataset<-Reduce(function(...) merge(..., all.x=TRUE), list(
   ,sofa_total_day1_to_day4
 ))
 
-nrow(cap_leak_index_dataset)
-a<-nrow(cap_leak_index_dataset)
+nrow(vol_leak_index_dataset)
+a<-nrow(vol_leak_index_dataset)
 
 # Ensures that patients have reliable fluid data
 
-cap_leak_index_dataset<-sqldf('
+vol_leak_index_dataset<-sqldf('
 SELECT * FROM
-cap_leak_index_dataset
+vol_leak_index_dataset
 INNER JOIN
 all_reliable
 USING(patientunitstayid)
 ')
-nrow(cap_leak_index_dataset)
-b<-nrow(cap_leak_index_dataset)
+nrow(vol_leak_index_dataset)
+b<-nrow(vol_leak_index_dataset)
 
 
 a-b
-# cap_leak_index_dataset<-sqldf('
+# vol_leak_index_dataset<-sqldf('
 # SELECT * FROM
-# cap_leak_index_dataset
+# vol_leak_index_dataset
 # INNER JOIN
 # all_reliable
 # USING(patientunitstayid)
 # ')
 
 # Ensures fluid intake is greater than 0.
-cap_leak_index_dataset<-sqldf('
+vol_leak_index_dataset<-sqldf('
 SELECT * FROM
-cap_leak_index_dataset
+vol_leak_index_dataset
 WHERE totalFluid > 0 ')
 ```
 
-# Creating new variables
+## Creating new variables
+
+### Leaking Index
 
 ```{r}
-# merges the datasets
-cap_leak_index_dataset<-cap_leak_index_dataset%>%
+vol_leak_index_dataset<-vol_leak_index_dataset%>%
   mutate(
     # leaking_index=((mean_hct_24_36hrs/first_hct_6hrs)-1)*body_surface_area*1561
     leaking_index=((mean_hct_24_36hrs - first_hct_6hrs) / totalFluid) * body_surface_area
-    ,delta_sofa=sofatotal_day4-sofatotal_day1
-    ,q_leaking_index=as.numeric(cut2(leaking_index, g=4))
-    ,q_delta_sofa=as.numeric(cut2(delta_sofa, g=4))
-)
-
-# makes variables a factor
-cap_leak_index_dataset$q_leaking_index<-as.factor(cap_leak_index_dataset$q_leaking_index)
-cap_leak_index_dataset$q_delta_sofa<-as.factor(cap_leak_index_dataset$q_delta_sofa)
-
-# gender mapping
-cap_leak_index_dataset<-cap_leak_index_dataset%>% filter(!(gender == ''))
-cap_leak_index_dataset$gender[cap_leak_index_dataset$gender=='Male']<-1
-cap_leak_index_dataset$gender[cap_leak_index_dataset$gender=='Female']<-2
-# cap_leak_index_dataset$gender<-as.factor(cap_leak_index_dataset$gender)
-
-# filters the missing data
-cap_leak_index_dataset<-cap_leak_index_dataset%>%
-  filter(!is.na(leaking_index))
-cap_leak_index_dataset<-cap_leak_index_dataset%>%
-  filter(!is.infinite(leaking_index))
-
-# Remove outliers
-outliers <- boxplot(cap_leak_index_dataset$leaking_index, plot=FALSE)$out
-cap_leak_index_dataset <- cap_leak_index_dataset[-which(cap_leak_index_dataset$leaking_index %in% outliers),]
+  )  
 ```
 
-# Selecting/Imputing/removing data
+#### Data Imputation
 
 ```{r}
-# creates the final dataset
-selected_df <- cap_leak_index_dataset%>%dplyr::select(
- actualhospitalmortality
-,age_fixed
-,gender
-,final_charlson_score
-,apachescore
-,q_leaking_index
+# Median imputation for outliers
+#outliers <- boxplot(vol_leak_index_dataset$leaking_index, plot=FALSE)$out
+#vol_leak_index_dataset$leaking_index[which(vol_leak_index_dataset$leaking_index %in% outliers),]<-median(vol_leak_index_dataset$leaking_index)
+
+vol_leak_index_dataset<-vol_leak_index_dataset%>%mutate(
+  leaking_index=if_else(
+  leaking_index %in% outliers,
+  median(leaking_index)
+  ,leaking_index
+  )
 )
+```
+
+
+## SOFA Delta
+
+|                   | Sofa day 2 No change | Sofa day 2 Increases | Sofa day 2 Decreases |
+|-------------------|----------------------|----------------------|----------------------|
+| High Sofa day 1   | Bad                  | Bad                  | Good                 |
+| Medium Sofa day 1 | Bad                  | Bad                  | Good                 |
+| Low Sofa day 1    | Good                 | Bad                  | Good                 |
+
+0 Means BAD, 1 means GOOD
+
+```{r}
+
+vol_leak_index_dataset<-vol_leak_index_dataset%>%
+  mutate(
+    # leaking_index=((mean_hct_24_36hrs/first_hct_6hrs)-1)*body_surface_area*1561
+    leaking_index=((mean_hct_24_36hrs - first_hct_6hrs) / totalFluid) * body_surface_area
+    #,delta_sofa=sofatotal_day2-sofatotal_day1
+    ,q_leaking_index=as.numeric(cut2(leaking_index, g=4))
+    ,bin_leaking_index=if_else(q_leaking_index==4,1,0)
+    ,t_sofatotal_day1=as.numeric(cut2(sofatotal_day1, g=3))
+    ,delta_sofa=case_when(
+      
+      t_sofatotal_day1 == 3 & sofatotal_day2 == sofatotal_day1 ~ 0,
+      t_sofatotal_day1 == 3 & sofatotal_day2 >  sofatotal_day1 ~ 0,
+      t_sofatotal_day1 == 3 & sofatotal_day2 <  sofatotal_day1 ~ 1,
+      
+      t_sofatotal_day1 == 2 & sofatotal_day2 == sofatotal_day1 ~ 0,
+      t_sofatotal_day1 == 2 & sofatotal_day2 >  sofatotal_day1 ~ 0,
+      t_sofatotal_day1 == 2 & sofatotal_day2 <  sofatotal_day1 ~ 1,     
+      
+      t_sofatotal_day1 == 1 & sofatotal_day2 == sofatotal_day1 ~ 1,
+      t_sofatotal_day1 == 1 & sofatotal_day2 >  sofatotal_day1 ~ 0,
+      t_sofatotal_day1 == 1 & sofatotal_day2 <  sofatotal_day1 ~ 1, 
+      
+      
+    )
+                                 
+)
+
+0 Means BAD, 1 means GOOD
+
+vol_leak_index_dataset$q_leaking_index<-as.factor(vol_leak_index_dataset$q_leaking_index)
+
+#vol_leak_index_dataset$actualhospitalmortality<-as.factor(vol_leak_index_dataset$actualhospitalmortality)
+
+# gender mapping
+vol_leak_index_dataset<-vol_leak_index_dataset%>% filter(!(gender == ''))
+vol_leak_index_dataset$gender[vol_leak_index_dataset$gender=='Male']<-1
+vol_leak_index_dataset$gender[vol_leak_index_dataset$gender=='Female']<-2
+# vol_leak_index_dataset$gender<-as.factor(vol_leak_index_dataset$gender)
+
+
+```
+
+## Selecting/Imputing/removing data
+
+```{r}
+selected_df <- vol_leak_index_dataset%>%mutate(
+  highest_q_leaking_index=if_else(
+    q_leaking_index==4,1,0
+  ))%>%dplyr::select(
+    patientunitstayid
+    ,hosp_mortality
+    ,age_fixed
+    ,gender
+    ,final_charlson_score
+    ,apachescore
+    ,highest_q_leaking_index
+    ,delta_sofa
+  )
 selected_df<-selected_df[complete.cases(selected_df),]
+
+selected_df$highest_q_leaking_index<-as.factor(selected_df$highest_q_leaking_index)
 ```
 
 # Dataset report
 
 ```{r}
-cap_leak_index_dataset <- cap_leak_index_dataset[order(cap_leak_index_dataset$patientunitstayid),]
-view(dfSummary(cap_leak_index_dataset))
+vol_leak_index_dataset <- vol_leak_index_dataset[order(vol_leak_index_dataset$patientunitstayid),]
+view(dfSummary(selected_df))
 
-sofamissing = sum(is.na(cap_leak_index_dataset$sofatotal_day1)) / length (cap_leak_index_dataset$sofatotal_day1)
-bmimissing = sum(is.na(cap_leak_index_dataset$BMI)) / length (cap_leak_index_dataset$BMI)
-weightmissing = sum(is.na(cap_leak_index_dataset$weight)) / length (cap_leak_index_dataset$weight)
+sofamissing = sum(is.na(vol_leak_index_dataset$sofatotal_day1)) / length (vol_leak_index_dataset$sofatotal_day1)
+bmimissing = sum(is.na(vol_leak_index_dataset$BMI)) / length (vol_leak_index_dataset$BMI)
+weightmissing = sum(is.na(vol_leak_index_dataset$weight)) / length (vol_leak_index_dataset$weight)
 ```
 
 # Export dataset
 
 ```{r}
-write.csv(cap_leak_index_dataset,'cap_leak_index_dataset.csv')
-```
-
-# Selecting/Imputing/removing data
-
-```{r}
-table_df <- cap_leak_index_dataset %>%
-  filter(!is.na(leaking_index) & !is.na(apachescore) & !is.na(q_leaking_index) & !is.na(final_charlson_score) & !is.na (actualhospitalmortality))
-selected_df <- cap_leak_index_dataset%>%dplyr::select(
- actualhospitalmortality
-,final_charlson_score
-,apachescore
-,q_leaking_index
-)
-selected_df<-selected_df[complete.cases(selected_df),]
+write.csv(vol_leak_index_dataset,'vol_leak_index_dataset.csv')
 ```
 
 # Train and test datasets creation

@@ -136,7 +136,9 @@ SELECT
   --location from where the patient was admitted to the hospital e.g.: Direct Admit, Floor, Chest Pain Center. etc.
   hospitalAdmitSource,
   -- length of hospital stay prior to ICU admission (days)
-  ROUND(actualHospitalLOS - actualICULOS,2) AS hospLOS_prior_ICUadm_days
+  ROUND(actualHospitalLOS - actualICULOS,2) AS hospLOS_prior_ICUadm_days,
+  basic_demographics.hosp_mortality,
+  ROUND(sqrt((height*weight_avg) / 3600),2) AS body_surface_area
 FROM
   demographics
 LEFT JOIN
@@ -147,7 +149,10 @@ LEFT JOIN
   `physionet-data.eicu_crd.patient` patient
 ON
   demographics.patientunitstayid = patient.patientunitstayid
+LEFT JOIN
+  `physionet-data.eicu_crd_derived.basic_demographics` basic_demographics
+ON
+  demographics.patientunitstayid = basic_demographics.patientunitstayid  
 WHERE 
   age_fixed >= 18  
-
 
