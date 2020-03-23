@@ -26,6 +26,16 @@ library(tableone)
 library(Hmisc)
 library(caret)
 library(plotly)
+
+winsorize_x = function(x, cut = 0.05){
+  cut_point_top <- quantile(x, 1 - cut, na.rm = T)
+  cut_point_bottom <- quantile(x, cut, na.rm = T)
+  i = which(x >= cut_point_top) 
+  x[i] = cut_point_top
+  j = which(x <= cut_point_bottom) 
+  x[j] = cut_point_bottom
+  return(x)
+}
 ```
 
 
@@ -249,23 +259,6 @@ vol_leak_index_dataset<-vol_leak_index_dataset%>%
   )  
 ```
 
-#### Data Imputation
-
-```{r}
-# Median imputation for outliers
-#outliers <- boxplot(vol_leak_index_dataset$leaking_index, plot=FALSE)$out
-#vol_leak_index_dataset$leaking_index[which(vol_leak_index_dataset$leaking_index %in% outliers),]<-median(vol_leak_index_dataset$leaking_index)
-
-vol_leak_index_dataset<-vol_leak_index_dataset%>%mutate(
-  leaking_index=if_else(
-  leaking_index %in% outliers,
-  median(leaking_index)
-  ,leaking_index
-  )
-)
-```
-
-
 ## SOFA Delta
 
 |                   | Sofa day 2 No change | Sofa day 2 Increases | Sofa day 2 Decreases |
@@ -307,7 +300,6 @@ vol_leak_index_dataset<-vol_leak_index_dataset%>%
 
 vol_leak_index_dataset$q_leaking_index<-as.factor(vol_leak_index_dataset$q_leaking_index)
 
-#vol_leak_index_dataset$actualhospitalmortality<-as.factor(vol_leak_index_dataset$actualhospitalmortality)
 
 # gender mapping
 vol_leak_index_dataset<-vol_leak_index_dataset%>% filter(!(gender == ''))
@@ -318,12 +310,24 @@ vol_leak_index_dataset$gender[vol_leak_index_dataset$gender=='Female']<-2
 
 ```
 
+#### Data Imputation
+
+```{r}
+# Median imputation for outliers
+#outliers <- boxplot(vol_leak_index_dataset$leaking_index, plot=FALSE)$out
+#vol_leak_index_dataset$leaking_index[which(vol_leak_index_dataset$leaking_index %in% outliers),]<-median(vol_leak_index_dataset$leaking_index)
+vol_leak_index_dataset<-vol_leak_index_dataset%>%mutate(
+  leaking_index=winsorize_x(leaking_index)
+  )
+
+```
+
 ## Selecting/Imputing/removing data
 
 ```{r}
 selected_df <- vol_leak_index_dataset%>%mutate(
   highest_q_leaking_index=if_else(
-    q_leaking_index==4,1,0
+    q_leaking_index %in% c('3','4'),1,0
   ))%>%dplyr::select(
     patientunitstayid
     ,hosp_mortality
@@ -331,29 +335,29 @@ selected_df <- vol_leak_index_dataset%>%mutate(
     ,gender
     ,final_charlson_score
     ,apachescore
-    ,highest_q_leaking_index
     ,delta_sofa
+    ,totalFluid
+    ,highest_q_leaking_index
+    ,q_leaking_index
+    ,leaking_index
   )
 selected_df<-selected_df[complete.cases(selected_df),]
 
 selected_df$highest_q_leaking_index<-as.factor(selected_df$highest_q_leaking_index)
+
 ```
 
-# Dataset report
+# Table 1
 
 ```{r}
-vol_leak_index_dataset <- vol_leak_index_dataset[order(vol_leak_index_dataset$patientunitstayid),]
-view(dfSummary(selected_df))
-
-sofamissing = sum(is.na(vol_leak_index_dataset$sofatotal_day1)) / length (vol_leak_index_dataset$sofatotal_day1)
-bmimissing = sum(is.na(vol_leak_index_dataset$BMI)) / length (vol_leak_index_dataset$BMI)
-weightmissing = sum(is.na(vol_leak_index_dataset$weight)) / length (vol_leak_index_dataset$weight)
+table1(~ factor(hosp_mortality) + age_fixed + factor(hosp_mortality) + gender + final_charlson_score + apachescore  + delta_sofa + totalFluid | highest_q_leaking_index, data=selected_df)
 ```
+
 
 # Export dataset
 
 ```{r}
-write.csv(vol_leak_index_dataset,'vol_leak_index_dataset.csv')
+write.csv(selected_df,'selected_df.csv')
 ```
 
 # Train and test datasets creation
@@ -369,26 +373,26 @@ selected_df['id']<- seq.int(nrow(selected_df))
 set.seed(123)
 # createDataPartition: "the random sampling is done within the levels of y when y is a factor in an attempt to balance the class distributions within the splits."
 ## 75% of the sample size
-train_idx <- createDataPartition(as.factor(selected_df$actualhospitalmortality), times = 1, p = 0.75, list=F)
+train_idx <- createDataPartition(as.factor(selected_df$hosp_mortality), times = 1, p = 0.75, list=F)
 
 train <- selected_df[train_idx, ]
 test <- selected_df[-train_idx, ]
 
 #Checking outcome is actually balanced
-round(prop.table(table(train$actualhospitalmortality)),2)
-round(prop.table(table(test$actualhospitalmortality)),2)
+round(prop.table(table(train$hosp_mortality)),2)
+round(prop.table(table(test$hosp_mortality)),2)
 ```
 
 ## Separating datasets into outcome and exposures
 
 ```{r}
 # train dataset
-train_X<-train[, names(train)!= "actualhospitalmortality"]
-train_Y<-train$actualhospitalmortality
+train_X<-train[, names(train)!= "hosp_mortality"]
+train_Y<-train$hosp_mortality
   
 # test dataset
-test_X<-test[, names(test)!= "actualhospitalmortality"]
-test_Y<-test$actualhospitalmortality 
+test_X<-test[, names(test)!= "hosp_mortality"]
+test_Y<-test$hosp_mortality 
 ```
 
 

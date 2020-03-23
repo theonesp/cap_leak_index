@@ -19,6 +19,7 @@ library(tableone)
 library(magrittr)
 library(officer)
 library(xlsx)
+library(table1)
 ```
 
 
@@ -27,9 +28,9 @@ library(xlsx)
 
 ```{r}
 write.csv(table_df, 'Final_dataset.csv',row.names = F)
-listVarstab1<-c("patientunitstayid", "age_fixed", "gender", "weight", "height", "BMI", "BMI_group", "unitType", "body_surface_area", "apachescore", "unabridgedunitlos", "unabridgedhosplos", "unabridgedactualventdays", "first_hct_6hrs", "mean_hct_24_36hrs", "AKIstage", "delta_sofa", "delta_sofa_bin", "actualhospitalmortality", "HospitalLOS", "totalFluid")
+listVarstab1<-c("patientunitstayid", "age_fixed", "gender", "weight", "height", "BMI", "BMI_group", "unitType", "body_surface_area", "apachescore", "unabridgedunitlos", "unabridgedhosplos", "unabridgedactualventdays", "first_hct_6hrs", "mean_hct_24_36hrs", "AKIstage", "delta_sofa", "delta_sofa_bin", "hosp_mortality", "HospitalLOS", "totalFluid")
 
-catVars<-c("gender", "actualicumortality", "actualhospitalmortality", "delta_sofa_bin")
+catVars<-c("gender", "actualicumortality", "hosp_mortality", "delta_sofa_bin")
 
 table1 <- CreateTableOne(vars = listVarstab1, data = table_df, factorVars = catVars,testNormal=oneway.test)
 
@@ -51,11 +52,11 @@ write.csv2(as.data.frame(print(table1_final)), "table1_final.csv")
 # Experimental
 listVarstab1<-c("apachescore", "final_charlson_score", "q_leaking_index")
 
-catVars<-c("actualhospitalmortality")
+catVars<-c("hosp_mortality")
 
 table1 <- CreateTableOne(vars = listVarstab1, data = table_df, factorVars = catVars,testNormal=oneway.test)
 
-table1strat <- CreateTableOne(vars = listVarstab1, data = selected_df, factorVars = catVars,testNormal=oneway.test, strata="actualhospitalmortality")
+table1strat <- CreateTableOne(vars = listVarstab1, data = selected_df, factorVars = catVars,testNormal=oneway.test, strata="hosp_mortality")
 
 table1_printed<-as.data.frame(print(table1
                                     #, nonnormal= nonnormal

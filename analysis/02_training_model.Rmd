@@ -60,7 +60,7 @@ Here we are first adressing several Machine Learning methods.
 There are more methods that can be addressed [Available Models in caret::train](https://rdrr.io/cran/caret/man/models.html)
 
 ```{r}
-gbmFit <- train( actualhospitalmortality ~ 
+gbmFit <- train( hosp_mortality ~ 
                 + apachescore
                 + final_charlson_score
                 + q_leaking_index
@@ -71,7 +71,7 @@ gbmFit <- train( actualhospitalmortality ~
                 metric = "ROC" ## Specify which metric to optimize
 )
 
-svmFit <- train( actualhospitalmortality ~
+svmFit <- train( hosp_mortality ~
                 + apachescore
                 + final_charlson_score
                 + q_leaking_index
@@ -83,7 +83,7 @@ svmFit <- train( actualhospitalmortality ~
                 metric = "ROC" ## Specify which metric to optimize
 )
 
-rfFit <- train( actualhospitalmortality ~
+rfFit <- train( hosp_mortality ~
                 + apachescore
                 + final_charlson_score
                 + q_leaking_index
@@ -94,7 +94,7 @@ rfFit <- train( actualhospitalmortality ~
                 metric = "ROC" ## Specify which metric to optimize
 )
 
-xgbFit <- train( actualhospitalmortality ~
+xgbFit <- train( hosp_mortality ~
                 + apachescore
                 + final_charlson_score
                 + q_leaking_index
@@ -105,7 +105,7 @@ xgbFit <- train( actualhospitalmortality ~
                 metric = "ROC" ## Specify which metric to optimize
 )
 
-nnFit <- train( actualhospitalmortality ~
+nnFit <- train( hosp_mortality ~
                 + apachescore
                 + final_charlson_score
                 + q_leaking_index
@@ -117,7 +117,7 @@ nnFit <- train( actualhospitalmortality ~
 )
 
 
-lrFit <- train( actualhospitalmortality ~
+lrFit <- train( hosp_mortality ~
                 + apachescore
                 + final_charlson_score
                 + q_leaking_index
@@ -128,7 +128,7 @@ lrFit <- train( actualhospitalmortality ~
                 metric = "ROC" ## Specify which metric to optimize
 )
 
-gamFit <- train( actualhospitalmortality ~ 
+gamFit <- train( hosp_mortality ~ 
                 + apachescore
                 + final_charlson_score
                 + q_leaking_index
@@ -253,13 +253,13 @@ We are using the or_gam function
 
 train_for_or_calculation<-train
 # or_gam only deals with numerical vars
-train_for_or_calculation$actualhospitalmortality[train_for_or_calculation$actualhospitalmortality=='ALIVE']<-0 
-train_for_or_calculation$actualhospitalmortality[train_for_or_calculation$actualhospitalmortality=='EXPIRED']<-1
-train_for_or_calculation$actualhospitalmortality<-as.numeric(train_for_or_calculation$actualhospitalmortality)
+train_for_or_calculation$hosp_mortality[train_for_or_calculation$hosp_mortality=='ALIVE']<-0 
+train_for_or_calculation$hosp_mortality[train_for_or_calculation$hosp_mortality=='EXPIRED']<-1
+train_for_or_calculation$hosp_mortality<-as.numeric(train_for_or_calculation$hosp_mortality)
 
 # We need to run the gam separately (the function I am using is not compatible with th gam object caret creates, so I am training a new model just using gam().
 
-gam_for_or_calculation<-gam(actualhospitalmortality ~ 
+gam_for_or_calculation<-gam(hosp_mortality ~ 
                 + apachescore
                 + final_charlson_score
                 + q_leaking_index
@@ -293,6 +293,7 @@ ps_model <- glm(highest_q_leaking_index ~
                 + age_fixed
                 + gender
                 + final_charlson_score
+                + totalFluid
                 , family=binomial()
                 , data=vli_prop_score_dataset)
 
@@ -309,7 +310,7 @@ pscore<-ps_model$fitted.values
 treatment_pscore<-cbind(vli_prop_score_dataset%>%dplyr::select(highest_q_leaking_index),pscore)
 
 ggplot(treatment_pscore, aes(x=pscore, fill = highest_q_leaking_index)) + 
-  geom_histogram(alpha = 0.3,position="identity")+scale_fill_manual(name="Treatment: Prob of Highest Q of VLI",values=c("#1abc9c","#f1c40f","#2980b9","#e74c3c"),labels=c("Q1","Q2","Q3","Q4"))+theme_minimal()
+  geom_histogram(alpha = 0.3,position="identity")+scale_fill_manual(name="Treatment: Prob of Highest Q of VLI",values=c("#1abc9c","#f1c40f","#2980b9","#e74c3c"),labels=c("Q1","The rest"))+theme_minimal()
 ```
 
 
