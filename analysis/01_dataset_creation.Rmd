@@ -274,7 +274,7 @@ vol_leak_index_dataset<-vol_leak_index_dataset%>%mutate(
 | Medium Sofa day 1 | Bad                  | Bad                  | Good                 |
 | Low Sofa day 1    | Good                 | Bad                  | Good                 |
 
-0 Means BAD, 1 means GOOD
+0 Means GOOD Oucome, 1 means BAD Outcome
 
 ```{r}
 
@@ -288,24 +288,22 @@ vol_leak_index_dataset<-vol_leak_index_dataset%>%
     ,t_sofatotal_day1=as.numeric(cut2(sofatotal_day1, g=3))
     ,delta_sofa=case_when(
       
-      t_sofatotal_day1 == 3 & sofatotal_day2 == sofatotal_day1 ~ 0,
-      t_sofatotal_day1 == 3 & sofatotal_day2 >  sofatotal_day1 ~ 0,
-      t_sofatotal_day1 == 3 & sofatotal_day2 <  sofatotal_day1 ~ 1,
+      t_sofatotal_day1 == 3 & sofatotal_day2 == sofatotal_day1 ~ 1,
+      t_sofatotal_day1 == 3 & sofatotal_day2 >  sofatotal_day1 ~ 1,
+      t_sofatotal_day1 == 3 & sofatotal_day2 <  sofatotal_day1 ~ 0,
       
-      t_sofatotal_day1 == 2 & sofatotal_day2 == sofatotal_day1 ~ 0,
-      t_sofatotal_day1 == 2 & sofatotal_day2 >  sofatotal_day1 ~ 0,
-      t_sofatotal_day1 == 2 & sofatotal_day2 <  sofatotal_day1 ~ 1,     
+      t_sofatotal_day1 == 2 & sofatotal_day2 == sofatotal_day1 ~ 1,
+      t_sofatotal_day1 == 2 & sofatotal_day2 >  sofatotal_day1 ~ 1,
+      t_sofatotal_day1 == 2 & sofatotal_day2 <  sofatotal_day1 ~ 0,     
       
-      t_sofatotal_day1 == 1 & sofatotal_day2 == sofatotal_day1 ~ 1,
-      t_sofatotal_day1 == 1 & sofatotal_day2 >  sofatotal_day1 ~ 0,
-      t_sofatotal_day1 == 1 & sofatotal_day2 <  sofatotal_day1 ~ 1, 
+      t_sofatotal_day1 == 1 & sofatotal_day2 == sofatotal_day1 ~ 0,
+      t_sofatotal_day1 == 1 & sofatotal_day2 >  sofatotal_day1 ~ 1,
+      t_sofatotal_day1 == 1 & sofatotal_day2 <  sofatotal_day1 ~ 0, 
       
       
     )
                                  
 )
-
-0 Means BAD, 1 means GOOD
 
 vol_leak_index_dataset$q_leaking_index<-as.factor(vol_leak_index_dataset$q_leaking_index)
 
