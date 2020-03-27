@@ -26,6 +26,7 @@ library(tableone)
 library(Hmisc)
 library(caret)
 library(plotly)
+library(table1)
 
 winsorize_x = function(x, cut = 0.05){
   cut_point_top <- quantile(x, 1 - cut, na.rm = T)
@@ -45,7 +46,7 @@ This chunks also creates the run_query and get_sql function.
 
 ```{r setup, include=FALSE}
 # Updated for our year
-project_id <- "hst-953-2018"
+project_id <- "amsterdam-translation" #hst-953-2018
 options(httr_oauth_cache=FALSE)
 # Function that takes in a sql command and runs it on bigquery
 run_query <- function(query){
@@ -126,31 +127,6 @@ sepsis <- run_query(getSQL('sql/sepsis.sql'))
 fluidIntake <- run_query(getSQL("sql/intake_output.sql"))
 ```
 
-## SOFA eICU calcuation
-
-```{r}
-sofa_total_day1_to_day4<-sqldf('
-SELECT selected_cohort.patientunitstayid,
-
-max(sofa_cv_day1_to_day4.sofa_cv_day1 + sofa_respi_day1_to_day4.sofa_respi_day1 + sofa_renal_day1_to_day4.sofarenal_day1 + sofa_3others_day1_to_day4.sofacoag_day1 + sofa_3others_day1_to_day4.sofaliver_day1 + sofa_3others_day1_to_day4.sofacns_day1) AS sofatotal_day1,
-
-max(sofa_cv_day1_to_day4.sofa_cv_day2 + sofa_respi_day1_to_day4.sofa_respi_day2 + sofa_renal_day1_to_day4.sofarenal_day2 + sofa_3others_day1_to_day4.sofacoag_day2 + sofa_3others_day1_to_day4.sofaliver_day2 + sofa_3others_day1_to_day4.sofacns_day2) AS sofatotal_day2,
-
-max(sofa_cv_day1_to_day4.sofa_cv_day3 + sofa_respi_day1_to_day4.sofa_respi_day3 + sofa_renal_day1_to_day4.sofarenal_day3 + sofa_3others_day1_to_day4.sofacoag_day3 + sofa_3others_day1_to_day4.sofaliver_day3 + sofa_3others_day1_to_day4.sofacns_day3) AS sofatotal_day3,
-
-max(sofa_cv_day1_to_day4.sofa_cv_day4 + sofa_respi_day1_to_day4.sofa_respi_day4 + sofa_renal_day1_to_day4.sofarenal_day4 + sofa_3others_day1_to_day4.sofacoag_day4 + sofa_3others_day1_to_day4.sofaliver_day4 + sofa_3others_day1_to_day4.sofacns_day4) AS sofatotal_day4
-
-FROM 
-selected_cohort
-INNER JOIN sofa_cv_day1_to_day4 ON  selected_cohort.patientunitstayid = sofa_cv_day1_to_day4.patientunitstayid
-INNER JOIN sofa_respi_day1_to_day4  ON selected_cohort.patientunitstayid = sofa_renal_day1_to_day4.patientunitstayid
-INNER JOIN sofa_renal_day1_to_day4  ON selected_cohort.patientunitstayid = sofa_respi_day1_to_day4.patientunitstayid
-INNER JOIN sofa_3others_day1_to_day4  ON selected_cohort.patientunitstayid = sofa_3others_day1_to_day4.patientunitstayid
-GROUP BY selected_cohort.patientunitstayid
-ORDER BY selected_cohort.patientunitstayid
-')
-```
-
 ## Fluid data
 
 ```{r}
@@ -198,6 +174,32 @@ USING
 (patientunitstayid)
 WHERE
 IO_exclusion.patientunitstayid IS NULL
+')
+```
+
+
+## SOFA eICU calcuation
+
+```{r}
+sofa_total_day1_to_day4<-sqldf('
+SELECT selected_cohort.patientunitstayid,
+
+max(sofa_cv_day1_to_day4.sofa_cv_day1 + sofa_respi_day1_to_day4.sofa_respi_day1 + sofa_renal_day1_to_day4.sofarenal_day1 + sofa_3others_day1_to_day4.sofacoag_day1 + sofa_3others_day1_to_day4.sofaliver_day1 + sofa_3others_day1_to_day4.sofacns_day1) AS sofatotal_day1,
+
+max(sofa_cv_day1_to_day4.sofa_cv_day2 + sofa_respi_day1_to_day4.sofa_respi_day2 + sofa_renal_day1_to_day4.sofarenal_day2 + sofa_3others_day1_to_day4.sofacoag_day2 + sofa_3others_day1_to_day4.sofaliver_day2 + sofa_3others_day1_to_day4.sofacns_day2) AS sofatotal_day2,
+
+max(sofa_cv_day1_to_day4.sofa_cv_day3 + sofa_respi_day1_to_day4.sofa_respi_day3 + sofa_renal_day1_to_day4.sofarenal_day3 + sofa_3others_day1_to_day4.sofacoag_day3 + sofa_3others_day1_to_day4.sofaliver_day3 + sofa_3others_day1_to_day4.sofacns_day3) AS sofatotal_day3,
+
+max(sofa_cv_day1_to_day4.sofa_cv_day4 + sofa_respi_day1_to_day4.sofa_respi_day4 + sofa_renal_day1_to_day4.sofarenal_day4 + sofa_3others_day1_to_day4.sofacoag_day4 + sofa_3others_day1_to_day4.sofaliver_day4 + sofa_3others_day1_to_day4.sofacns_day4) AS sofatotal_day4
+
+FROM 
+selected_cohort
+INNER JOIN sofa_cv_day1_to_day4 ON  selected_cohort.patientunitstayid = sofa_cv_day1_to_day4.patientunitstayid
+INNER JOIN sofa_respi_day1_to_day4  ON selected_cohort.patientunitstayid = sofa_renal_day1_to_day4.patientunitstayid
+INNER JOIN sofa_renal_day1_to_day4  ON selected_cohort.patientunitstayid = sofa_respi_day1_to_day4.patientunitstayid
+INNER JOIN sofa_3others_day1_to_day4  ON selected_cohort.patientunitstayid = sofa_3others_day1_to_day4.patientunitstayid
+GROUP BY selected_cohort.patientunitstayid
+ORDER BY selected_cohort.patientunitstayid
 ')
 ```
 
@@ -347,17 +349,67 @@ selected_df$highest_q_leaking_index<-as.factor(selected_df$highest_q_leaking_ind
 
 ```
 
+# Joining the Amsterdam UMC DB and Combining the datasets
+
+```{r}
+amsterdam = run_query(getSQL("sql/amsterdam_sql/combined.sql" ))
+
+amsterdam$age_fixed = as.factor(amsterdam$age_fixed)
+amsterdam$gender[amsterdam$gender=='Male']<-1
+amsterdam$gender[amsterdam$gender=='Female']<-2
+amsterdam$hosp_mortality = amsterdam$actualhospitalmortality
+amsterdam$q_leaking_index = ntile(amsterdam$leaking_index,4)
+amsterdam$highest_q_leaking_index = ntile(amsterdam$leaking_index,2)
+
+age_grouper = function(age) {
+  if (age >=18 & age <=39) {
+    group = '18-39'
+  } else if (age >=40 & age <= 49) {
+    group = '40-49'
+  } else if (age >=50 & age <=59) {
+    group = '50-59'
+  } else if (age >= 60 & age <= 69) {
+    group = '60-69'
+  } else if (age >= 70 & age <= 79) {
+    group = '70-79'
+  } else if (age >= 80) {
+    group = '80+'
+  } else {
+    group = NA
+  }
+  return(group)
+}
+
+selected_df$age_fixed = vapply(selected_df$age_fixed,age_grouper,character(1)) 
+
+amsterdam = amsterdam[names(selected_df)]
+selected_df['db_source'] = 'eicu'
+amsterdam['db_source'] = 'amsterdam'
+combined = rbind(selected_df,amsterdam)
+```
+
+Amsterdam DB Cohort Information:
+
+- Total patients in Amsterdam UMC DB: 23172
+- After excluding patients without diagnosis of sepsis (n=9936): 13236
+- After excluding patients with diagnosis of bleeding (n=4992): 8244
+- After excluding patients who received blood/colloids (n=1757): 6487
+- After excluding patients with missing CLI variables (n=4341): 2146
+- After excluding patients with missing delta SOFA (n=1728): 418
+
+
 # Table 1
 
 ```{r}
-table1(~ factor(hosp_mortality) + age_fixed + factor(hosp_mortality) + gender + final_charlson_score + apachescore  + delta_sofa + totalFluid | highest_q_leaking_index, data=selected_df)
+table1(~ factor(hosp_mortality) + age_fixed + factor(hosp_mortality) + gender + final_charlson_score + apachescore  + delta_sofa + totalFluid | highest_q_leaking_index, data=combined)
 ```
 
 
 # Export dataset
 
 ```{r}
-write.csv(selected_df,'selected_df.csv')
+write.csv(combined,'combined.csv')
+selected_df = combined # for compatibility with code below
 ```
 
 # Train and test datasets creation
