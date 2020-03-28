@@ -281,7 +281,7 @@ or_gam(data = train_for_or_calculation, model = gam_for_or_calculation, pred = "
 
 # Causal inference
 
-## Propensity Score - logistic regression
+## Propensity Score Matching - logistic regression
 
 ```{r}
 #first of all we create a copy of the dataset
