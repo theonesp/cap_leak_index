@@ -60,8 +60,8 @@ Here we are first adressing several Machine Learning methods.
 There are more methods that can be addressed [Available Models in caret::train](https://rdrr.io/cran/caret/man/models.html)
 
 ```{r}
-gbmFit <- train( hosp_mortality ~ 
-                + apachescore
+gbmFit <- train( hosp_mort ~ 
+                + predictedHospitalMortality
                 + final_charlson_score
                 + q_leaking_index
                 ,data = train,
@@ -71,8 +71,8 @@ gbmFit <- train( hosp_mortality ~
                 metric = "ROC" ## Specify which metric to optimize
 )
 
-svmFit <- train( hosp_mortality ~
-                + apachescore
+svmFit <- train( hosp_mort ~
+                + predictedHospitalMortality
                 + final_charlson_score
                 + q_leaking_index
                 ,data = train,
@@ -83,8 +83,8 @@ svmFit <- train( hosp_mortality ~
                 metric = "ROC" ## Specify which metric to optimize
 )
 
-rfFit <- train( hosp_mortality ~
-                + apachescore
+rfFit <- train( hosp_mort ~
+                + predictedHospitalMortality
                 + final_charlson_score
                 + q_leaking_index
                 ,data = train,
@@ -94,8 +94,8 @@ rfFit <- train( hosp_mortality ~
                 metric = "ROC" ## Specify which metric to optimize
 )
 
-xgbFit <- train( hosp_mortality ~
-                + apachescore
+xgbFit <- train( hosp_mort ~
+                + predictedHospitalMortality
                 + final_charlson_score
                 + q_leaking_index
                 ,data = train,
@@ -105,8 +105,8 @@ xgbFit <- train( hosp_mortality ~
                 metric = "ROC" ## Specify which metric to optimize
 )
 
-nnFit <- train( hosp_mortality ~
-                + apachescore
+nnFit <- train( hosp_mort ~
+                + predictedHospitalMortality
                 + final_charlson_score
                 + q_leaking_index
                 ,data = train,
@@ -117,8 +117,8 @@ nnFit <- train( hosp_mortality ~
 )
 
 
-lrFit <- train( hosp_mortality ~
-                + apachescore
+lrFit <- train( hosp_mort ~
+                + predictedHospitalMortality
                 + final_charlson_score
                 + q_leaking_index
                 ,data = train,
@@ -128,8 +128,8 @@ lrFit <- train( hosp_mortality ~
                 metric = "ROC" ## Specify which metric to optimize
 )
 
-gamFit <- train( hosp_mortality ~ 
-                + apachescore
+gamFit <- train( hosp_mort ~ 
+                + predictedHospitalMortality
                 + final_charlson_score
                 + q_leaking_index
                 ,data = train,
@@ -253,14 +253,14 @@ We are using the or_gam function
 
 train_for_or_calculation<-train
 # or_gam only deals with numerical vars
-train_for_or_calculation$hosp_mortality[train_for_or_calculation$hosp_mortality=='ALIVE']<-0 
-train_for_or_calculation$hosp_mortality[train_for_or_calculation$hosp_mortality=='EXPIRED']<-1
-train_for_or_calculation$hosp_mortality<-as.numeric(train_for_or_calculation$hosp_mortality)
+train_for_or_calculation$hosp_mort[train_for_or_calculation$hosp_mort=='ALIVE']<-0 
+train_for_or_calculation$hosp_mort[train_for_or_calculation$hosp_mort=='EXPIRED']<-1
+train_for_or_calculation$hosp_mort<-as.numeric(train_for_or_calculation$hosp_mort)
 
 # We need to run the gam separately (the function I am using is not compatible with th gam object caret creates, so I am training a new model just using gam().
 
-gam_for_or_calculation<-gam(hosp_mortality ~ 
-                + apachescore
+gam_for_or_calculation<-gam(hosp_mort ~ 
+                + predictedHospitalMortality
                 + final_charlson_score
                 + q_leaking_index
                 ,data = train_for_or_calculation)
@@ -275,7 +275,7 @@ or_gam(data = train_for_or_calculation, model = gam_for_or_calculation, pred = "
 
 # rest of the exposures
 
-or_gam(data = train_for_or_calculation, model = gam_for_or_calculation, pred = "apachescore",values = c(min(train_for_or_calculation$apachescore), max(train_for_or_calculation$apachescore)))
+or_gam(data = train_for_or_calculation, model = gam_for_or_calculation, pred = "predictedHospitalMortality",values = c(min(train_for_or_calculation$predictedHospitalMortality), max(train_for_or_calculation$predictedHospitalMortality)))
 or_gam(data = train_for_or_calculation, model = gam_for_or_calculation, pred = "final_charlson_score",values = c(min(train_for_or_calculation$final_charlson_score), max(train_for_or_calculation$final_charlson_score)))
 ```
 
@@ -284,16 +284,19 @@ or_gam(data = train_for_or_calculation, model = gam_for_or_calculation, pred = "
 ## Propensity Score Matching - logistic regression
 
 ```{r}
+center_scale <- function(x) {
+    scale(x, scale = FALSE)
+}
 #first of all we create a copy of the dataset
 vli_prop_score_dataset<-selected_df
 # Fit a propensity score model: logistic regression
 # outcome is the treatment here.
-ps_model <- glm(highest_q_leaking_index ~ 
-                  apachescore
+ps_model <- glm( highest_q_leaking_index ~ 
+                  center_scale(log(apache_iv))
                 + age_fixed
                 + gender
-                + final_charlson_score
-                + totalFluid
+                + log(final_charlson_score+1)
+                + log(totalFluid)
                 , family=binomial()
                 , data=vli_prop_score_dataset)
 
@@ -338,7 +341,7 @@ weighted_data<-svydesign(ids = ~ patientunitstayid, data = hr_prop_score_dataset
 
 # weighted table 1
 
-weighedtable<- svyCreateTableOne( vars= c("age_fixed", "gender","final_charlson_score","apachescore"), strata = "highest_q_leaking_index", data = weighted_data, test = F)
+weighedtable<- svyCreateTableOne( vars= c("age_fixed", "gender","final_charlson_score","predictedHospitalMortality"), strata = "highest_q_leaking_index", data = weighted_data, test = F)
 
 # weighted table 1 wih standarized mean differences (SMD)
 as.data.frame(print(weighedtable,smd=T))
@@ -359,7 +362,7 @@ In tableone: Ignore SD and sample sizes, ONLY SMD is reliable
 # Obtaining causal relative risk. Weighed GLM
 
 glm_model_rr<-glm(
-  as.integer(hosp_mortality) ~ 
+  as.integer(hosp_mort) ~ 
   as.factor(highest_q_leaking_index)  # treatment is the only exposure now
 , weights = weight  
 , family = binomial(link = log) # we are using the log link since we are interested in the relative risk
@@ -394,7 +397,7 @@ beta_final
 # Obtaining Obtaining risk difference with CI
 
 glm_model_diff<-glm(
-  as.integer(hosp_mortality) ~ 
+  as.integer(hosp_mort) ~ 
   as.factor(highest_q_leaking_index) # treatment is the only exposure now
 , weights = weight  
 , family = binomial(link = 'identity') # we are using the identity link since we are interested in risk difference
