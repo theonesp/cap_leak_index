@@ -165,4 +165,4 @@ LEFT JOIN
 ON
   demographics.patientunitstayid = basic_demographics.patientunitstayid
 WHERE
-  age_fixed >= 18
+  age_fixed >= 16

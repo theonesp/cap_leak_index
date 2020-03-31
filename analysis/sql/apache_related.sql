@@ -4,6 +4,8 @@
 --        cap_leak_index, 20190511 NYU Datathon
 --        eICU Collaborative Research Database v2.0.
 -- ------------------------------------------------------------------
+-- IMPORTANT: ACCORDING TO THE DOCUMMENTATION -1 in Apache score or predictedHospitalMortality means missing.
+
 SELECT 
   icustay_detail.patientunitstayid
 , MAX(apachescore) AS apachescore

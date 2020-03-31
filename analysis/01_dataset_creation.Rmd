@@ -27,15 +27,7 @@ library(Hmisc)
 library(caret)
 library(plotly)
 library(table1)
-winsorize_x = function(x, cut = 0.05){
-  cut_point_top <- quantile(x, 1 - cut, na.rm = T)
-  cut_point_bottom <- quantile(x, cut, na.rm = T)
-  i = which(x >= cut_point_top) 
-  x[i] = cut_point_top
-  j = which(x <= cut_point_bottom) 
-  x[j] = cut_point_bottom
-  return(x)
-}
+impute.median <- function(x) replace(x, is.na(x), median(x, na.rm = TRUE))
 ```
 
 
@@ -99,8 +91,8 @@ hct<-hct[complete.cases(hct),]
 # renal replacement therapy
 # first_rrt <-run_query(getSQL('sql/aki/first_rrt.sql'))
 
-# BMI, weight, age, gender, type of unit that patients was admitted, location from admission, length of stay before admission, height
 IO_exclusion <- run_query(getSQL('sql/IO_exclusion.sql'))
+
 charlson_score <- run_query(getSQL('sql/charlson_score.sql'))
 
 # gathers patientunitstayids with reliable fluid data
@@ -111,6 +103,7 @@ demographic <- run_query(getSQL('sql/demographics.sql'))
 
 # apache related variables
 apache_related <- run_query(getSQL('sql/apache_related.sql'))
+
 # IMPORTANT, ACCORDING TO THE DOCUMMENTATION -1 in Apache score means missing.
 apache_related$predictedHospitalMortality[apache_related$predictedHospitalMortality==(-1)] <- NA
 apache_related$apache_iv[apache_related$apache_iv==(-1)] <- NA
@@ -133,18 +126,16 @@ sepsis <- run_query(getSQL('sql/sepsis.sql'))
 fluidIntake <- run_query(getSQL("sql/intake_output.sql"))
 ```
 
-## Fluid data
+## Fluid intake calculation
 
 ```{r}
-# fluidIntake <- run_query(getSQL("sql/intake_output.sql" ))
-fluidIntake<-fluidIntake[complete.cases(fluidIntake),]
 fluidIntake<-fluidIntake%>%
   mutate( totalFluid = (intakes-outputs))
 ```
 
-# Merging all datasets
+# Exclusion criteria 1
 
-## Patients with sepsis (not bleeding) 
+Patients with sepsis (not bleeding) 
 
 ```{r}
 # we want to include septic patients that are not bleeding.
@@ -164,13 +155,18 @@ nrow(patient_included)
 
 ```
 
+# Exclusion criteria 2
 
-## demographics and too much output
+Exclusion criteria and dataset join (we need new datasets to address exclusion criteria)
 
 ```{r}
 selected_cohort<-inner_join(demographic,patient_included)
+print('Patients >=16 years old:')
+nrow(selected_cohort)
 
 #exlusion based on output amount
+## we want to exclude gastric >= 500 OR stool >= 500 OR emesis >= 500
+
 selected_cohort<-sqldf('
 SELECT * FROM 
 selected_cohort
@@ -181,11 +177,10 @@ USING
 WHERE
 IO_exclusion.patientunitstayid IS NULL
 ')
-```
 
-## Final Join
+print('Patients with proper amount of output:')
+nrow(selected_cohort)
 
-```{r}
 # We are using a left join to join them
 vol_leak_index_dataset<-Reduce(function(...) merge(..., all.x=TRUE), list(
    selected_cohort
@@ -196,11 +191,8 @@ vol_leak_index_dataset<-Reduce(function(...) merge(..., all.x=TRUE), list(
   ,sofa_total_day1_to_day4
 ))
 
-nrow(vol_leak_index_dataset)
-a<-nrow(vol_leak_index_dataset)
-
 # Ensures that patients have reliable fluid data
-
+# we have a list with reliable fluid data and we will use only patients in this list
 vol_leak_index_dataset<-sqldf('
 SELECT * FROM
 vol_leak_index_dataset
@@ -208,11 +200,9 @@ INNER JOIN
 all_reliable
 USING(patientunitstayid)
 ')
+print('patients with reliable fluid data')
 nrow(vol_leak_index_dataset)
-b<-nrow(vol_leak_index_dataset)
 
-
-a-b
 # vol_leak_index_dataset<-sqldf('
 # SELECT * FROM
 # vol_leak_index_dataset
@@ -226,11 +216,16 @@ vol_leak_index_dataset<-sqldf('
 SELECT * FROM
 vol_leak_index_dataset
 WHERE totalFluid > 0 ')
+
+print('patients with fluid intake greater than 0')
+nrow(vol_leak_index_dataset)
 ```
 
-## Creating new variables
+# Variables creation
 
-### Leaking Index
+## Leaking Index
+
+*PLEASE NOTE THE ORDER OF VARIABLES CREATION IS REALLY IMPORTANT SINCE THEY ARE NEEDED FOR EXCLUSION CRITERIA*
 
 ```{r}
 vol_leak_index_dataset<-vol_leak_index_dataset%>%
@@ -240,7 +235,59 @@ vol_leak_index_dataset<-vol_leak_index_dataset%>%
   )  
 ```
 
-## SOFA Delta
+### VLI Distribution
+
+```{r}
+colname<-names(vol_leak_index_dataset['leaking_index'])  
+ifelse( nrow(unique(vol_leak_index_dataset['leaking_index']))<10  
+        ,barplot(table(vol_leak_index_dataset['leaking_index']),main=colname,xlab = colname)
+        ,hist(as.numeric(unlist(vol_leak_index_dataset['leaking_index']))
+        ,main = paste("Histogram of" ,colname),xlab=colname)
+         )
+cat('Summary of ',colname,'\n',sep = '')  
+cat(summary(vol_leak_index_dataset['leaking_index']),'\n',sep = '|')
+
+```
+
+### Addressing outliers
+
+```{r}
+## Median imputation for outliers
+outliers <- boxplot(vol_leak_index_dataset$leaking_index, plot=FALSE)$out 
+vol_leak_index_dataset$leaking_index[which(vol_leak_index_dataset$leaking_index %in% outliers)]<-median(vol_leak_index_dataset$leaking_index)
+
+## Windsorization Clean data by means of winsorization, i.e., by shrinking outlying observations to the border of the main part of the data.
+#vol_leak_index_dataset<-vol_leak_index_dataset%>%mutate(leaking_index=winsorize(leaking_index))
+```
+
+### Data Imputation
+
+```{r}
+vol_leak_index_dataset<-vol_leak_index_dataset%>%
+  mutate(
+    # leaking_index=((mean_hct_24_36hrs/first_hct_6hrs)-1)*body_surface_area*1561
+    leaking_index=impute.median(leaking_index)
+  )  
+```
+
+## Derived Leaking Index Variables
+
+```{r}
+vol_leak_index_dataset<-vol_leak_index_dataset%>%
+  mutate(
+     q_leaking_index=as.factor(as.numeric(cut2(leaking_index, g=4)))
+    ,bin_leaking_index=if_else(q_leaking_index==4,1,0)
+)
+```
+
+## SOFA Delta creation
+
+For calculating delta sofa we need tertiles of sofa day 1.
+
+High sofa day 1 = T3
+Medium sofa day 1 = T2
+Low sofa day 1 = T1
+
 
 |                   | Sofa day 2 No change | Sofa day 2 Increases | Sofa day 2 Decreases |
 |-------------------|----------------------|----------------------|----------------------|
@@ -251,15 +298,9 @@ vol_leak_index_dataset<-vol_leak_index_dataset%>%
 0 Means GOOD Oucome, 1 means BAD Outcome
 
 ```{r}
-
 vol_leak_index_dataset<-vol_leak_index_dataset%>%
   mutate(
-    # leaking_index=((mean_hct_24_36hrs/first_hct_6hrs)-1)*body_surface_area*1561
-    leaking_index=((mean_hct_24_36hrs - first_hct_6hrs) / totalFluid) * body_surface_area
-    #,delta_sofa=sofatotal_day2-sofatotal_day1
-    ,q_leaking_index=as.numeric(cut2(leaking_index, g=4))
-    ,bin_leaking_index=if_else(q_leaking_index==4,1,0)
-    ,t_sofatotal_day1=as.numeric(cut2(sofatotal_day1, g=3))
+     t_sofatotal_day1=as.numeric(cut2(sofatotal_day1, g=3))
     ,delta_sofa=case_when(
       
       t_sofatotal_day1 == 3 & sofatotal_day2 == sofatotal_day1 ~ 1,
@@ -273,116 +314,53 @@ vol_leak_index_dataset<-vol_leak_index_dataset%>%
       t_sofatotal_day1 == 1 & sofatotal_day2 == sofatotal_day1 ~ 0,
       t_sofatotal_day1 == 1 & sofatotal_day2 >  sofatotal_day1 ~ 1,
       t_sofatotal_day1 == 1 & sofatotal_day2 <  sofatotal_day1 ~ 0, 
-      
-      
     )
-                                 
 )
-
-vol_leak_index_dataset$q_leaking_index<-as.factor(vol_leak_index_dataset$q_leaking_index)
-
-
-# gender mapping
-vol_leak_index_dataset<-vol_leak_index_dataset%>% filter(!(gender == ''))
-vol_leak_index_dataset$gender[vol_leak_index_dataset$gender=='Male']<-1
-vol_leak_index_dataset$gender[vol_leak_index_dataset$gender=='Female']<-2
-# vol_leak_index_dataset$gender<-as.factor(vol_leak_index_dataset$gender)
-
-
 ```
 
-#### Data Imputation
+# Selecting variables
+
+ - We are just selecting the variables we need for the model or for the exclusion criteria.
 
 ```{r}
-# Median imputation for outliers
-#outliers <- boxplot(vol_leak_index_dataset$leaking_index, plot=FALSE)$out
-#vol_leak_index_dataset$leaking_index[which(vol_leak_index_dataset$leaking_index %in% outliers),]<-median(vol_leak_index_dataset$leaking_index)
-vol_leak_index_dataset<-vol_leak_index_dataset%>%mutate(
-  leaking_index=winsorize_x(leaking_index)
-  )
-
-```
-
-## Selecting/Imputing/removing data
-
-```{r}
-selected_df <- vol_leak_index_dataset%>%mutate(
-  highest_q_leaking_index=if_else(
-    q_leaking_index %in% c('3','4'),1,0
-  ))%>%dplyr::select(
-    patientunitstayid
+selected_df <- vol_leak_index_dataset%>%select(
+     patientunitstayid
     ,hosp_mortality
     ,age_fixed
     ,gender
     ,final_charlson_score
     ,apache_iv
-    ,apachescore
-    ,predictedHospitalMortality
-    ,delta_sofa
-    ,totalFluid
-    ,highest_q_leaking_index
-    ,q_leaking_index
     ,leaking_index
+    ,q_leaking_index
+    ,delta_sofa
   )
-selected_df<-selected_df[complete.cases(selected_df),]
-
-selected_df$highest_q_leaking_index<-as.factor(selected_df$highest_q_leaking_index)
-selected_df$hosp_mort<-as.factor(selected_df$hosp_mort)
+# these variables are factors
 ```
 
-# Table 1
+# Exclusion Criteria 3
+
+*TODO: Improve hospital mortality, impute apache *
+
+*Please note there are several exclusion criteria and the order were they are applied is really important.*
+
+ - We are removing patients not in VLI Q2 or VLI Q3.
+ - We are removing cases with missing data.
 
 ```{r}
-table1(~ age_fixed + hosp_mort + gender + final_charlson_score + apache_iv  + delta_sofa + totalFluid + predictedHospitalMortality | highest_q_leaking_index, data=selected_df)
-```
+print('Number of patients in our dataset so far:')
+nrow(selected_df)
 
+selected_df<-selected_df[complete.cases(selected_df),]
+print('Number of patients after excluding patients with missing data:')
+nrow(selected_df)
+
+selected_df<-selected_df%>%filter(q_leaking_index %in% c('4','1'))
+print('Number of patients after excluding VLI Q2 and VLI Q3:')
+nrow(selected_df)
+```
 
 # Export dataset
 
 ```{r}
 write.csv(selected_df,'selected_df.csv')
 ```
-
-# Train and test datasets creation
-
-*This is not required for the Causal Inference Approach*
-
-## Spliting de-identified data into testing and training, balanced version.
-
-We want the data to be sampled randomly but always the same way and we want to be sure that train and test must be balanced.
-
-```{r}
-# Creating id for partition 
-selected_df['id']<- seq.int(nrow(selected_df))
-## set the seed to make our partition reproducible
-set.seed(123)
-# createDataPartition: "the random sampling is done within the levels of y when y is a factor in an attempt to balance the class distributions within the splits."
-## 75% of the sample size
-train_idx <- createDataPartition(as.factor(selected_df$hosp_mort), times = 1, p = 0.75, list=F)
-
-train <- selected_df[train_idx, ]
-test <- selected_df[-train_idx, ]
-
-#Checking outcome is actually balanced
-round(prop.table(table(train$hosp_mort)),2)
-round(prop.table(table(test$hosp_mort)),2)
-```
-
-## Separating datasets into outcome and exposures
-
-```{r}
-# train dataset
-train_X<-train[, names(train)!= "hosp_mort"]
-train_Y<-train$hosp_mort
-  
-# test dataset
-test_X<-test[, names(test)!= "hosp_mort"]
-test_Y<-test$hosp_mort 
-```
-
-
-
-
-
-
-

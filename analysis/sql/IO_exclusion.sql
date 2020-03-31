@@ -3,6 +3,7 @@
 -- Notes: cap_leak_index/analysis/sql/IO_exclusion.sql 
 --        cap_leak_index, 20190511 NYU Datathon
 --        eICU Collaborative Research Database v2.0.
+-- we want to exclude patients based on the amount of output gastric >= 500 OR stool >= 500 OR emesis >= 500
 -- ------------------------------------------------------------------
 WITH
   blood AS(
@@ -11,9 +12,7 @@ WITH
   FROM
     `physionet-data.eicu_crd.intakeoutput`
   WHERE
-    intakeoutputentryoffset BETWEEN -6*60
-    AND 36*60
-    AND LOWER(cellpath) LIKE '%blood%' ),
+    intakeoutputentryoffset BETWEEN -6*60 AND 36*60 AND LOWER(cellpath) LIKE '%blood%' ),
   others AS (
   SELECT
     patientunitstayid,

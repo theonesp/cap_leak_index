@@ -1,0 +1,283 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+# Train and test datasets creation
+
+*This is not required for the Causal Inference Approach*
+
+## Spliting de-identified data into testing and training, balanced version.
+
+We want the data to be sampled randomly but always the same way and we want to be sure that train and test must be balanced.
+
+```{r}
+# Creating id for partition 
+selected_df['id']<- seq.int(nrow(selected_df))
+## set the seed to make our partition reproducible
+set.seed(123)
+# createDataPartition: "the random sampling is done within the levels of y when y is a factor in an attempt to balance the class distributions within the splits."
+## 75% of the sample size
+train_idx <- createDataPartition(as.factor(selected_df$hosp_mort), times = 1, p = 0.75, list=F)
+
+train <- selected_df[train_idx, ]
+test <- selected_df[-train_idx, ]
+
+#Checking outcome is actually balanced
+round(prop.table(table(train$hosp_mort)),2)
+round(prop.table(table(test$hosp_mort)),2)
+```
+
+## Separating datasets into outcome and exposures
+
+```{r}
+# train dataset
+train_X<-train[, names(train)!= "hosp_mort"]
+train_Y<-train$hosp_mort
+  
+# test dataset
+test_X<-test[, names(test)!= "hosp_mort"]
+test_Y<-test$hosp_mort 
+```
+
+# ML: Random Hyperparameter Tunning
+
+The default method for optimizing tuning parameters in train is to use a grid search. This approach is usually effective but, in cases when there are many tuning parameters, it can be inefficient. An alternative is to use a combination of grid search and racing. Another is to use a random selection of tuning parameter combinations to cover the parameter space to a lesser extent.
+
+Using [caret](https://topepo.github.io/caret/).
+
+_We can adress later the tuning parameters approach_
+
+```{r}
+fitControl <- trainControl(method = "repeatedcv",
+                           number = 10,
+                           repeats = 10,
+                           classProbs = TRUE,
+                           summaryFunction = twoClassSummary,
+                           search = "random")
+```
+
+### Random selection of tuning parameter combinations
+
+Here we are first adressing several Machine Learning methods.
+There are more methods that can be addressed [Available Models in caret::train](https://rdrr.io/cran/caret/man/models.html)
+
+```{r}
+gbmFit <- train( hosp_mort ~ 
+                + predictedHospitalMortality
+                + final_charlson_score
+                + q_leaking_index
+                ,data = train,
+                method = "gbm",
+                trControl = fitControl,
+                verbose = FALSE,
+                metric = "ROC" ## Specify which metric to optimize
+)
+
+svmFit <- train( hosp_mort ~
+                + predictedHospitalMortality
+                + final_charlson_score
+                + q_leaking_index
+                ,data = train,
+                method = "svmRadial",
+                trControl = fitControl,
+                preProc = c("center", "scale"),
+                tuneLength = 8,
+                metric = "ROC" ## Specify which metric to optimize
+)
+
+rfFit <- train( hosp_mort ~
+                + predictedHospitalMortality
+                + final_charlson_score
+                + q_leaking_index
+                ,data = train,
+                method = "rf",
+                trControl = fitControl,
+                verbose = FALSE,
+                metric = "ROC" ## Specify which metric to optimize
+)
+
+xgbFit <- train( hosp_mort ~
+                + predictedHospitalMortality
+                + final_charlson_score
+                + q_leaking_index
+                ,data = train,
+                method = "xgbTree",
+                trControl = fitControl,
+                verbose = FALSE,
+                metric = "ROC" ## Specify which metric to optimize
+)
+
+nnFit <- train( hosp_mort ~
+                + predictedHospitalMortality
+                + final_charlson_score
+                + q_leaking_index
+                ,data = train,
+                method = "nnet",
+                trControl = fitControl,
+                verbose = FALSE,
+                metric = "ROC" ## Specify which metric to optimize
+)
+
+
+lrFit <- train( hosp_mort ~
+                + predictedHospitalMortality
+                + final_charlson_score
+                + q_leaking_index
+                ,data = train,
+                method = "LogitBoost",
+                trControl = fitControl,
+                verbose = FALSE,
+                metric = "ROC" ## Specify which metric to optimize
+)
+
+gamFit <- train( hosp_mort ~ 
+                + predictedHospitalMortality
+                + final_charlson_score
+                + q_leaking_index
+                ,data = train,
+                method = "gam",
+                trControl = fitControl,
+                verbose = T,
+                metric = "ROC" ## Specify which metric to optimize
+)
+```
+
+### Best models comprarision
+
+```{r}
+resamps <- resamples(list( gbmFit = gbmFit
+                          ,svmFit = svmFit
+                          ,rfFit  = rfFit
+                          ,xgbFit = xgbFit
+                          ,nnFit = nnFit
+                          ,lrFit = lrFit
+                          ,gamFit = gamFit
+                          ))
+summary_resamps<-summary(resamps)
+
+summary_resamps<-as.data.frame(summary_resamps$statistics)
+summary_resamps
+```
+
+
+## Selecting the model with the best performance
+
+```{r}
+# we save the best performing model (based on its ROC) and its name
+best_performing_model<-get(
+  rownames(summary_resamps[which(summary_resamps$ROC.Median==max(summary_resamps$ROC.Median))]
+)
+)
+#manually select it
+best_performing_model<-gamFit
+best_performing_model_name<-best_performing_model$method # extracts name as string from model
+```
+
+We can see **`r best_performing_model_name`** is the model with the best performance, with a Median AUROC of **`r max(summary_resamps$ROC.Median)`**.  
+
+Its best Random Hyperparameter Tune was:  
+`r best_performing_model$bestTune`
+
+## Evaluating the predictor on our test dataset
+
+### Creating prediction-probabilities dataset
+
+```{r}
+prediction_probabilities<-predict(best_performing_model, newdata = test,type = "prob") # We create the probabilities dataset using our best performing model.
+
+final_predictions<-cbind(test_Y,prediction_probabilities) # we bind our prediction with the actual data
+final_predictions<-rename(final_predictions, obs = test_Y) # the function twoClassSummary reads the actual outcome as 'obs'
+final_predictions['pred']<-ifelse(final_predictions$ALIVE > .83 # we have set the threshold in .5 this can be optimized until best performance is achieved
+                                  , 'ALIVE','EXPIRED'
+)
+
+# Setting proper data types
+final_predictions$obs<-as.factor(final_predictions$obs)
+final_predictions$pred<-as.factor(final_predictions$pred)
+```
+
+### Geting evaluation insights
+
+```{r}
+insights_1<-as.data.frame(twoClassSummary(final_predictions, lev = levels(final_predictions$obs)))
+names(insights_1)<-best_performing_model_name
+insights_1<-t(insights_1) # we traspose it for better merging it.
+
+insights_2<-as.data.frame(prSummary(final_predictions, lev = levels(final_predictions$obs)))
+names(insights_2)<-best_performing_model_name
+insights_2<-t(insights_2) # we traspose it for better merging it.
+
+evaluation_insights<-cbind(insights_1,insights_2)
+evaluation_insights<-as.data.frame(evaluation_insights)
+evaluation_insights<-round(evaluation_insights,2)
+evaluation_insights$Recall <-NULL # We already have specificity which is = recall
+evaluation_insights$AUC<-NULL # We select the ROC from the first package so we remove this parameter
+#renaming metric
+evaluation_insights<-evaluation_insights%>%rename(AUROC = ROC) 
+
+# we traspose the data for its representation
+evaluation_insights<-t(evaluation_insights)
+evaluation_insights<-as.data.frame(evaluation_insights)
+evaluation_insights['Metrics']<-rownames(evaluation_insights)
+
+# how to order the bars
+evaluation_insights$Insights <- factor(evaluation_insights$Metrics
+                     , levels = unique(evaluation_insights$Insights)[order(evaluation_insights$Metrics, decreasing = T)])
+
+p <- plot_ly(
+  data = evaluation_insights,
+  x = evaluation_insights[,1],
+  y = ~Metrics,
+  text = evaluation_insights[,1],
+  textposition='auto',
+  type = "bar") %>%
+  layout( title = paste(best_performing_model_name,"Model Metrics"))
+
+p
+```
+
+## Variables Importance
+
+```{r message=TRUE, warning=TRUE}
+ggthemr('flat')
+varimp<-ggplot(varImp(best_performing_model, scale = T))+theme_minimal() 
+ggplotly(varimp)
+```
+
+## Odds ratio 
+
+Valid for gam logreg and glm.
+
+We are using the or_gam function
+
+```{r}
+# Odds Ratio Calculations
+
+train_for_or_calculation<-train
+# or_gam only deals with numerical vars
+train_for_or_calculation$hosp_mort[train_for_or_calculation$hosp_mort=='ALIVE']<-0 
+train_for_or_calculation$hosp_mort[train_for_or_calculation$hosp_mort=='EXPIRED']<-1
+train_for_or_calculation$hosp_mort<-as.numeric(train_for_or_calculation$hosp_mort)
+
+# We need to run the gam separately (the function I am using is not compatible with th gam object caret creates, so I am training a new model just using gam().
+
+gam_for_or_calculation<-gam(hosp_mort ~ 
+                + predictedHospitalMortality
+                + final_charlson_score
+                + q_leaking_index
+                ,data = train_for_or_calculation)
+
+# every exposure needs to be addressed separately the min value as a reference.
+# every factor in the categorical exposures need to be addressed separately taking into account the min value as a reference.
+
+# q_leaking_index Ors
+or_gam(data = train_for_or_calculation, model = gam_for_or_calculation, pred = "q_leaking_index",values = c("1", "2"))
+or_gam(data = train_for_or_calculation, model = gam_for_or_calculation, pred = "q_leaking_index",values = c("1", "3"))
+or_gam(data = train_for_or_calculation, model = gam_for_or_calculation, pred = "q_leaking_index",values = c("1", "4"))
+
+# rest of the exposures
+
+or_gam(data = train_for_or_calculation, model = gam_for_or_calculation, pred = "predictedHospitalMortality",values = c(min(train_for_or_calculation$predictedHospitalMortality), max(train_for_or_calculation$predictedHospitalMortality)))
+or_gam(data = train_for_or_calculation, model = gam_for_or_calculation, pred = "final_charlson_score",values = c(min(train_for_or_calculation$final_charlson_score), max(train_for_or_calculation$final_charlson_score)))
+```

@@ -35,268 +35,137 @@ library(ggplot2)
 library(survey)
 library(table1)
 library(sandwich)
+library(dplyr)
+library(robustHD)
+center_scale <- function(x) {
+    scale(x, scale = FALSE)
+}
 ```
 
-# ML: Random Hyperparameter Tunning
+# Selecting variables
 
-The default method for optimizing tuning parameters in train is to use a grid search. This approach is usually effective but, in cases when there are many tuning parameters, it can be inefficient. An alternative is to use a combination of grid search and racing. Another is to use a random selection of tuning parameter combinations to cover the parameter space to a lesser extent.
-
-Using [caret](https://topepo.github.io/caret/).
-
-_We can adress later the tuning parameters approach_
+ - We are just selecting the variables we need for the model or for the exclusion criteria.
+ - We are creating the variable highest_q_leaking_index.
 
 ```{r}
-fitControl <- trainControl(method = "repeatedcv",
-                           number = 10,
-                           repeats = 10,
-                           classProbs = TRUE,
-                           summaryFunction = twoClassSummary,
-                           search = "random")
+selected_df <- vol_leak_index_dataset%>%mutate(
+  highest_q_leaking_index=if_else(
+    q_leaking_index %in% c('4'),1,0
+  ))%>%dplyr::select(
+    patientunitstayid
+    ,hosp_mortality
+    ,age_fixed
+    ,gender
+    ,final_charlson_score
+    ,apache_iv
+    #,apachescore
+    #,predictedHospitalMortality
+    ,delta_sofa
+    #,totalFluid
+    ,highest_q_leaking_index
+    ,q_leaking_index
+    ,leaking_index
+  )
+# these variables are factors
+selected_df$highest_q_leaking_index<-as.factor(selected_df$highest_q_leaking_index)
+selected_df$hosp_mort<-as.factor(selected_df$hosp_mort)
 ```
 
-### Random selection of tuning parameter combinations
+# Final Exclusion Criteria.
 
-Here we are first adressing several Machine Learning methods.
-There are more methods that can be addressed [Available Models in caret::train](https://rdrr.io/cran/caret/man/models.html)
+ - We are removing patients not in VLI Q2 or VLI Q3.
+ - We are removing cases with missing data.
 
 ```{r}
-gbmFit <- train( hosp_mort ~ 
-                + predictedHospitalMortality
-                + final_charlson_score
-                + q_leaking_index
-                ,data = train,
-                method = "gbm",
-                trControl = fitControl,
-                verbose = FALSE,
-                metric = "ROC" ## Specify which metric to optimize
-)
+print('Number of patients in our initial dataset:')
+nrow(selected_df)
 
-svmFit <- train( hosp_mort ~
-                + predictedHospitalMortality
-                + final_charlson_score
-                + q_leaking_index
-                ,data = train,
-                method = "svmRadial",
-                trControl = fitControl,
-                preProc = c("center", "scale"),
-                tuneLength = 8,
-                metric = "ROC" ## Specify which metric to optimize
-)
+selected_df<-selected_df[complete.cases(selected_df),]
+print('Number of patients after excluding patients with missing data:')
+nrow(selected_df)
 
-rfFit <- train( hosp_mort ~
-                + predictedHospitalMortality
-                + final_charlson_score
-                + q_leaking_index
-                ,data = train,
-                method = "rf",
-                trControl = fitControl,
-                verbose = FALSE,
-                metric = "ROC" ## Specify which metric to optimize
-)
-
-xgbFit <- train( hosp_mort ~
-                + predictedHospitalMortality
-                + final_charlson_score
-                + q_leaking_index
-                ,data = train,
-                method = "xgbTree",
-                trControl = fitControl,
-                verbose = FALSE,
-                metric = "ROC" ## Specify which metric to optimize
-)
-
-nnFit <- train( hosp_mort ~
-                + predictedHospitalMortality
-                + final_charlson_score
-                + q_leaking_index
-                ,data = train,
-                method = "nnet",
-                trControl = fitControl,
-                verbose = FALSE,
-                metric = "ROC" ## Specify which metric to optimize
-)
-
-
-lrFit <- train( hosp_mort ~
-                + predictedHospitalMortality
-                + final_charlson_score
-                + q_leaking_index
-                ,data = train,
-                method = "LogitBoost",
-                trControl = fitControl,
-                verbose = FALSE,
-                metric = "ROC" ## Specify which metric to optimize
-)
-
-gamFit <- train( hosp_mort ~ 
-                + predictedHospitalMortality
-                + final_charlson_score
-                + q_leaking_index
-                ,data = train,
-                method = "gam",
-                trControl = fitControl,
-                verbose = T,
-                metric = "ROC" ## Specify which metric to optimize
-)
+#selected_df<-selected_df%>%filter(q_leaking_index %in% c('4','1'))
+print('Number of patients after excluding VLI Q2 and VLI Q3:')
+nrow(selected_df)
 ```
 
-### Best models comprarision
+# Table 1 
+
+*Stratified by highest_q_leaking_index*
 
 ```{r}
-resamps <- resamples(list( gbmFit = gbmFit
-                          ,svmFit = svmFit
-                          ,rfFit  = rfFit
-                          ,xgbFit = xgbFit
-                          ,nnFit = nnFit
-                          ,lrFit = lrFit
-                          ,gamFit = gamFit
-                          ))
-summary_resamps<-summary(resamps)
-
-summary_resamps<-as.data.frame(summary_resamps$statistics)
-summary_resamps
+table1(~ age_fixed + hosp_mort + gender + final_charlson_score + apache_iv  + delta_sofa  | highest_q_leaking_index, data=selected_df)
 ```
 
+# Addressing variables Distribution
 
-## Selecting the model with the best performance
+## Distribution (Initial)
+
+Below we can see how variables that will be used in our model are actually distributed, for those were it was required, we log transformed and standardized them.
 
 ```{r}
-# we save the best performing model (based on its ROC) and its name
-best_performing_model<-get(
-  rownames(summary_resamps[which(summary_resamps$ROC.Median==max(summary_resamps$ROC.Median))]
-)
-)
-#manually select it
-best_performing_model<-gamFit
-best_performing_model_name<-best_performing_model$method # extracts name as string from model
+par(mfrow=c(1,2))
+for (i in 2:ncol(selected_df)) {
+colname<-names(selected_df[i])  
+ifelse( nrow(unique(selected_df[i]))<10  
+        ,barplot(table(selected_df[i]),main=colname,xlab=colname)
+        ,hist(as.numeric(unlist(selected_df[,i]))
+        ,main = paste("Histogram of" ,colname),xlab=colname)
+         )
+cat('Summary of ',colname,'\n',sep = '')  
+cat(summary(selected_df[i]),'\n',sep = '|')
+}
 ```
 
-We can see **`r best_performing_model_name`** is the model with the best performance, with a Median AUROC of **`r max(summary_resamps$ROC.Median)`**.  
+### Normalizing and standardizing variables
 
-Its best Random Hyperparameter Tune was:  
-`r best_performing_model$bestTune`
-
-## Evaluating the predictor on our test dataset
-
-### Creating prediction-probabilities dataset
+We applied log to the exposures that are skewed to log transform them.  
+We also standardized (mean centered) the exposure.
 
 ```{r}
-prediction_probabilities<-predict(best_performing_model, newdata = test,type = "prob") # We create the probabilities dataset using our best performing model.
-
-final_predictions<-cbind(test_Y,prediction_probabilities) # we bind our prediction with the actual data
-final_predictions<-rename(final_predictions, obs = test_Y) # the function twoClassSummary reads the actual outcome as 'obs'
-final_predictions['pred']<-ifelse(final_predictions$ALIVE > .83 # we have set the threshold in .5 this can be optimized until best performance is achieved
-                                  , 'ALIVE','EXPIRED'
-)
-
-# Setting proper data types
-final_predictions$obs<-as.factor(final_predictions$obs)
-final_predictions$pred<-as.factor(final_predictions$pred)
+selected_df$apache_iv<-center_scale(log(selected_df$apache_iv))
+selected_df$final_charlson_score<-log(selected_df$final_charlson_score+1)
 ```
 
-### Geting evaluation insights
+We normalized and standardized apache_IV and final_charlson_score
+
+
+
+# Distribution (After data cleansing) and variables creation
 
 ```{r}
-insights_1<-as.data.frame(twoClassSummary(final_predictions, lev = levels(final_predictions$obs)))
-names(insights_1)<-best_performing_model_name
-insights_1<-t(insights_1) # we traspose it for better merging it.
-
-insights_2<-as.data.frame(prSummary(final_predictions, lev = levels(final_predictions$obs)))
-names(insights_2)<-best_performing_model_name
-insights_2<-t(insights_2) # we traspose it for better merging it.
-
-evaluation_insights<-cbind(insights_1,insights_2)
-evaluation_insights<-as.data.frame(evaluation_insights)
-evaluation_insights<-round(evaluation_insights,2)
-evaluation_insights$Recall <-NULL # We already have specificity which is = recall
-evaluation_insights$AUC<-NULL # We select the ROC from the first package so we remove this parameter
-#renaming metric
-evaluation_insights<-evaluation_insights%>%rename(AUROC = ROC) 
-
-# we traspose the data for its representation
-evaluation_insights<-t(evaluation_insights)
-evaluation_insights<-as.data.frame(evaluation_insights)
-evaluation_insights['Metrics']<-rownames(evaluation_insights)
-
-# how to order the bars
-evaluation_insights$Insights <- factor(evaluation_insights$Metrics
-                     , levels = unique(evaluation_insights$Insights)[order(evaluation_insights$Metrics, decreasing = T)])
-
-p <- plot_ly(
-  data = evaluation_insights,
-  x = evaluation_insights[,1],
-  y = ~Metrics,
-  text = evaluation_insights[,1],
-  textposition='auto',
-  type = "bar") %>%
-  layout( title = paste(best_performing_model_name,"Model Metrics"))
-
-p
+par(mfrow=c(1,2))
+for (i in 2:ncol(selected_df)) {
+colname<-names(selected_df[i])  
+ifelse( nrow(unique(selected_df[i]))<10  
+        ,barplot(table(selected_df[i]),main=colname,xlab=colname)
+        ,hist(as.numeric(unlist(selected_df[,i]))
+        ,main = paste("Histogram of" ,colname),xlab=colname)
+         )
+cat('Summary of ',colname,'\n',sep = '')  
+cat(summary(selected_df[i]),'\n',sep = '|')
+}
 ```
 
-## Variables Importance
-
-```{r message=TRUE, warning=TRUE}
-ggthemr('flat')
-varimp<-ggplot(varImp(best_performing_model, scale = T))+theme_minimal() 
-ggplotly(varimp)
-```
-
-## Odds ratio 
-
-Valid for gam logreg and glm.
-
-We are using the or_gam function
-
-```{r}
-# Odds Ratio Calculations
-
-train_for_or_calculation<-train
-# or_gam only deals with numerical vars
-train_for_or_calculation$hosp_mort[train_for_or_calculation$hosp_mort=='ALIVE']<-0 
-train_for_or_calculation$hosp_mort[train_for_or_calculation$hosp_mort=='EXPIRED']<-1
-train_for_or_calculation$hosp_mort<-as.numeric(train_for_or_calculation$hosp_mort)
-
-# We need to run the gam separately (the function I am using is not compatible with th gam object caret creates, so I am training a new model just using gam().
-
-gam_for_or_calculation<-gam(hosp_mort ~ 
-                + predictedHospitalMortality
-                + final_charlson_score
-                + q_leaking_index
-                ,data = train_for_or_calculation)
-
-# every exposure needs to be addressed separately the min value as a reference.
-# every factor in the categorical exposures need to be addressed separately taking into account the min value as a reference.
-
-# q_leaking_index Ors
-or_gam(data = train_for_or_calculation, model = gam_for_or_calculation, pred = "q_leaking_index",values = c("1", "2"))
-or_gam(data = train_for_or_calculation, model = gam_for_or_calculation, pred = "q_leaking_index",values = c("1", "3"))
-or_gam(data = train_for_or_calculation, model = gam_for_or_calculation, pred = "q_leaking_index",values = c("1", "4"))
-
-# rest of the exposures
-
-or_gam(data = train_for_or_calculation, model = gam_for_or_calculation, pred = "predictedHospitalMortality",values = c(min(train_for_or_calculation$predictedHospitalMortality), max(train_for_or_calculation$predictedHospitalMortality)))
-or_gam(data = train_for_or_calculation, model = gam_for_or_calculation, pred = "final_charlson_score",values = c(min(train_for_or_calculation$final_charlson_score), max(train_for_or_calculation$final_charlson_score)))
-```
+We can see they are properly mean centered and standardized.
 
 # Causal inference
 
 ## Propensity Score Matching - logistic regression
 
+We are not including totalFluid in the model since it is highly correlated with VLI.
+
 ```{r}
-center_scale <- function(x) {
-    scale(x, scale = FALSE)
-}
 #first of all we create a copy of the dataset
 vli_prop_score_dataset<-selected_df
+
 # Fit a propensity score model: logistic regression
 # outcome is the treatment here.
 ps_model <- glm( highest_q_leaking_index ~ 
-                  center_scale(log(apache_iv))
+                  apache_iv
                 + age_fixed
                 + gender
-                + log(final_charlson_score+1)
-                + log(totalFluid)
+                + final_charlson_score
                 , family=binomial()
                 , data=vli_prop_score_dataset)
 
@@ -313,7 +182,7 @@ pscore<-ps_model$fitted.values
 treatment_pscore<-cbind(vli_prop_score_dataset%>%dplyr::select(highest_q_leaking_index),pscore)
 
 ggplot(treatment_pscore, aes(x=pscore, fill = highest_q_leaking_index)) + 
-  geom_histogram(alpha = 0.3,position="identity")+scale_fill_manual(name="Treatment: Prob of Highest Q of VLI",values=c("#1abc9c","#f1c40f","#2980b9","#e74c3c"),labels=c("Q1","The rest"))+theme_minimal()
+  geom_histogram(alpha = 0.5,position="identity")+scale_fill_manual(name="Treatment: Prob of Highest Q of VLI",values=c("#1abc9c","#f1c40f")                                                                ,labels=c("Q1","Q4"))+theme_minimal()+ggtitle('Distribution of propensity score')
 ```
 
 
@@ -332,7 +201,9 @@ hr_prop_score_dataset$weight<-as.numeric(as.character(hr_prop_score_dataset$weig
 ggplot(hr_prop_score_dataset, aes(x = weight, fill = highest_q_leaking_index)) +
    geom_density(alpha = 0.5, colour = "grey50") +
    geom_rug() +
-   scale_x_log10(breaks = c(1, 5, 10, 20, 40)) +   ggtitle("Distribution of inverse probability weights")+ scale_fill_manual(name="Treatment: Highest Quartile of VLI",values=c("#1abc9c","#f1c40f","#2980b9","#e74c3c"),labels=c("Not on Q4","On Q4"))+theme_minimal()
+   scale_x_log10(breaks = c(1, 5, 10, 20, 40)) +   ggtitle("Distribution of inverse probability weights")+ scale_fill_manual(name="Treatment: Highest Quartile of VLI",values=c("#1abc9c","#f1c40f")
+                                                                                                                            # ,labels=c("Q1","Q4")
+                                                                                                                             )+theme_minimal()
 
 # apply weights to data
 weighted_data<-svydesign(ids = ~ patientunitstayid, data = hr_prop_score_dataset,
@@ -341,10 +212,10 @@ weighted_data<-svydesign(ids = ~ patientunitstayid, data = hr_prop_score_dataset
 
 # weighted table 1
 
-weighedtable<- svyCreateTableOne( vars= c("age_fixed", "gender","final_charlson_score","predictedHospitalMortality"), strata = "highest_q_leaking_index", data = weighted_data, test = F)
+#weighedtable<- svyCreateTableOne( vars= c("age", "gender","final_charlson_score","predictedHospitalMortality"), strata = "highest_q_leaking_index", data = weighted_data, test = F)
 
 # weighted table 1 wih standarized mean differences (SMD)
-as.data.frame(print(weighedtable,smd=T))
+#as.data.frame(print(weighedtable,smd=T))
 # Ignore SD and sample sizes, ONLY SMD is reliable
 
 ```
@@ -362,7 +233,7 @@ In tableone: Ignore SD and sample sizes, ONLY SMD is reliable
 # Obtaining causal relative risk. Weighed GLM
 
 glm_model_rr<-glm(
-  as.integer(hosp_mort) ~ 
+  hosp_mortality ~ 
   as.factor(highest_q_leaking_index)  # treatment is the only exposure now
 , weights = weight  
 , family = binomial(link = log) # we are using the log link since we are interested in the relative risk
@@ -380,10 +251,10 @@ SE<-sqrt(diag(vcovHC(glm_model_rr,type = "HC0"))) # getting the standard error.
 # we get point estimate and CI for relative risk
 
 beta_causal_relative_risk<-exp(betaiptw[2]) # we need to exponientiate since we logged before
-lCI_q1<-exp(betaiptw[2]-1.96*SE[2])
-uCI_q1<-exp(betaiptw[2]+1.96*SE[2])
+lCI<-exp(betaiptw[2]-1.96*SE[2])
+uCI<-exp(betaiptw[2]+1.96*SE[2])
 
-beta_final<-as.data.frame(cbind(beta_causal_relative_risk, lCI_q1, uCI_q1
+beta_final<-as.data.frame(cbind(beta_causal_relative_risk, lCI, uCI
                     ))
 
 rownames(beta_final)<-''
@@ -397,7 +268,7 @@ beta_final
 # Obtaining Obtaining risk difference with CI
 
 glm_model_diff<-glm(
-  as.integer(hosp_mort) ~ 
+ hosp_mortality ~ 
   as.factor(highest_q_leaking_index) # treatment is the only exposure now
 , weights = weight  
 , family = binomial(link = 'identity') # we are using the identity link since we are interested in risk difference
@@ -415,10 +286,10 @@ SE<-sqrt(diag(vcovHC(glm_model_diff,type = "HC0"))) # getting the standard error
 # we get point estimate and CI for relative risk
 
 beta_risk_diference<-exp(betaiptw[2]) # we need to exponientiate since we logged before
-lCI_q1<-exp(betaiptw[2]-1.96*SE[2])
-uCI_q1<-exp(betaiptw[2]+1.96*SE[2])
+lCI<-exp(betaiptw[2]-1.96*SE[2])
+uCI<-exp(betaiptw[2]+1.96*SE[2])
 
-beta_final<-as.data.frame(cbind(beta_risk_diference, lCI_q1, uCI_q1
+beta_final<-as.data.frame(cbind(beta_risk_diference, lCI, uCI
                     ))
 
 rownames(beta_final)<-''
@@ -453,10 +324,10 @@ SE<-sqrt(diag(vcovHC(glm_model_rr,type = "HC0"))) # getting the standard error.
 # we get point estimate and CI for relative risk
 
 beta_causal_relative_risk<-exp(betaiptw[2]) # we need to exponientiate since we logged before
-lCI_q1<-exp(betaiptw[2]-1.96*SE[2])
-uCI_q1<-exp(betaiptw[2]+1.96*SE[2])
+lCI<-exp(betaiptw[2]-1.96*SE[2])
+uCI<-exp(betaiptw[2]+1.96*SE[2])
 
-beta_final<-as.data.frame(cbind(beta_causal_relative_risk, lCI_q1, uCI_q1
+beta_final<-as.data.frame(cbind(beta_causal_relative_risk, lCI, uCI
                     ))
 
 rownames(beta_final)<-''
@@ -488,10 +359,10 @@ SE<-sqrt(diag(vcovHC(glm_model_diff,type = "HC0"))) # getting the standard error
 # we get point estimate and CI for relative risk
 
 beta_risk_diference<-exp(betaiptw[2]) # we need to exponientiate since we logged before
-lCI_q1<-exp(betaiptw[2]-1.96*SE[2])
-uCI_q1<-exp(betaiptw[2]+1.96*SE[2])
+lCI<-exp(betaiptw[2]-1.96*SE[2])
+uCI<-exp(betaiptw[2]+1.96*SE[2])
 
-beta_final<-as.data.frame(cbind(beta_risk_diference, lCI_q1, uCI_q1
+beta_final<-as.data.frame(cbind(beta_risk_diference, lCI, uCI
                     ))
 
 rownames(beta_final)<-''
