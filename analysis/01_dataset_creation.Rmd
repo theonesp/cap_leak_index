@@ -27,6 +27,7 @@ library(Hmisc)
 library(caret)
 library(plotly)
 library(table1)
+library(Amelia)
 impute.median <- function(x) replace(x, is.na(x), median(x, na.rm = TRUE))
 ```
 
@@ -155,7 +156,7 @@ nrow(patient_included)
 
 ```
 
-# Exclusion criteria 2
+# Exclusion criteria 2 and JOIN
 
 Exclusion criteria and dataset join (we need new datasets to address exclusion criteria)
 
@@ -221,6 +222,8 @@ print('patients with fluid intake greater than 0')
 nrow(vol_leak_index_dataset)
 ```
 
+
+
 # Variables creation
 
 ## Leaking Index
@@ -236,6 +239,8 @@ vol_leak_index_dataset<-vol_leak_index_dataset%>%
 ```
 
 ### VLI Distribution
+
+*Before addressing outliers*
 
 ```{r}
 colname<-names(vol_leak_index_dataset['leaking_index'])  
@@ -260,24 +265,20 @@ vol_leak_index_dataset$leaking_index[which(vol_leak_index_dataset$leaking_index 
 #vol_leak_index_dataset<-vol_leak_index_dataset%>%mutate(leaking_index=winsorize(leaking_index))
 ```
 
-### Data Imputation
+### VLI Distribution
+
+*After addressing outliers*
 
 ```{r}
-vol_leak_index_dataset<-vol_leak_index_dataset%>%
-  mutate(
-    # leaking_index=((mean_hct_24_36hrs/first_hct_6hrs)-1)*body_surface_area*1561
-    leaking_index=impute.median(leaking_index)
-  )  
-```
+colname<-names(vol_leak_index_dataset['leaking_index'])  
+ifelse( nrow(unique(vol_leak_index_dataset['leaking_index']))<10  
+        ,barplot(table(vol_leak_index_dataset['leaking_index']),main=colname,xlab = colname)
+        ,hist(as.numeric(unlist(vol_leak_index_dataset['leaking_index']))
+        ,main = paste("Histogram of" ,colname),xlab=colname)
+         )
+cat('Summary of ',colname,'\n',sep = '')  
+cat(summary(vol_leak_index_dataset['leaking_index']),'\n',sep = '|')
 
-## Derived Leaking Index Variables
-
-```{r}
-vol_leak_index_dataset<-vol_leak_index_dataset%>%
-  mutate(
-     q_leaking_index=as.factor(as.numeric(cut2(leaking_index, g=4)))
-    ,bin_leaking_index=if_else(q_leaking_index==4,1,0)
-)
 ```
 
 ## SOFA Delta creation
@@ -323,7 +324,7 @@ vol_leak_index_dataset<-vol_leak_index_dataset%>%
  - We are just selecting the variables we need for the model or for the exclusion criteria.
 
 ```{r}
-selected_df <- vol_leak_index_dataset%>%select(
+selected_df <- vol_leak_index_dataset%>%dplyr::select(
      patientunitstayid
     ,hosp_mortality
     ,age_fixed
@@ -331,10 +332,41 @@ selected_df <- vol_leak_index_dataset%>%select(
     ,final_charlson_score
     ,apache_iv
     ,leaking_index
-    ,q_leaking_index
     ,delta_sofa
   )
 # these variables are factors
+```
+
+# Data Imputation
+
+### VLI
+
+```{r}
+selected_df<-selected_df%>%
+  mutate(
+    # leaking_index=((mean_hct_24_36hrs/first_hct_6hrs)-1)*body_surface_area*1561
+    leaking_index=impute.median(leaking_index)
+  )  
+```
+
+## Apache Median imputation
+
+```{r}
+selected_df<-selected_df%>%
+  mutate(
+    apache_iv=impute.median(apache_iv)
+  )  
+```
+
+
+
+## Mortality imputation
+
+```{r}
+selected_df<-selected_df%>%
+  mutate(
+    hosp_mortality=if_else(is.na(hosp_mortality),0,as.double( hosp_mortality))
+  )  
 ```
 
 # Exclusion Criteria 3
@@ -353,11 +385,46 @@ nrow(selected_df)
 selected_df<-selected_df[complete.cases(selected_df),]
 print('Number of patients after excluding patients with missing data:')
 nrow(selected_df)
+```
 
-selected_df<-selected_df%>%filter(q_leaking_index %in% c('4','1'))
+# New Variables Creation
+
+## Leaking Index Quartile
+
+```{r}
+selected_df<-selected_df%>%
+  mutate(
+     q_leaking_index=as.factor(as.numeric(cut2(leaking_index, g=4)))
+)
+```
+
+## Highest_q_leaking_index
+
+```{r}
+selected_df<-selected_df%>%mutate(
+  highest_q_leaking_index=if_else(q_leaking_index %in% c('4','3'),1,0 )
+)
+
+selected_df$highest_q_leaking_index<-as.factor(selected_df$highest_q_leaking_index)
+```
+
+# Exclusion criteria 4
+
+```{r}
+#selected_df<-selected_df%>%filter(q_leaking_index %in% c('4','1'))
 print('Number of patients after excluding VLI Q2 and VLI Q3:')
 nrow(selected_df)
 ```
+
+# Table 1 
+
+*Stratified by highest_q_leaking_index*
+
+```{r}
+table1(~ age_fixed + hosp_mortality + gender + final_charlson_score + apache_iv  + delta_sofa  | highest_q_leaking_index, data=selected_df)
+```
+
+
 
 # Export dataset
 

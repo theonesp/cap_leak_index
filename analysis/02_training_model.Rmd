@@ -42,60 +42,7 @@ center_scale <- function(x) {
 }
 ```
 
-# Selecting variables
 
- - We are just selecting the variables we need for the model or for the exclusion criteria.
- - We are creating the variable highest_q_leaking_index.
-
-```{r}
-selected_df <- vol_leak_index_dataset%>%mutate(
-  highest_q_leaking_index=if_else(
-    q_leaking_index %in% c('4'),1,0
-  ))%>%dplyr::select(
-    patientunitstayid
-    ,hosp_mortality
-    ,age_fixed
-    ,gender
-    ,final_charlson_score
-    ,apache_iv
-    #,apachescore
-    #,predictedHospitalMortality
-    ,delta_sofa
-    #,totalFluid
-    ,highest_q_leaking_index
-    ,q_leaking_index
-    ,leaking_index
-  )
-# these variables are factors
-selected_df$highest_q_leaking_index<-as.factor(selected_df$highest_q_leaking_index)
-selected_df$hosp_mort<-as.factor(selected_df$hosp_mort)
-```
-
-# Final Exclusion Criteria.
-
- - We are removing patients not in VLI Q2 or VLI Q3.
- - We are removing cases with missing data.
-
-```{r}
-print('Number of patients in our initial dataset:')
-nrow(selected_df)
-
-selected_df<-selected_df[complete.cases(selected_df),]
-print('Number of patients after excluding patients with missing data:')
-nrow(selected_df)
-
-#selected_df<-selected_df%>%filter(q_leaking_index %in% c('4','1'))
-print('Number of patients after excluding VLI Q2 and VLI Q3:')
-nrow(selected_df)
-```
-
-# Table 1 
-
-*Stratified by highest_q_leaking_index*
-
-```{r}
-table1(~ age_fixed + hosp_mort + gender + final_charlson_score + apache_iv  + delta_sofa  | highest_q_leaking_index, data=selected_df)
-```
 
 # Addressing variables Distribution
 
@@ -206,9 +153,7 @@ ggplot(hr_prop_score_dataset, aes(x = weight, fill = highest_q_leaking_index)) +
                                                                                                                              )+theme_minimal()
 
 # apply weights to data
-weighted_data<-svydesign(ids = ~ patientunitstayid, data = hr_prop_score_dataset,
-                         weights = ~weight
-                         )
+weighted_data<-svydesign(ids = ~ patientunitstayid, data = hr_prop_score_dataset, weights = ~weight )
 
 # weighted table 1
 
