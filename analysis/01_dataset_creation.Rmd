@@ -96,9 +96,6 @@ IO_exclusion <- run_query(getSQL('sql/IO_exclusion.sql'))
 
 charlson_score <- run_query(getSQL('sql/charlson_score.sql'))
 
-# gathers patientunitstayids with reliable fluid data
-all_reliable <- run_query (getSQL("sql/all_reliable.sql"))
-
 #demographic
 demographic <- run_query(getSQL('sql/demographics.sql'))
 
@@ -124,14 +121,7 @@ patient_inexcluded_icd9 <- run_query(getSQL('sql/patient_inexcluded_icd9.sql'))
 sepsis <- run_query(getSQL('sql/sepsis.sql'))
 
 # Fluid data
-fluidIntake <- run_query(getSQL("sql/intake_output.sql"))
-```
-
-## Fluid intake calculation
-
-```{r}
-fluidIntake<-fluidIntake%>%
-  mutate( totalFluid = (intakes-outputs))
+intake <- run_query(getSQL("sql/intake.sql"))
 ```
 
 # Exclusion criteria 1
@@ -186,7 +176,7 @@ nrow(selected_cohort)
 vol_leak_index_dataset<-Reduce(function(...) merge(..., all.x=TRUE), list(
    selected_cohort
   ,hct
-  ,fluidIntake
+  ,intake_output
   ,apache_related
   ,charlson_score
   ,sofa_total_day1_to_day4
@@ -216,7 +206,7 @@ nrow(vol_leak_index_dataset)
 vol_leak_index_dataset<-sqldf('
 SELECT * FROM
 vol_leak_index_dataset
-WHERE totalFluid > 0 ')
+WHERE intakes > 0 ')
 
 print('patients with fluid intake greater than 0')
 nrow(vol_leak_index_dataset)
@@ -234,7 +224,7 @@ nrow(vol_leak_index_dataset)
 vol_leak_index_dataset<-vol_leak_index_dataset%>%
   mutate(
     # leaking_index=((mean_hct_24_36hrs/first_hct_6hrs)-1)*body_surface_area*1561
-    leaking_index=((mean_hct_24_36hrs - first_hct_6hrs) / totalFluid) * body_surface_area
+    leaking_index=((mean_hct_24_36hrs - first_hct_6hrs) / intakes) * body_surface_area
   )  
 ```
 
@@ -257,15 +247,12 @@ cat(summary(vol_leak_index_dataset['leaking_index']),'\n',sep = '|')
 ### Addressing outliers
 
 ```{r}
-## Median imputation for outliers
+## We are removing VLI outliers
 outliers <- boxplot(vol_leak_index_dataset$leaking_index, plot=FALSE)$out 
-vol_leak_index_dataset$leaking_index[which(vol_leak_index_dataset$leaking_index %in% outliers)]<-median(vol_leak_index_dataset$leaking_index)
-
-## Windsorization Clean data by means of winsorization, i.e., by shrinking outlying observations to the border of the main part of the data.
-#vol_leak_index_dataset<-vol_leak_index_dataset%>%mutate(leaking_index=winsorize(leaking_index))
+vol_leak_index_dataset$leaking_index[which(vol_leak_index_dataset$leaking_index %in% outliers)]<-NA
 ```
 
-### VLI Distribution
+### VLI Distribution after removing outliers
 
 *After addressing outliers*
 
@@ -339,39 +326,12 @@ selected_df <- vol_leak_index_dataset%>%dplyr::select(
 
 # Data Imputation
 
-### VLI
-
-```{r}
-selected_df<-selected_df%>%
-  mutate(
-    # leaking_index=((mean_hct_24_36hrs/first_hct_6hrs)-1)*body_surface_area*1561
-    leaking_index=impute.median(leaking_index)
-  )  
-```
-
-## Apache Median imputation
-
-```{r}
-selected_df<-selected_df%>%
-  mutate(
-    apache_iv=impute.median(apache_iv)
-  )  
-```
-
-
-
 ## Mortality imputation
 
-```{r}
-selected_df<-selected_df%>%
-  mutate(
-    hosp_mortality=if_else(is.na(hosp_mortality),0,as.double( hosp_mortality))
-  )  
-```
+*TODO: Improve hospital mortality extraction, don't impute*
 
 # Exclusion Criteria 3
 
-*TODO: Improve hospital mortality, impute apache *
 
 *Please note there are several exclusion criteria and the order were they are applied is really important.*
 
