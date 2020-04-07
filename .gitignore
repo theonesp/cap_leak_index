@@ -2,8 +2,3 @@
 .Rhistory
 .RData
 .Ruserdata
-/.Rproj.user
-*.json
-*.csv
-documents
-*.html

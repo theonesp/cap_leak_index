@@ -1,0 +1,94 @@
+---
+title: "Quantiles"
+author: "Miguel Ángel Armengol de la Hoz"
+output:
+  html_document:
+    toc: true
+    theme: united
+---
+
+# Libs
+
+```{r}
+library(dplyr)
+library(plotly)
+library(corrplot)
+library(Hmisc)
+library(officer)
+# library(xlsx)
+```
+
+
+# Odd Ratio Plots
+
+## Main model
+
+```{r}
+#Generate plot of the odds ratio for quartiles of CLI measured against mortality
+
+labels<-c('Apache Score', 'Charlson Score', 'CLI Q2', 'CLI Q3', 'CLI Q4')
+number_of_exposures<-length(labels)+1
+
+df <- data.frame(yAxis = 2:number_of_exposures,
+                 boxOdds = oddsratios_table$OR[2:number_of_exposures] ,
+                 boxCILow = oddsratios_table$`2.5 %`[2:number_of_exposures],  
+                 boxCIHigh = oddsratios_table$`97.5 %`[2:number_of_exposures]
+)
+#df <- df[order(df$boxOdds),]
+
+p<-ggplot(df, aes(x = boxOdds
+                  , y = labels
+                  )) + 
+  geom_vline(aes(xintercept = 1), size = .1, linetype = "dashed") + 
+  geom_errorbarh(aes(xmax = boxCIHigh, xmin = boxCILow)
+                 , size = .5
+                 , height = .2
+                 , color = "gray50") +
+  geom_point(size = 2, color = "#2980b9") +
+  #coord_trans(x = scales:::exp_trans(1.01)) +
+  #scale_y_continuous(breaks = c(-1:1),labels = c(-1:1)) +
+  theme_bw()+
+  theme(panel.grid.minor = element_blank()) +
+  ylab("Exposure") +
+  xlab("Odds ratio") +
+  ggtitle("Impact on mortality")
+p<-ggplotly(p)
+p<-ggplotly(p%>%layout(hovermode = 'compare'))
+p
+
+```
+```{r}
+#Generates odds ratio plot for CLI quartiles against change in SOFA Score from day 1 to day 4
+
+# df <- oddsratios_table
+
+labels<-c('Apache Score', 'Charlson Score' ,'CLI Q2', 'CLI Q3', 'CLI Q4', 'CLI Q5')
+number_of_exposures<-length(labels)+1
+
+df <- data.frame(yAxis = 2:number_of_exposures,
+                 boxOdds = sofaratios_table$OR[2:number_of_exposures] ,
+                 boxCILow = sofaratios_table$`2.5 %`[2:number_of_exposures],  
+                 boxCIHigh = sofaratios_table$`97.5 %`[2:number_of_exposures]
+)
+#df <- df[order(df$boxOdds),]
+
+p<-ggplot(df, aes(x = boxOdds
+                  , y = labels
+                  )) + 
+  geom_vline(aes(xintercept = 1), size = .1, linetype = "dashed") + 
+  geom_errorbarh(aes(xmax = boxCIHigh, xmin = boxCILow)
+                 , size = .5
+                 , height = .2
+                 , color = "gray50") +
+  geom_point(size = 2, color = "#2980b9") +
+  #coord_trans(x = scales:::exp_trans(1.01)) +
+  #scale_y_continuous(breaks = c(-1:1),labels = c(-1:1)) +
+  theme_bw()+
+  theme(panel.grid.minor = element_blank()) +
+  ylab("Exposure") +
+  xlab("Odds ratio") +
+  ggtitle("Impact on SOFA Day 4 - SOFA Day 1")
+p<-ggplotly(p)
+p<-ggplotly(p%>%layout(hovermode = 'compare'))
+p
+````
