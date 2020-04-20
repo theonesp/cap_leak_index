@@ -176,7 +176,7 @@ nrow(selected_cohort)
 vol_leak_index_dataset<-Reduce(function(...) merge(..., all.x=TRUE), list(
    selected_cohort
   ,hct
-  ,intake_output
+  ,intake
   ,apache_related
   ,charlson_score
   ,sofa_total_day1_to_day4
@@ -206,7 +206,7 @@ nrow(vol_leak_index_dataset)
 vol_leak_index_dataset<-sqldf('
 SELECT * FROM
 vol_leak_index_dataset
-WHERE intakes > 0 ')
+WHERE intakes_total > 0 ')
 
 print('patients with fluid intake greater than 0')
 nrow(vol_leak_index_dataset)
@@ -224,7 +224,7 @@ nrow(vol_leak_index_dataset)
 vol_leak_index_dataset<-vol_leak_index_dataset%>%
   mutate(
     # leaking_index=((mean_hct_24_36hrs/first_hct_6hrs)-1)*body_surface_area*1561
-    leaking_index=((mean_hct_24_36hrs - first_hct_6hrs) / intakes) * body_surface_area
+    leaking_index=((mean_hct_24_36hrs - first_hct_6hrs) / intakes_total) * body_surface_area
   )  
 ```
 
@@ -246,10 +246,12 @@ cat(summary(vol_leak_index_dataset['leaking_index']),'\n',sep = '|')
 
 ### Addressing outliers
 
-```{r}
+We are not addressing outliers anymore
+
+```{r eval=FALSE, include=FALSE}
 ## We are removing VLI outliers
-outliers <- boxplot(vol_leak_index_dataset$leaking_index, plot=FALSE)$out 
-vol_leak_index_dataset$leaking_index[which(vol_leak_index_dataset$leaking_index %in% outliers)]<-NA
+#outliers <- boxplot(vol_leak_index_dataset$leaking_index, plot=FALSE)$out 
+#vol_leak_index_dataset$leaking_index[which(vol_leak_index_dataset$leaking_index %in% outliers)]<-NA
 ```
 
 ### VLI Distribution after removing outliers
@@ -333,7 +335,7 @@ selected_df <- vol_leak_index_dataset%>%dplyr::select(
 # Exclusion Criteria 3
 
 
-*Please note there are several exclusion criteria and the order were they are applied is really important.*
+*Please note there are several exclusion criteria and the order in which they are applied is really important.*
 
  - We are removing patients not in VLI Q2 or VLI Q3.
  - We are removing cases with missing data.
@@ -362,7 +364,7 @@ selected_df<-selected_df%>%
 
 ```{r}
 selected_df<-selected_df%>%mutate(
-  highest_q_leaking_index=if_else(q_leaking_index %in% c('4','3'),1,0 )
+  highest_q_leaking_index=if_else(q_leaking_index %in% c('4'),1,0 )
 )
 
 selected_df$highest_q_leaking_index<-as.factor(selected_df$highest_q_leaking_index)
@@ -378,10 +380,10 @@ nrow(selected_df)
 
 # Table 1 
 
-*Stratified by highest_q_leaking_index*
+*Stratified by q_leaking_index*
 
 ```{r}
-table1(~ age_fixed + hosp_mortality + gender + final_charlson_score + apache_iv  + delta_sofa  | highest_q_leaking_index, data=selected_df)
+table1(~ age_fixed + hosp_mortality + gender + final_charlson_score + apache_iv  + delta_sofa  | q_leaking_index, data=selected_df)
 ```
 
 
