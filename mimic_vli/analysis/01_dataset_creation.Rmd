@@ -94,6 +94,7 @@ hct<-hct[complete.cases(hct),]
 
 IO_exclusion <- run_query(getSQL('sql/IO_exclusion.sql'))
 
+# comorbidities
 charlson_score <- run_query(getSQL('sql/charlson_score.sql'))
 
 #demographic
@@ -102,7 +103,7 @@ demographic <- run_query(getSQL('sql/demographics.sql'))
 # apache related variables
 apache_related <- run_query(getSQL('sql/apache_related.sql'))
 
-# IMPORTANT, ACCORDING TO THE DOCUMMENTATION -1 in Apache score means missing.
+# !!!!! IMPORTANT, ACCORDING TO THE DOCUMMENTATION -1 in Apache score means missing.
 apache_related$predictedHospitalMortality[apache_related$predictedHospitalMortality==(-1)] <- NA
 apache_related$apache_iv[apache_related$apache_iv==(-1)] <- NA
 apache_related$apachescore[apache_related$apachescore==(-1)] <- NA
