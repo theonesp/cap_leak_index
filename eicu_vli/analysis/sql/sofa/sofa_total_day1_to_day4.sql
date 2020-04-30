@@ -1,6 +1,5 @@
--- Query calculating the todal sofa for the first 4 days of admissions.
--- it was written using the sqldf dataset and no longer required for our VLI project
--- if required it needs to be transformed to psql or bigquery
+-- Query extracting the todal sofa for the first 4 days of admissions.
+-- requires sofa_3others_day1_to_day4.sql, sofa_cv_day1_to_day4.sql, sofa_renal_day1_to_day4.sql & sofa_respi_day1_to_day4.sql
 
 SELECT demographic.patientunitstayid,
 
