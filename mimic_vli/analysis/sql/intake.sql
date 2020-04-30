@@ -212,7 +212,7 @@ group by t5.icustay_id, t5.charttime
 order by icustay_id, charttime)
 select
 icustay_id,
-sum (intake_first) as intake
+sum (intake_first) as intakes
 from t3
 left join
 t6
