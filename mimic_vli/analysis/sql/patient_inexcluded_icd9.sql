@@ -74,8 +74,6 @@ WHERE
     --bleeding from throat
     '5997',
     --hematuria, unspecified
-    '6271',
-    --postmenopausal bleeding
     '4590',
     --bleeding unspecified
     '7191',

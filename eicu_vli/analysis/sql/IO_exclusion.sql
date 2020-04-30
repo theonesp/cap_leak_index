@@ -4,6 +4,7 @@
 --        cap_leak_index, 20190511 NYU Datathon
 --        eICU Collaborative Research Database v2.0.
 -- we want to exclude patients based on the amount of output gastric >= 500 OR stool >= 500 OR emesis >= 500
+-- We are also excluding patients with any amount of blood output
 -- ------------------------------------------------------------------
 WITH
   blood AS(
