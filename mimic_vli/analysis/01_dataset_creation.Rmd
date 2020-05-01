@@ -180,7 +180,7 @@ nrow(vol_leak_index_dataset)
 ```{r}
 vol_leak_index_dataset<-vol_leak_index_dataset%>%
   mutate(
-    # leaking_index=((mean_hct_24_36hrs/first_hct_6hrs)-1)*body_surface_area*1561
+    # old definition (NYU Datathon) leaking_index=((mean_hct_24_36hrs/first_hct_6hrs)-1)*body_surface_area*1561
     leaking_index=((mean_hct_24_36hrs - first_hct_6hrs) / intakes_total) * body_surface_area
   )  
 ```
@@ -271,12 +271,12 @@ vol_leak_index_dataset<-vol_leak_index_dataset%>%
 
 ```{r}
 selected_df <- vol_leak_index_dataset%>%dplyr::select(
-     patientunitstayid
+     icustay_id
     ,hosp_mortality
     ,age_fixed
     ,gender
-    ,final_charlson_score
-    ,apache_iv
+    ,final_elixhauser_score
+    ,oasis
     ,leaking_index
     ,delta_sofa
   )
@@ -287,7 +287,7 @@ selected_df <- vol_leak_index_dataset%>%dplyr::select(
 
 ## Mortality imputation
 
-*TODO: Improve hospital mortality extraction, don't impute*
+We are not imputing mortality
 
 # Exclusion Criteria 3
 
@@ -299,11 +299,46 @@ selected_df <- vol_leak_index_dataset%>%dplyr::select(
 
 ```{r}
 print('Number of patients in our dataset so far:')
-nrow(selected_df)
+a<-nrow(selected_df)
+a
 
-selected_df<-selected_df[complete.cases(selected_df),]
-print('Number of patients after excluding patients with missing data:')
-nrow(selected_df)
+selected_df<-selected_df%>%filter(!is.na(hosp_mortality))
+print('Number of patients after excluding patients with missing hosp_mortality:')
+b<-nrow(selected_df)
+a-b
+
+selected_df<-selected_df%>%filter(!is.na(age_fixed))
+print('Number of patients after excluding patients with missing age:')
+c<-nrow(selected_df)
+b-c
+
+selected_df<-selected_df%>%filter(!is.na(gender))
+print('Number of patients after excluding patients with missing gender:')
+d<-nrow(selected_df)
+c-d
+
+selected_df<-selected_df%>%filter(!is.na(final_elixhauser_score))
+print('Number of patients after excluding patients with missing final_elixhauser_score:')
+e<-nrow(selected_df)
+d-e
+
+selected_df<-selected_df%>%filter(!is.na(oasis))
+print('Number of patients after excluding patients with missing oasis:')
+f<-nrow(selected_df)
+e-f
+
+selected_df<-selected_df%>%filter(!is.na(leaking_index))
+print('Number of patients after excluding patients with missing leaking_index:')
+g<-nrow(selected_df)
+f-g
+
+selected_df<-selected_df%>%filter(!is.na(delta_sofa))
+print('Number of patients after excluding patients with missing delta_sofa:')
+h<-nrow(selected_df)
+g-h
+
+('Final number of patients')
+h
 ```
 
 # New Variables Creation
@@ -340,7 +375,7 @@ nrow(selected_df)
 *Stratified by q_leaking_index*
 
 ```{r}
-table1(~ age_fixed + hosp_mortality + gender + final_charlson_score + apache_iv  + delta_sofa  | q_leaking_index, data=selected_df)
+table1(~ age_fixed + hosp_mortality + gender + final_elixhauser_score + oasis  + delta_sofa  | q_leaking_index, data=selected_df)
 ```
 
 
