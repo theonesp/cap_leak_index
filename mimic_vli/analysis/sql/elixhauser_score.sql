@@ -10,9 +10,13 @@
   --, prompting us to examine the validity of the VW score and its use in the NIS.
   -- Ref.: A New Elixhauser-based Comorbidity Summary Measure to Predict In-Hospital Mortality
 SELECT
-  hadm_id,
+  icustays.icustay_id,
   MAX(elixhauser_vanwalraven) AS final_elixhauser_score
 FROM
   `physionet-data.mimiciii_derived.elixhauser_quan_score`
+JOIN
+  `physionet-data.mimiciii_clinical.icustays` icustays
+USING
+    (hadm_id)  
 GROUP BY
-  hadm_id
+  icustay_id

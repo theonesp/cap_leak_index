@@ -1,43 +1,75 @@
-  -- selects septic patients according to different criteria in mimic derived tables
-WITH
+  -- ------------------------------------------------------------------
+  -- Description: Septic patients to be excluded.
+  -- Notes: /analysis/sql/hct.sql
+  --        MIMICIII  
+  -- Selects septic patients according to different criteria in mimic derived tables
+  -- ------------------------------------------------------------------
+  WITH
   angus_sepsis AS(
   SELECT
-    DISTINCT subject_id,
-    hadm_id
+    icustays.icustay_id,
+    MAX(CASE
+        WHEN explicit_sepsis = 1 OR angus = 1 THEN 1
+      ELSE
+      0
+    END
+      ) AS sepsis
   FROM
     `physionet-data.mimiciii_derived.angus_sepsis`
-  WHERE
-    explicit_sepsis = 1
-    OR angus = 1 ),
+  JOIN
+    `physionet-data.mimiciii_clinical.icustays` icustays
+  USING
+    (hadm_id)
+  GROUP BY
+    icustay_id ),
   martin_sepsis AS(
   SELECT
-    DISTINCT subject_id,
-    hadm_id
+    icustays.icustay_id,
+    MAX(CASE
+        WHEN sepsis = 1 THEN 1
+      ELSE
+      0
+    END
+      ) AS sepsis
   FROM
     `physionet-data.mimiciii_derived.martin_sepsis`
-  WHERE
-    sepsis = 1 ),
+  JOIN
+    `physionet-data.mimiciii_clinical.icustays` icustays
+  USING
+    (hadm_id)
+  GROUP BY
+    icustay_id ),
   explicit_sepsis AS(
   SELECT
-    DISTINCT subject_id,
-    hadm_id
+    icustays.icustay_id,
+    MAX(CASE
+        WHEN severe_sepsis = 1 OR septic_shock =1 OR sepsis =1 THEN 1
+      ELSE
+      0
+    END
+      ) AS sepsis
   FROM
     `physionet-data.mimiciii_derived.explicit_sepsis`
-  WHERE
-    severe_sepsis= 1
-    OR septic_shock =1
-    OR sepsis =1 )
+  JOIN
+    `physionet-data.mimiciii_clinical.icustays` icustays
+  USING
+    (hadm_id)
+  GROUP BY
+    icustay_id )
 SELECT
-  subject_id
+  icustay_id
 FROM
   angus_sepsis
+WHERE sepsis = 1  
 UNION DISTINCT
 SELECT
-  subject_id
+  icustay_id
 FROM
   martin_sepsis
+WHERE sepsis = 1    
 UNION DISTINCT
 SELECT
-  subject_id
+  icustay_id
 FROM
   explicit_sepsis
+WHERE sepsis = 1    

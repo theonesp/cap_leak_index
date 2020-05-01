@@ -1,6 +1,6 @@
 ---
 title: "01_dataset_creation"
-author: "Miguel Ángel Armengol"
+author: "Miguel Ángel Armengol & Jay Chandra"
 date: '`r format(Sys.Date(), "%B %d, %Y")`'
 output:
   html_notebook:
@@ -28,7 +28,10 @@ library(caret)
 library(plotly)
 library(table1)
 library(Amelia)
+
+# useful functions
 impute.median <- function(x) replace(x, is.na(x), median(x, na.rm = TRUE))
+'%!in%' <- function(x,y)!('%in%'(x,y))
 ```
 
 
@@ -81,39 +84,21 @@ Loads all queries from the sql files in the extraction folder and runs them into
 ```{r}
 hct <- run_query(getSQL("sql/hct.sql" ))
 # removes missing values
-hct<-hct[complete.cases(hct),]
 
-#Remove chronic AKI, creat, rrt patients
-# chronicAKI<-run_query(getSQL('sql/aki/chronicAKI.sql'))
-# baseline_creat<-run_query(getSQL('sql/aki/baseline_creat.sql'))
-# peakcreat48h<-run_query(getSQL('sql/aki/peakcreat48h.sql'))
-# peakcreat7days<-run_query(getSQL('sql/aki/peakcreat7days.sql'))
-
-# renal replacement therapy
-# first_rrt <-run_query(getSQL('sql/aki/first_rrt.sql'))
-
+# patients excluded due to output amount
 IO_exclusion <- run_query(getSQL('sql/IO_exclusion.sql'))
 
 # comorbidities
-charlson_score <- run_query(getSQL('sql/charlson_score.sql'))
+elixhauser_score <- run_query(getSQL('sql/elixhauser_score.sql'))
 
 #demographic
 demographic <- run_query(getSQL('sql/demographics.sql'))
 
-# apache related variables
-apache_related <- run_query(getSQL('sql/apache_related.sql'))
-
-# !!!!! IMPORTANT, ACCORDING TO THE DOCUMMENTATION -1 in Apache score means missing.
-apache_related$predictedHospitalMortality[apache_related$predictedHospitalMortality==(-1)] <- NA
-apache_related$apache_iv[apache_related$apache_iv==(-1)] <- NA
-apache_related$apachescore[apache_related$apachescore==(-1)] <- NA
-
+# severity score
+oasis_related <- run_query(getSQL('sql/oasis_related.sql'))
 
 # SOFA related variables
-sofa_cv_day1_to_day4 <- run_query(getSQL("sql/sofa/sofa_cv_day1_to_day4.sql"))
-sofa_renal_day1_to_day4 <- run_query(getSQL("sql/sofa/sofa_renal_day1_to_day4.sql"))
-sofa_respi_day1_to_day4 <- run_query(getSQL("sql/sofa/sofa_respi_day1_to_day4.sql"))
-sofa_3others_day1_to_day4 <- run_query(getSQL("sql/sofa/sofa_3others_day1_to_day4.sql"))
+sofa_total_day1_to_day4 <- run_query(getSQL("sql/sofa/sofa_total_day1_to_day4.sql"))
 
 # List of patients that are bleeding we want to exclude.
 patient_inexcluded_icd9 <- run_query(getSQL('sql/patient_inexcluded_icd9.sql'))
@@ -130,7 +115,7 @@ intake <- run_query(getSQL("sql/intake.sql"))
 Patients with sepsis (not bleeding) 
 
 ```{r}
-# we want to include septic patients that are not bleeding.
+# we want to include only septic patients that are not bleeding.
 
 print('Septic patients:')
 nrow(sepsis)
@@ -138,9 +123,9 @@ nrow(sepsis)
 print('Patients bleeding')
 nrow(patient_inexcluded_icd9)
 
-patient_included_vector <- sepsis[sepsis$patientunitstayid %!in% patient_inexcluded_icd9$patientUnitStayID  ,]
-patient_included <- data.frame(patientunitstayid=integer(length(patient_included_vector))) 
-patient_included$patientunitstayid<-patient_included_vector
+patient_included_vector <- sepsis[sepsis$icustay_id %!in% patient_inexcluded_icd9$icustay_id  ,]
+patient_included <- data.frame(icustay_id=integer(length(patient_included_vector))) 
+patient_included$icustay_id<-patient_included_vector
 
 print('Septic patients that are not bleeding')
 nrow(patient_included)
@@ -157,18 +142,9 @@ print('Patients >=16 years old:')
 nrow(selected_cohort)
 
 #exlusion based on output amount
-## we want to exclude gastric >= 500 OR stool >= 500 OR emesis >= 500
+## we want to exclude blood output or gastric >= 500 OR stool >= 500 OR emesis >= 500
 
-selected_cohort<-sqldf('
-SELECT * FROM 
-selected_cohort
-LEFT JOIN
-IO_exclusion
-USING
-(patientunitstayid)
-WHERE
-IO_exclusion.patientunitstayid IS NULL
-')
+selected_cohort<-selected_cohort%>%filter(icustay_id %!in% IO_exclusion$ICUSTAY_ID) 
 
 print('Patients with proper amount of output:')
 nrow(selected_cohort)
@@ -178,30 +154,10 @@ vol_leak_index_dataset<-Reduce(function(...) merge(..., all.x=TRUE), list(
    selected_cohort
   ,hct
   ,intake
-  ,apache_related
-  ,charlson_score
+  ,oasis_related
+  ,elixhauser_score
   ,sofa_total_day1_to_day4
 ))
-
-# Ensures that patients have reliable fluid data
-# we have a list with reliable fluid data and we will use only patients in this list
-vol_leak_index_dataset<-sqldf('
-SELECT * FROM
-vol_leak_index_dataset
-INNER JOIN
-all_reliable
-USING(patientunitstayid)
-')
-print('patients with reliable fluid data')
-nrow(vol_leak_index_dataset)
-
-# vol_leak_index_dataset<-sqldf('
-# SELECT * FROM
-# vol_leak_index_dataset
-# INNER JOIN
-# all_reliable
-# USING(patientunitstayid)
-# ')
 
 # Ensures fluid intake is greater than 0.
 vol_leak_index_dataset<-sqldf('

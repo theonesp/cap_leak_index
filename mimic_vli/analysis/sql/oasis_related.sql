@@ -1,9 +1,9 @@
 -- Extracts oasis severity score.
 
 SELECT
-  subject_id,
-  hadm_id,
   icustay_id,
-  OASIS
+  MAX(OASIS) AS OASIS
 FROM
   `physionet-data.mimiciii_derived.oasis`
+GROUP BY
+  icustay_id
