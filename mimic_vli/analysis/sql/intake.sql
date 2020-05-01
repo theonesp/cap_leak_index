@@ -339,7 +339,7 @@ WITH
     charttime)
 SELECT
   icustay_id,
-  sum (intake_first) AS intakes
+  sum (intake_first) AS intakes_total
 FROM
   t3
 LEFT JOIN
