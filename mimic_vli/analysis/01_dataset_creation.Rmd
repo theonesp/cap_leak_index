@@ -280,7 +280,11 @@ selected_df <- vol_leak_index_dataset%>%dplyr::select(
     ,leaking_index
     ,delta_sofa
   )
+
 # these variables are factors
+selected_df$hosp_mortality<-as.factor(selected_df$hosp_mortality)
+selected_df$gender<-as.factor(selected_df$gender)
+
 ```
 
 # Data Imputation
@@ -377,8 +381,6 @@ nrow(selected_df)
 ```{r}
 table1(~ age_fixed + hosp_mortality + gender + final_elixhauser_score + oasis  + delta_sofa  | q_leaking_index, data=selected_df)
 ```
-
-
 
 # Export dataset
 
