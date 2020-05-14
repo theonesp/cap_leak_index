@@ -283,18 +283,10 @@ WITH
     -- so it is sufficient to:
     --    (1) check the rate is > 240 if it exists or
     --    (2) ensure the rate is null and amount > 240 ml
-    ( (mv.rate IS NOT NULL
-        AND mv.rateuom = 'mL/hour'
-        AND mv.rate > 248)
-      OR (mv.rate IS NOT NULL
-        AND mv.rateuom = 'mL/min'
-        AND mv.rate > (248/60.0))
-      OR (mv.rate IS NULL
-        AND mv.amountuom = 'L'
-        AND mv.amount > 0.248)
-      OR (mv.rate IS NULL
-        AND mv.amountuom = 'ml'
-        AND mv.amount > 248) ) ),
+    ( (mv.rate IS NOT NULL AND mv.rateuom = 'mL/hour' AND mv.rate > 248)
+      OR (mv.rate IS NOT NULL AND mv.rateuom = 'mL/min' AND mv.rate > (248/60.0))
+      OR (mv.rate IS NULL AND mv.amountuom = 'L' AND mv.amount > 0.248)
+      OR (mv.rate IS NULL AND mv.amountuom = 'ml' AND mv.amount > 248) ) ),
   t5 AS (
   SELECT
     cv.icustay_id,
@@ -365,8 +357,7 @@ WITH
     (icustay_id)
   WHERE
     intake_first IS NOT NULL
-    AND chartoffset BETWEEN -6*60
-    AND 36*60
+    AND chartoffset BETWEEN -6*60 AND 36*60
   GROUP BY
     icustay_id,
     chartoffset

@@ -29,6 +29,7 @@ library(plotly)
 library(table1)
 library(Amelia)
 impute.median <- function(x) replace(x, is.na(x), median(x, na.rm = TRUE))
+options(scipen=999)
 ```
 
 
@@ -368,6 +369,9 @@ selected_df<-selected_df%>%mutate(
 )
 
 selected_df$highest_q_leaking_index<-as.factor(selected_df$highest_q_leaking_index)
+
+print('cutoff points')
+unique(cut2(selected_df$leaking_index, g=4))
 ```
 
 # Exclusion criteria 4

@@ -28,10 +28,12 @@ library(caret)
 library(plotly)
 library(table1)
 library(Amelia)
+options(scipen=999)
 
 # useful functions
 impute.median <- function(x) replace(x, is.na(x), median(x, na.rm = TRUE))
 '%!in%' <- function(x,y)!('%in%'(x,y))
+
 ```
 
 
@@ -106,8 +108,12 @@ patient_inexcluded_icd9 <- run_query(getSQL('sql/patient_inexcluded_icd9.sql'))
 # Sepsis patients according to angus criteria
 sepsis <- run_query(getSQL('sql/sepsis.sql'))
 
-# Fluid data
-intake <- run_query(getSQL("sql/intake.sql"))
+# intake data
+#intake <- run_query(getSQL("sql/intake.sql"))
+pre_adm_fluid<-run_query(getSQL('sql/intake/pre_adm_fluid.sql'))
+real_time_intake_mv<-run_query(getSQL('sql/intake/real_time_intake_mv.sql'))
+real_time_intake_cv<-run_query(getSQL('sql/intake/real_time_intake_cv.sql'))
+
 ```
 
 # Exclusion criteria 1
@@ -307,37 +313,37 @@ a<-nrow(selected_df)
 a
 
 selected_df<-selected_df%>%filter(!is.na(hosp_mortality))
-print('Number of patients after excluding patients with missing hosp_mortality:')
+print('Number of patients excluded due to missing hosp_mortality:')
 b<-nrow(selected_df)
 a-b
 
 selected_df<-selected_df%>%filter(!is.na(age_fixed))
-print('Number of patients after excluding patients with missing age:')
+print('Number of patients excluded due to missing age:')
 c<-nrow(selected_df)
 b-c
 
 selected_df<-selected_df%>%filter(!is.na(gender))
-print('Number of patients after excluding patients with missing gender:')
+print('Number of patients excluded due to missing gender:')
 d<-nrow(selected_df)
 c-d
 
 selected_df<-selected_df%>%filter(!is.na(final_elixhauser_score))
-print('Number of patients after excluding patients with missing final_elixhauser_score:')
+print('Number of patients excluded due to missing final_elixhauser_score:')
 e<-nrow(selected_df)
 d-e
 
 selected_df<-selected_df%>%filter(!is.na(oasis))
-print('Number of patients after excluding patients with missing oasis:')
+print('Number of patients excluded due to missing oasis:')
 f<-nrow(selected_df)
 e-f
 
 selected_df<-selected_df%>%filter(!is.na(leaking_index))
-print('Number of patients after excluding patients with missing leaking_index:')
+print('Number of patients excluded due to missing leaking_index:')
 g<-nrow(selected_df)
 f-g
 
 selected_df<-selected_df%>%filter(!is.na(delta_sofa))
-print('Number of patients after excluding patients with missing delta_sofa:')
+print('Number of patients excluded due to missing delta_sofa:')
 h<-nrow(selected_df)
 g-h
 
@@ -354,6 +360,8 @@ selected_df<-selected_df%>%
   mutate(
      q_leaking_index=as.factor(as.numeric(cut2(leaking_index, g=4)))
 )
+print('cutoff points')
+unique(cut2(selected_df$leaking_index, g=4))
 ```
 
 ## Highest_q_leaking_index
