@@ -39,7 +39,7 @@ This chunks also creates the run_query and get_sql function.
 
 ```{r setup, include=FALSE}
 # Updated for our year
-project_id <- "hst-953-2018"
+project_id <- "hst-953-2019"
 options(httr_oauth_cache=FALSE)
 # Function that takes in a sql command and runs it on bigquery
 run_query <- function(query){
@@ -114,6 +114,7 @@ sofa_cv_day1_to_day4 <- run_query(getSQL("sql/sofa/sofa_cv_day1_to_day4.sql"))
 sofa_renal_day1_to_day4 <- run_query(getSQL("sql/sofa/sofa_renal_day1_to_day4.sql"))
 sofa_respi_day1_to_day4 <- run_query(getSQL("sql/sofa/sofa_respi_day1_to_day4.sql"))
 sofa_3others_day1_to_day4 <- run_query(getSQL("sql/sofa/sofa_3others_day1_to_day4.sql"))
+sofa_total_day1_to_day4 <- sqldf((getSQL("sql/sofa/sofa_total_day1_to_day4.sql")))
 
 # List of patients that are bleeding we want to exclude.
 patient_inexcluded_icd9 <- run_query(getSQL('sql/patient_inexcluded_icd9.sql'))
@@ -184,17 +185,7 @@ vol_leak_index_dataset<-Reduce(function(...) merge(..., all.x=TRUE), list(
 ))
 
 # Ensures that patients have reliable fluid data
-# we have a list with reliable fluid data and we will use only patients in this list
-vol_leak_index_dataset<-sqldf('
-SELECT * FROM
-vol_leak_index_dataset
-INNER JOIN
-all_reliable
-USING(patientunitstayid)
-')
-print('patients with reliable fluid data')
-nrow(vol_leak_index_dataset)
-
+# we have a list with reliable fluid data and we will use only patients in this list. This is done in the intake.sql automatically
 # vol_leak_index_dataset<-sqldf('
 # SELECT * FROM
 # vol_leak_index_dataset
@@ -202,6 +193,8 @@ nrow(vol_leak_index_dataset)
 # all_reliable
 # USING(patientunitstayid)
 # ')
+print('patients with reliable fluid data')
+nrow(vol_leak_index_dataset)
 
 # Ensures fluid intake is greater than 0.
 vol_leak_index_dataset<-sqldf('
@@ -222,6 +215,12 @@ nrow(vol_leak_index_dataset)
 *PLEASE NOTE THE ORDER OF VARIABLES CREATION IS REALLY IMPORTANT SINCE THEY ARE NEEDED FOR EXCLUSION CRITERIA*
 
 ```{r}
+vol_leak_index_dataset$outputs_total[is.na(vol_leak_index_dataset$outputs_total)] = 0
+vol_leak_index_dataset<-vol_leak_index_dataset%>%
+  mutate(
+    fluid_balance=(intakes_total - outputs_total)
+  )  
+
 vol_leak_index_dataset<-vol_leak_index_dataset%>%
   mutate(
     # leaking_index=((mean_hct_24_36hrs/first_hct_6hrs)-1)*body_surface_area*1561
@@ -251,8 +250,8 @@ We are not addressing outliers anymore
 
 ```{r eval=FALSE, include=FALSE}
 ## We are removing VLI outliers
-#outliers <- boxplot(vol_leak_index_dataset$leaking_index, plot=FALSE)$out 
-#vol_leak_index_dataset$leaking_index[which(vol_leak_index_dataset$leaking_index %in% outliers)]<-NA
+outliers <- boxplot(vol_leak_index_dataset$leaking_index, plot=FALSE)$out
+vol_leak_index_dataset$leaking_index[which(vol_leak_index_dataset$leaking_index %in% outliers)]<-NA
 ```
 
 ### VLI Distribution after removing outliers
@@ -377,7 +376,7 @@ unique(cut2(selected_df$leaking_index, g=4))
 # Exclusion criteria 4
 
 ```{r}
-#selected_df<-selected_df%>%filter(q_leaking_index %in% c('4','1'))
+# selected_df<-selected_df%>%filter(q_leaking_index %in% c('4','1'))
 print('Number of patients after excluding VLI Q2 and VLI Q3:')
 nrow(selected_df)
 ```
@@ -396,4 +395,10 @@ table1(~ age_fixed + hosp_mortality + gender + final_charlson_score + apache_iv 
 
 ```{r}
 write.csv(selected_df,'selected_df.csv')
+```
+
+```{r}
+plot (vol_leak_index_dataset$intakes_total, vol_leak_index_dataset$apache_iv, xlim = c(-10000, 25000))
+linearMod <- lm(apache_iv ~ intakes_total, data=vol_leak_index_dataset)
+summary(linearMod)
 ```
