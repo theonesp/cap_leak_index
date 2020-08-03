@@ -126,6 +126,11 @@ sepsis <- run_query(getSQL('sql/sepsis.sql'))
 intake <- run_query(getSQL("sql/intake.sql"))
 ```
 
+```{r}
+intake <- run_query(getSQL("sql/intake.sql"))
+```
+
+
 # Exclusion criteria 1
 
 Patients with sepsis (not bleeding) 
@@ -193,16 +198,14 @@ vol_leak_index_dataset<-Reduce(function(...) merge(..., all.x=TRUE), list(
 # all_reliable
 # USING(patientunitstayid)
 # ')
-print('patients with reliable fluid data')
-nrow(vol_leak_index_dataset)
 
-# Ensures fluid intake is greater than 0.
+# Removes Patients without intake data
 vol_leak_index_dataset<-sqldf('
 SELECT * FROM
 vol_leak_index_dataset
-WHERE intakes_total > 0 ')
+WHERE intakes_total IS NOT null ')
 
-print('patients with fluid intake greater than 0')
+print('patients with reliable fluid data')
 nrow(vol_leak_index_dataset)
 ```
 
@@ -221,11 +224,29 @@ vol_leak_index_dataset<-vol_leak_index_dataset%>%
     fluid_balance=(intakes_total - outputs_total)
   )  
 
+# Ensures fluid balance is greater than 0.
+vol_leak_index_dataset<-sqldf('
+SELECT * FROM
+vol_leak_index_dataset
+WHERE fluid_balance > 0 ')
+
+print('patients with fluid balance greater than 0')
+nrow(vol_leak_index_dataset)
+
 vol_leak_index_dataset<-vol_leak_index_dataset%>%
   mutate(
     # leaking_index=((mean_hct_24_36hrs/first_hct_6hrs)-1)*body_surface_area*1561
-    leaking_index=((mean_hct_24_36hrs - first_hct_6hrs) / intakes_total) * body_surface_area
+    leaking_index=((mean_hct_24_36hrs - first_hct_6hrs) / fluid_balance) * body_surface_area
   )  
+
+# Removes leaking index greater than 0 (means that hematocrit increases over time with fluid)
+# vol_leak_index_dataset<-sqldf('
+# SELECT * FROM
+# vol_leak_index_dataset
+# WHERE leaking_index < 0 ')
+# 
+# print('patients with positive leak index')
+# nrow(vol_leak_index_dataset)
 ```
 
 ### VLI Distribution
@@ -322,6 +343,9 @@ selected_df <- vol_leak_index_dataset%>%dplyr::select(
     ,apache_iv
     ,leaking_index
     ,delta_sofa
+    ,fluid_balance
+    ,mean_hct_24_36hrs
+    ,first_hct_6hrs
   )
 # these variables are factors
 ```
@@ -386,7 +410,7 @@ nrow(selected_df)
 *Stratified by q_leaking_index*
 
 ```{r}
-table1(~ age_fixed + hosp_mortality + gender + final_charlson_score + apache_iv  + delta_sofa  | q_leaking_index, data=selected_df)
+table1(~ age_fixed + hosp_mortality + gender + final_charlson_score + apache_iv  + delta_sofa + fluid_balance + mean_hct_24_36hrs + first_hct_6hrs| q_leaking_index, data=selected_df)
 ```
 
 
@@ -398,7 +422,7 @@ write.csv(selected_df,'selected_df.csv')
 ```
 
 ```{r}
-plot (vol_leak_index_dataset$intakes_total, vol_leak_index_dataset$apache_iv, xlim = c(-10000, 25000))
-linearMod <- lm(apache_iv ~ intakes_total, data=vol_leak_index_dataset)
+plot (vol_leak_index_dataset$intakes_total, vol_leak_index_dataset$hosp_mortality, xlim = c(0, 25000))
+linearMod <- lm(hosp_mortality ~ intakes_total, data=vol_leak_index_dataset)
 summary(linearMod)
 ```
