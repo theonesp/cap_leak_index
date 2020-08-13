@@ -128,6 +128,7 @@ intake <- run_query(getSQL("sql/intake.sql"))
 
 ```{r}
 intake <- run_query(getSQL("sql/intake.sql"))
+intake72hrs <- run_query(getSQL("sql/intake72hrs.sql"))
 ```
 
 
@@ -184,6 +185,7 @@ vol_leak_index_dataset<-Reduce(function(...) merge(..., all.x=TRUE), list(
    selected_cohort
   ,hct
   ,intake
+  ,intake72hrs
   ,apache_related
   ,charlson_score
   ,sofa_total_day1_to_day4
@@ -221,8 +223,11 @@ nrow(vol_leak_index_dataset)
 vol_leak_index_dataset$outputs_total[is.na(vol_leak_index_dataset$outputs_total)] = 0
 vol_leak_index_dataset<-vol_leak_index_dataset%>%
   mutate(
-    fluid_balance=(intakes_total - outputs_total)
+    fluid_balance=(intakes_total - outputs_total),
+    fluid_balance_72 = (intakes_total72 - outputs_total72)
   )  
+hist(vol_leak_index_dataset['fluid_balance'])
+hist(vol_leak_index_dataset['fluid_balance_72'])
 
 # Ensures fluid balance is greater than 0.
 vol_leak_index_dataset<-sqldf('
@@ -249,6 +254,7 @@ vol_leak_index_dataset<-vol_leak_index_dataset%>%
 # nrow(vol_leak_index_dataset)
 ```
 
+
 ### VLI Distribution
 
 *Before addressing outliers*
@@ -273,6 +279,10 @@ We are not addressing outliers anymore
 ## We are removing VLI outliers
 outliers <- boxplot(vol_leak_index_dataset$leaking_index, plot=FALSE)$out
 vol_leak_index_dataset$leaking_index[which(vol_leak_index_dataset$leaking_index %in% outliers)]<-NA
+
+## We are removing 72hr fluid balance outliers
+# outliers <- boxplot(vol_leak_index_dataset$fluid_balance_72, plot=FALSE)$out
+# vol_leak_index_dataset$fluid_balance_72[which(vol_leak_index_dataset$fluid_balance_72 %in% outliers)]<-NA
 ```
 
 ### VLI Distribution after removing outliers
@@ -288,6 +298,8 @@ ifelse( nrow(unique(vol_leak_index_dataset['leaking_index']))<10
          )
 cat('Summary of ',colname,'\n',sep = '')  
 cat(summary(vol_leak_index_dataset['leaking_index']),'\n',sep = '|')
+
+hist (vol_leak_index_dataset$fluid_balance_72, main = 'fluid')
 
 ```
 
@@ -346,6 +358,7 @@ selected_df <- vol_leak_index_dataset%>%dplyr::select(
     ,fluid_balance
     ,mean_hct_24_36hrs
     ,first_hct_6hrs
+    ,fluid_balance_72
   )
 # these variables are factors
 ```
@@ -422,7 +435,17 @@ write.csv(selected_df,'selected_df.csv')
 ```
 
 ```{r}
-plot (vol_leak_index_dataset$intakes_total, vol_leak_index_dataset$hosp_mortality, xlim = c(0, 25000))
-linearMod <- lm(hosp_mortality ~ intakes_total, data=vol_leak_index_dataset)
+plot (vol_leak_index_dataset$fluid_balance, vol_leak_index_dataset$hosp_mortality, xlim = c(0, 25000))
+linearMod <- lm(hosp_mortality ~ fluid_balance, data=vol_leak_index_dataset)
+summary(linearMod)
+```
+```{r}
+plot (vol_leak_index_dataset$fluid_balance, vol_leak_index_dataset$fluid_balance_72)
+linearMod <- lm(fluid_balance_72 ~ fluid_balance, data=vol_leak_index_dataset)
+summary(linearMod)
+```
+```{r}
+plot (vol_leak_index_dataset$leaking_index, vol_leak_index_dataset$fluid_balance_72, xlab = 'leaking_index', ylab = 'fluid balance at 72hrs', main = 'Leaking Index as a predictor of Fluid Balance at 72 hrs')
+linearMod <- lm(fluid_balance_72 ~ leaking_index, data=vol_leak_index_dataset)
 summary(linearMod)
 ```
