@@ -146,6 +146,25 @@ cat(summary(selected_df[i]),'\n',sep = '|')
 
 We can see they are properly mean centered and standardized.
 
+# Odds Ratios
+```{r}
+ps_model <- glm( hosp_mortality ~ 
+                  q_leaking_index
+                + apache_iv
+                + age_fixed
+                + gender
+                + final_charlson_score
+                , family=binomial()
+                , data=selected_df)
+
+summary(ps_model)
+
+OR_table<-as.data.frame(round(exp(cbind(OR=coef(ps_model), confint.default(ps_model))),2))
+options(scipen=999) # disable scientific notation
+OR_table
+```
+
+
 # Causal inference
 
 ## Propensity Score Matching - logistic regression

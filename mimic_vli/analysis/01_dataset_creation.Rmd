@@ -43,7 +43,7 @@ This chunks also creates the run_query and get_sql function.
 
 ```{r setup, include=FALSE}
 # Updated for our year
-project_id <- "hst-953-2018"
+project_id <- "hst-953-2019"
 options(httr_oauth_cache=FALSE)
 # Function that takes in a sql command and runs it on bigquery
 run_query <- function(query){
@@ -93,9 +93,6 @@ IO_exclusion <- run_query(getSQL('sql/IO_exclusion.sql'))
 # comorbidities
 elixhauser_score <- run_query(getSQL('sql/elixhauser_score.sql'))
 
-#demographic
-demographic <- run_query(getSQL('sql/demographics.sql'))
-
 # severity score
 oasis_related <- run_query(getSQL('sql/oasis_related.sql'))
 
@@ -109,11 +106,21 @@ patient_inexcluded_icd9 <- run_query(getSQL('sql/patient_inexcluded_icd9.sql'))
 sepsis <- run_query(getSQL('sql/sepsis.sql'))
 
 # intake data
-#intake <- run_query(getSQL("sql/intake.sql"))
+intake <- run_query(getSQL("sql/intake.sql"))
+intake_full <- run_query(getSQL("sql/intake_full.sql"))
+
+# output data
+output <- run_query(getSQL("sql/output.sql"))
+
+# unused fluid data to correct for excess flow
 pre_adm_fluid<-run_query(getSQL('sql/intake/pre_adm_fluid.sql'))
 real_time_intake_mv<-run_query(getSQL('sql/intake/real_time_intake_mv.sql'))
 real_time_intake_cv<-run_query(getSQL('sql/intake/real_time_intake_cv.sql'))
-
+```
+```{r}
+#demographic data separated due to error in processing "numeric" type
+demographic <- run_query(getSQL('sql/demographics.sql'))
+demographic2 <- run_query(getSQL('sql/demographics2.sql'))
 ```
 
 # Exclusion criteria 1
@@ -160,6 +167,7 @@ vol_leak_index_dataset<-Reduce(function(...) merge(..., all.x=TRUE), list(
    selected_cohort
   ,hct
   ,intake
+  ,output
   ,oasis_related
   ,elixhauser_score
   ,sofa_total_day1_to_day4
@@ -184,11 +192,38 @@ nrow(vol_leak_index_dataset)
 *PLEASE NOTE THE ORDER OF VARIABLES CREATION IS REALLY IMPORTANT SINCE THEY ARE NEEDED FOR EXCLUSION CRITERIA*
 
 ```{r}
+vol_leak_index_dataset$outputs_total[is.na(vol_leak_index_dataset$outputs_total)] = 0
+
+# Calculates Fluid Balance
+vol_leak_index_dataset<-vol_leak_index_dataset%>%
+  mutate(
+    fluid_balance=(intakes_total - outputs_total),
+  )  
+
+# Ensures fluid balance is greater than 0.
+vol_leak_index_dataset<-sqldf('
+SELECT * FROM
+vol_leak_index_dataset
+WHERE fluid_balance > 0 ')
+
+print('patients with fluid balance greater than 0')
+nrow(vol_leak_index_dataset)
+
+#Calculates Leak Index
 vol_leak_index_dataset<-vol_leak_index_dataset%>%
   mutate(
     # old definition (NYU Datathon) leaking_index=((mean_hct_24_36hrs/first_hct_6hrs)-1)*body_surface_area*1561
-    leaking_index=((mean_hct_24_36hrs - first_hct_6hrs) / intakes_total) * body_surface_area
-  )  
+    leaking_index=((mean_hct_24_36hrs - first_hct_6hrs) / fluid_balance) * body_surface_area
+  ) 
+
+# Removes leaking index greater than 0 (means that hematocrit increases over time with fluid)
+# vol_leak_index_dataset<-sqldf('
+# SELECT * FROM
+# vol_leak_index_dataset
+# WHERE leaking_index < 0 ')
+
+print('patients with negative leak index')
+nrow(vol_leak_index_dataset)
 ```
 
 ### VLI Distribution
@@ -212,9 +247,10 @@ cat(summary(vol_leak_index_dataset['leaking_index']),'\n',sep = '|')
 We are not addressing outliers anymore
 
 ```{r eval=FALSE, include=FALSE}
+
 ## We are removing VLI outliers
-#outliers <- boxplot(vol_leak_index_dataset$leaking_index, plot=FALSE)$out 
-#vol_leak_index_dataset$leaking_index[which(vol_leak_index_dataset$leaking_index %in% outliers)]<-NA
+outliers <- boxplot(vol_leak_index_dataset$leaking_index, plot=FALSE)$out
+vol_leak_index_dataset$leaking_index[which(vol_leak_index_dataset$leaking_index %in% outliers)]<-NA
 ```
 
 ### VLI Distribution after removing outliers
@@ -285,6 +321,9 @@ selected_df <- vol_leak_index_dataset%>%dplyr::select(
     ,oasis
     ,leaking_index
     ,delta_sofa
+    ,fluid_balance
+    ,mean_hct_24_36hrs
+    ,first_hct_6hrs
   )
 
 # these variables are factors
@@ -387,7 +426,7 @@ nrow(selected_df)
 *Stratified by q_leaking_index*
 
 ```{r}
-table1(~ age_fixed + hosp_mortality + gender + final_elixhauser_score + oasis  + delta_sofa  | q_leaking_index, data=selected_df)
+table1(~ age_fixed + hosp_mortality + gender + final_elixhauser_score + oasis  + delta_sofa + fluid_balance + mean_hct_24_36hrs + first_hct_6hrs | q_leaking_index, data=selected_df)
 ```
 
 # Export dataset

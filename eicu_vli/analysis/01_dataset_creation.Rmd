@@ -91,7 +91,7 @@ hct<-hct[complete.cases(hct),]
 # peakcreat7days<-run_query(getSQL('sql/aki/peakcreat7days.sql'))
 
 # renal replacement therapy
-# first_rrt <-run_query(getSQL('sql/aki/first_rrt.sql'))
+first_rrt <-run_query(getSQL('sql/aki/first_rrt.sql'))
 
 IO_exclusion <- run_query(getSQL('sql/IO_exclusion.sql'))
 
@@ -124,11 +124,26 @@ sepsis <- run_query(getSQL('sql/sepsis.sql'))
 
 # Fluid data
 intake <- run_query(getSQL("sql/intake.sql"))
+
+# 72hr fluid data
+intake72hrs <- run_query(getSQL("sql/intake72hrs.sql"))
+
+# Patients with Renal Replacement Therapy
+first_rrt <-run_query(getSQL('sql/aki/first_rrt.sql'))
+
+temp <- run_query((getSQL('sql/temp.sql')))
+vent <- run_query((getSQL('sql/vent.sql')))
 ```
 
 ```{r}
+# Separate fluid intake calls ("full" fluid means all fluid for a patient, not just
+# crystalloids)
 intake <- run_query(getSQL("sql/intake.sql"))
+intake_full <-run_query(getSQL("sql/intake_full.sql"))
 intake72hrs <- run_query(getSQL("sql/intake72hrs.sql"))
+first_rrt <-run_query(getSQL('sql/aki/first_rrt.sql'))
+temp <- run_query((getSQL('sql/temp.sql')))
+vent <- run_query((getSQL('sql/vent.sql')))
 ```
 
 
@@ -177,7 +192,18 @@ WHERE
 IO_exclusion.patientunitstayid IS NULL
 ')
 
-print('Patients with proper amount of output:')
+selected_cohort<-sqldf('
+SELECT * FROM 
+selected_cohort
+LEFT JOIN
+first_rrt
+USING
+(patientunitstayid)
+WHERE
+first_rrt.patientunitstayid IS NULL
+')
+
+print('Patients without rrt or expulsion of fluids:')
 nrow(selected_cohort)
 
 # We are using a left join to join them
@@ -191,21 +217,11 @@ vol_leak_index_dataset<-Reduce(function(...) merge(..., all.x=TRUE), list(
   ,sofa_total_day1_to_day4
 ))
 
-# Ensures that patients have reliable fluid data
-# we have a list with reliable fluid data and we will use only patients in this list. This is done in the intake.sql automatically
-# vol_leak_index_dataset<-sqldf('
-# SELECT * FROM
-# vol_leak_index_dataset
-# INNER JOIN
-# all_reliable
-# USING(patientunitstayid)
-# ')
-
 # Removes Patients without intake data
 vol_leak_index_dataset<-sqldf('
 SELECT * FROM
 vol_leak_index_dataset
-WHERE intakes_total IS NOT null ')
+WHERE intakes_total IS NOT null')
 
 print('patients with reliable fluid data')
 nrow(vol_leak_index_dataset)
@@ -249,9 +265,9 @@ vol_leak_index_dataset<-vol_leak_index_dataset%>%
 # SELECT * FROM
 # vol_leak_index_dataset
 # WHERE leaking_index < 0 ')
-# 
-# print('patients with positive leak index')
-# nrow(vol_leak_index_dataset)
+
+print('patients with negative leak index')
+nrow(vol_leak_index_dataset)
 ```
 
 
@@ -271,18 +287,17 @@ cat(summary(vol_leak_index_dataset['leaking_index']),'\n',sep = '|')
 
 ```
 
-### Addressing outliers
-
-We are not addressing outliers anymore
+### Addressing VLI and Fluid outliers
 
 ```{r eval=FALSE, include=FALSE}
+
+# We are removing fluid balance outliers
+# outliers <- boxplot(vol_leak_index_dataset$fluid_balance, plot=FALSE)$out
+# vol_leak_index_dataset$fluid_balance[which(vol_leak_index_dataset$fluid_balance %in% outliers)]<-NA
+
 ## We are removing VLI outliers
 outliers <- boxplot(vol_leak_index_dataset$leaking_index, plot=FALSE)$out
 vol_leak_index_dataset$leaking_index[which(vol_leak_index_dataset$leaking_index %in% outliers)]<-NA
-
-## We are removing 72hr fluid balance outliers
-# outliers <- boxplot(vol_leak_index_dataset$fluid_balance_72, plot=FALSE)$out
-# vol_leak_index_dataset$fluid_balance_72[which(vol_leak_index_dataset$fluid_balance_72 %in% outliers)]<-NA
 ```
 
 ### VLI Distribution after removing outliers
@@ -299,7 +314,7 @@ ifelse( nrow(unique(vol_leak_index_dataset['leaking_index']))<10
 cat('Summary of ',colname,'\n',sep = '')  
 cat(summary(vol_leak_index_dataset['leaking_index']),'\n',sep = '|')
 
-hist (vol_leak_index_dataset$fluid_balance_72, main = 'fluid')
+hist (vol_leak_index_dataset$fluid_balance, main = 'fluid')
 
 ```
 
@@ -434,14 +449,10 @@ table1(~ age_fixed + hosp_mortality + gender + final_charlson_score + apache_iv 
 write.csv(selected_df,'selected_df.csv')
 ```
 
+# Fluid Regression Analysis
 ```{r}
 plot (vol_leak_index_dataset$fluid_balance, vol_leak_index_dataset$hosp_mortality, xlim = c(0, 25000))
 linearMod <- lm(hosp_mortality ~ fluid_balance, data=vol_leak_index_dataset)
-summary(linearMod)
-```
-```{r}
-plot (vol_leak_index_dataset$fluid_balance, vol_leak_index_dataset$fluid_balance_72)
-linearMod <- lm(fluid_balance_72 ~ fluid_balance, data=vol_leak_index_dataset)
 summary(linearMod)
 ```
 ```{r}

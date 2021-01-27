@@ -2,7 +2,8 @@
 With
   t1 AS (
   SELECT
-    distinct patientunitstayid
+    patientunitstayid,
+    sum(cellvaluenumeric) as intakes_total
   FROM
     `physionet-data.eicu_crd.intakeoutput`
   WHERE
@@ -13,33 +14,11 @@ With
       OR LOWER (cellpath) LIKE '%saline%'
       OR LOWER (cellpath) LIKE '%ringer%'
       OR LOWER (cellpath) LIKE '%ivf%'
-      OR LOWER (cellpath) LIKE '% ns %' )),
-      
-    t2 AS (
-    SELECT
-    patientunitstayid,
-    sum(cellvaluenumeric) as intakes_total
-    FROM
-    `physionet-data.eicu_crd.intakeoutput`
-    WHERE
-    intakeoutputoffset BETWEEN -6*60 AND 36*60
-    AND cellvaluenumeric IS NOT NULL
-    AND LOWER (cellpath) LIKE '%intake%'
-    GROUP BY
-    patientunitstayid
-    ),
+      OR LOWER (cellpath) LIKE '% ns %' )
+      GROUP BY
+      patientunitstayid),
     
-    t3 AS (
-    SELECT 
-    *
-    FROM
-    t1
-    INNER JOIN
-    t2
-    using (patientunitstayid)
-    ),
-    
-    t4 as (
+    t2 as (
     SELECT
     patientunitstayid,
     sum(cellvaluenumeric) as outputs_total,
@@ -517,9 +496,9 @@ With
     SELECT
     *
     FROM
-    t3
+    t1
     LEFT JOIN 
-    t4
+    t2
     USING (patientunitstayid)
     --INNER JOIN
     --reliable_fluid_data

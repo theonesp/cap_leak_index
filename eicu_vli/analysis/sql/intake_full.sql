@@ -2,32 +2,54 @@
 With
   t1 AS (
   SELECT
-    patientunitstayid,
-    sum(cellvaluenumeric) as intakes_total72
+    distinct patientunitstayid
   FROM
     `physionet-data.eicu_crd.intakeoutput`
   WHERE
-    intakeoutputoffset BETWEEN -6*60 AND 84*60
+    intakeoutputoffset BETWEEN -6*60 AND 36*60
     AND LOWER (cellpath) LIKE '%intake%'
     AND cellvaluenumeric IS NOT NULL
     AND ( LOWER (cellpath) LIKE '%crystalloids%'
       OR LOWER (cellpath) LIKE '%saline%'
       OR LOWER (cellpath) LIKE '%ringer%'
       OR LOWER (cellpath) LIKE '%ivf%'
-      OR LOWER (cellpath) LIKE '% ns %' )
-      GROUP BY
-      patientunitstayid),
-    
-    t2 as (
+      OR LOWER (cellpath) LIKE '% ns %' )),
+      
+    t2 AS (
     SELECT
     patientunitstayid,
-    sum(cellvaluenumeric) as outputs_total72,
+    sum(cellvaluenumeric) as intakes_total
     FROM
     `physionet-data.eicu_crd.intakeoutput`
     WHERE
-    intakeoutputoffset BETWEEN -6*60 AND 84*60
+    intakeoutputoffset BETWEEN -6*60 AND 36*60
+    AND cellvaluenumeric IS NOT NULL
+    AND LOWER (cellpath) LIKE '%intake%'
+    GROUP BY
+    patientunitstayid
+    ),
+    
+    t3 AS (
+    SELECT 
+    *
+    FROM
+    t1
+    INNER JOIN
+    t2
+    using (patientunitstayid)
+    ),
+    
+    t4 as (
+    SELECT
+    patientunitstayid,
+    sum(cellvaluenumeric) as outputs_total,
+    FROM
+    `physionet-data.eicu_crd.intakeoutput`
+    WHERE
+    intakeoutputoffset BETWEEN -6*60 AND 36*60
     AND cellvaluenumeric IS NOT NULL
     AND LOWER (cellpath) LIKE '%output%'
+    AND LOWER (cellpath) LIKE '%urine%'
     GROUP BY
       patientunitstayid),
     
@@ -496,13 +518,13 @@ With
     SELECT
     *
     FROM
-    t1
+    t3
     LEFT JOIN 
-    t2
+    t4
     USING (patientunitstayid)
     --INNER JOIN
     --reliable_fluid_data
     --USING (patientunitstayid)
-    WHERE intakes_total72 IS NOT NULL
+    WHERE intakes_total IS NOT NULL
     ORDER BY patientunitstayid
     

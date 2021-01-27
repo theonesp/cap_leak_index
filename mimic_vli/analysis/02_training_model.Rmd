@@ -72,3 +72,22 @@ ggplot(data=plotgam_model_gam_exp, aes(vli, fit,colour='#039be5'))+
   theme_minimal()+theme(legend.position = 'none')  
 ```
 
+# Odds Ratios
+```{r}
+vli_prop_score_dataset<-selected_df
+
+ps_model <- glm( hosp_mortality ~ 
+                  q_leaking_index
+                + oasis
+                + age_fixed
+                + gender
+                + final_elixhauser_score
+                , family=binomial()
+                , data=vli_prop_score_dataset)
+
+summary(ps_model)
+
+OR_table<-as.data.frame(round(exp(cbind(OR=coef(ps_model), confint.default(ps_model))),2))
+options(scipen=999) # disable scientific notation
+OR_table
+```
