@@ -1,0 +1,455 @@
+---
+title: "01_dataset_creation"
+author: "Miguel Ángel Armengol"
+date: '`r format(Sys.Date(), "%B %d, %Y")`'
+output:
+  html_notebook:
+    code_folding: hide
+    number_sections: yes
+    theme: flatly
+    toc: yes
+    toc_float: yes
+
+knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, encoding = encoding, output_file = paste0(substr(inputFile,1,nchar(inputFile)-4)," ",Sys.Date(),'.html')) })
+---
+
+# Environment
+
+```{r message=FALSE, warning=FALSE}
+library(bigrquery)
+library(summarytools)
+library(readr)
+library(stringr)
+library(sqldf)
+library(dplyr)
+library(tableone)
+library(Hmisc)
+library(caret)
+library(plotly)
+library(table1)
+
+winsorize_x = function(x, cut = 0.05){
+  cut_point_top <- quantile(x, 1 - cut, na.rm = T)
+  cut_point_bottom <- quantile(x, cut, na.rm = T)
+  i = which(x >= cut_point_top) 
+  x[i] = cut_point_top
+  j = which(x <= cut_point_bottom) 
+  x[j] = cut_point_bottom
+  return(x)
+}
+```
+
+
+# Set up BigQuery related functions
+
+This chunks also creates the run_query and get_sql function.
+
+```{r setup, include=FALSE}
+# Updated for our year
+project_id <- "amsterdam-translation" #hst-953-2018
+options(httr_oauth_cache=FALSE)
+# Function that takes in a sql command and runs it on bigquery
+run_query <- function(query){
+  data <- query_exec(query, project=project_id, use_legacy_sql=FALSE,max_pages = Inf)
+  return(data)
+}
+
+# function for reading sql files
+getSQL <- function(filepath){
+  con = file(filepath, "r")
+  sql.string <- ""
+
+  while (TRUE){
+    line <- readLines(con, n = 1)
+
+    if ( length(line) == 0 ){
+      break
+    }
+
+    line <- gsub("\\t", " ", line)
+
+    if(grepl("--",line) == TRUE){
+      line <- paste(sub("--","/*",line),"*/")
+    }
+
+    sql.string <- paste(sql.string, line)
+  }
+
+  close(con)
+  return(sql.string)
+}
+
+'%!in%' <- function(x,y)!('%in%'(x,y))
+```
+
+# Loading queries and extracting the data
+
+Loads all queries from the sql files in the extraction folder and runs them into RBigQuey to extract the data.
+
+```{r}
+apache_related<-run_query(getSQL("sql/apache_related.sql" ))
+hct <- run_query(getSQL("sql/hct.sql" ))
+# removes missing values
+hct<-hct[complete.cases(hct),]
+
+#Remove chronic AKI, creat, rrt patients
+# chronicAKI<-run_query(getSQL('sql/aki/chronicAKI.sql'))
+# baseline_creat<-run_query(getSQL('sql/aki/baseline_creat.sql'))
+# peakcreat48h<-run_query(getSQL('sql/aki/peakcreat48h.sql'))
+# peakcreat7days<-run_query(getSQL('sql/aki/peakcreat7days.sql'))
+
+# renal replacement therapy
+# first_rrt <-run_query(getSQL('sql/aki/first_rrt.sql'))
+
+# BMI, weight, age, gender, type of unit that patients was admitted, location from admission, length of stay before admission, height
+IO_exclusion <- run_query(getSQL('sql/IO_exclusion.sql'))
+charlson_score <- run_query(getSQL('sql/charlson_score.sql'))
+
+# gathers patientunitstayids with reliable fluid data
+all_reliable <- run_query (getSQL("sql/all_reliable.sql"))
+
+#demographic
+demographic <- run_query(getSQL('sql/demographics.sql'))
+
+# SOFA related variables
+sofa_cv_day1_to_day4 <- run_query(getSQL("sql/sofa/sofa_cv_day1_to_day4.sql"))
+sofa_renal_day1_to_day4 <- run_query(getSQL("sql/sofa/sofa_renal_day1_to_day4.sql"))
+sofa_respi_day1_to_day4 <- run_query(getSQL("sql/sofa/sofa_respi_day1_to_day4.sql"))
+sofa_3others_day1_to_day4 <- run_query(getSQL("sql/sofa/sofa_3others_day1_to_day4.sql"))
+
+# List of patients that are bleeding we want to exclude.
+patient_inexcluded_icd9 <- run_query(getSQL('sql/patient_inexcluded_icd9.sql'))
+
+# Sepsis patients according to angus criteria
+sepsis <- run_query(getSQL('sql/sepsis.sql'))
+
+# Fluid data
+fluidIntake <- run_query(getSQL("sql/intake_output.sql"))
+```
+
+## Fluid data
+
+```{r}
+# fluidIntake <- run_query(getSQL("sql/intake_output.sql" ))
+fluidIntake<-fluidIntake[complete.cases(fluidIntake),]
+fluidIntake<-fluidIntake%>%
+  mutate( totalFluid = (intakes-outputs))
+```
+
+# Merging all datasets
+
+## Patients with sepsis (not bleeding) 
+
+```{r}
+# we want to include septic patients that are not bleeding.
+
+print('Septic patients:')
+nrow(sepsis)
+
+print('Patients bleeding')
+nrow(patient_inexcluded_icd9)
+
+patient_included_vector <- sepsis[sepsis$patientunitstayid %!in% patient_inexcluded_icd9$patientUnitStayID  ,]
+patient_included <- data.frame(patientunitstayid=integer(length(patient_included_vector))) 
+patient_included$patientunitstayid<-patient_included_vector
+
+print('Septic patients that are not bleeding')
+nrow(patient_included)
+
+```
+
+
+## demographics and too much output
+
+```{r}
+selected_cohort<-inner_join(demographic,patient_included)
+
+#exlusion based on output amount
+selected_cohort<-sqldf('
+SELECT * FROM 
+selected_cohort
+LEFT JOIN
+IO_exclusion
+USING
+(patientunitstayid)
+WHERE
+IO_exclusion.patientunitstayid IS NULL
+')
+```
+
+
+## SOFA eICU calcuation
+
+```{r}
+sofa_total_day1_to_day4<-sqldf('
+SELECT selected_cohort.patientunitstayid,
+
+max(sofa_cv_day1_to_day4.sofa_cv_day1 + sofa_respi_day1_to_day4.sofa_respi_day1 + sofa_renal_day1_to_day4.sofarenal_day1 + sofa_3others_day1_to_day4.sofacoag_day1 + sofa_3others_day1_to_day4.sofaliver_day1 + sofa_3others_day1_to_day4.sofacns_day1) AS sofatotal_day1,
+
+max(sofa_cv_day1_to_day4.sofa_cv_day2 + sofa_respi_day1_to_day4.sofa_respi_day2 + sofa_renal_day1_to_day4.sofarenal_day2 + sofa_3others_day1_to_day4.sofacoag_day2 + sofa_3others_day1_to_day4.sofaliver_day2 + sofa_3others_day1_to_day4.sofacns_day2) AS sofatotal_day2,
+
+max(sofa_cv_day1_to_day4.sofa_cv_day3 + sofa_respi_day1_to_day4.sofa_respi_day3 + sofa_renal_day1_to_day4.sofarenal_day3 + sofa_3others_day1_to_day4.sofacoag_day3 + sofa_3others_day1_to_day4.sofaliver_day3 + sofa_3others_day1_to_day4.sofacns_day3) AS sofatotal_day3,
+
+max(sofa_cv_day1_to_day4.sofa_cv_day4 + sofa_respi_day1_to_day4.sofa_respi_day4 + sofa_renal_day1_to_day4.sofarenal_day4 + sofa_3others_day1_to_day4.sofacoag_day4 + sofa_3others_day1_to_day4.sofaliver_day4 + sofa_3others_day1_to_day4.sofacns_day4) AS sofatotal_day4
+
+FROM 
+selected_cohort
+INNER JOIN sofa_cv_day1_to_day4 ON  selected_cohort.patientunitstayid = sofa_cv_day1_to_day4.patientunitstayid
+INNER JOIN sofa_respi_day1_to_day4  ON selected_cohort.patientunitstayid = sofa_renal_day1_to_day4.patientunitstayid
+INNER JOIN sofa_renal_day1_to_day4  ON selected_cohort.patientunitstayid = sofa_respi_day1_to_day4.patientunitstayid
+INNER JOIN sofa_3others_day1_to_day4  ON selected_cohort.patientunitstayid = sofa_3others_day1_to_day4.patientunitstayid
+GROUP BY selected_cohort.patientunitstayid
+ORDER BY selected_cohort.patientunitstayid
+')
+```
+
+# Final Join
+
+```{r}
+# We are using a left join to join them
+vol_leak_index_dataset<-Reduce(function(...) merge(..., all.x=TRUE), list(
+   selected_cohort
+  ,apache_related
+  ,hct
+  ,fluidIntake
+  # ,AKIlist_final
+  ,charlson_score
+  ,sofa_total_day1_to_day4
+))
+
+nrow(vol_leak_index_dataset)
+a<-nrow(vol_leak_index_dataset)
+
+# Ensures that patients have reliable fluid data
+
+vol_leak_index_dataset<-sqldf('
+SELECT * FROM
+vol_leak_index_dataset
+INNER JOIN
+all_reliable
+USING(patientunitstayid)
+')
+nrow(vol_leak_index_dataset)
+b<-nrow(vol_leak_index_dataset)
+
+
+a-b
+# vol_leak_index_dataset<-sqldf('
+# SELECT * FROM
+# vol_leak_index_dataset
+# INNER JOIN
+# all_reliable
+# USING(patientunitstayid)
+# ')
+
+# Ensures fluid intake is greater than 0.
+vol_leak_index_dataset<-sqldf('
+SELECT * FROM
+vol_leak_index_dataset
+WHERE totalFluid > 0 ')
+```
+
+## Creating new variables
+
+### Leaking Index
+
+```{r}
+vol_leak_index_dataset<-vol_leak_index_dataset%>%
+  mutate(
+    # leaking_index=((mean_hct_24_36hrs/first_hct_6hrs)-1)*body_surface_area*1561
+    leaking_index=((mean_hct_24_36hrs - first_hct_6hrs) / totalFluid) * body_surface_area
+  )  
+```
+
+## SOFA Delta
+
+|                   | Sofa day 2 No change | Sofa day 2 Increases | Sofa day 2 Decreases |
+|-------------------|----------------------|----------------------|----------------------|
+| High Sofa day 1   | Bad                  | Bad                  | Good                 |
+| Medium Sofa day 1 | Bad                  | Bad                  | Good                 |
+| Low Sofa day 1    | Good                 | Bad                  | Good                 |
+
+0 Means GOOD Oucome, 1 means BAD Outcome
+
+```{r}
+
+vol_leak_index_dataset<-vol_leak_index_dataset%>%
+  mutate(
+    # leaking_index=((mean_hct_24_36hrs/first_hct_6hrs)-1)*body_surface_area*1561
+    leaking_index=((mean_hct_24_36hrs - first_hct_6hrs) / totalFluid) * body_surface_area
+    #,delta_sofa=sofatotal_day2-sofatotal_day1
+    ,q_leaking_index=as.numeric(cut2(leaking_index, g=4))
+    ,bin_leaking_index=if_else(q_leaking_index==4,1,0)
+    ,t_sofatotal_day1=as.numeric(cut2(sofatotal_day1, g=3))
+    ,delta_sofa=case_when(
+      
+      t_sofatotal_day1 == 3 & sofatotal_day2 == sofatotal_day1 ~ 1,
+      t_sofatotal_day1 == 3 & sofatotal_day2 >  sofatotal_day1 ~ 1,
+      t_sofatotal_day1 == 3 & sofatotal_day2 <  sofatotal_day1 ~ 0,
+      
+      t_sofatotal_day1 == 2 & sofatotal_day2 == sofatotal_day1 ~ 1,
+      t_sofatotal_day1 == 2 & sofatotal_day2 >  sofatotal_day1 ~ 1,
+      t_sofatotal_day1 == 2 & sofatotal_day2 <  sofatotal_day1 ~ 0,     
+      
+      t_sofatotal_day1 == 1 & sofatotal_day2 == sofatotal_day1 ~ 0,
+      t_sofatotal_day1 == 1 & sofatotal_day2 >  sofatotal_day1 ~ 1,
+      t_sofatotal_day1 == 1 & sofatotal_day2 <  sofatotal_day1 ~ 0, 
+      
+      
+    )
+                                 
+)
+
+vol_leak_index_dataset$q_leaking_index<-as.factor(vol_leak_index_dataset$q_leaking_index)
+
+
+# gender mapping
+vol_leak_index_dataset<-vol_leak_index_dataset%>% filter(!(gender == ''))
+vol_leak_index_dataset$gender[vol_leak_index_dataset$gender=='Male']<-1
+vol_leak_index_dataset$gender[vol_leak_index_dataset$gender=='Female']<-2
+# vol_leak_index_dataset$gender<-as.factor(vol_leak_index_dataset$gender)
+
+
+```
+
+#### Data Imputation
+
+```{r}
+# Median imputation for outliers
+#outliers <- boxplot(vol_leak_index_dataset$leaking_index, plot=FALSE)$out
+#vol_leak_index_dataset$leaking_index[which(vol_leak_index_dataset$leaking_index %in% outliers),]<-median(vol_leak_index_dataset$leaking_index)
+vol_leak_index_dataset<-vol_leak_index_dataset%>%mutate(
+  leaking_index=winsorize_x(leaking_index)
+  )
+
+```
+
+## Selecting/Imputing/removing data
+
+```{r}
+selected_df <- vol_leak_index_dataset%>%mutate(
+  highest_q_leaking_index=if_else(
+    q_leaking_index %in% c('3','4'),1,0
+  ))%>%dplyr::select(
+    patientunitstayid
+    ,hosp_mortality
+    ,age_fixed
+    ,gender
+    ,final_charlson_score
+    ,apachescore
+    ,delta_sofa
+    ,totalFluid
+    ,highest_q_leaking_index
+    ,q_leaking_index
+    ,leaking_index
+  )
+selected_df<-selected_df[complete.cases(selected_df),]
+
+selected_df$highest_q_leaking_index<-as.factor(selected_df$highest_q_leaking_index)
+
+```
+
+# Joining the Amsterdam UMC DB and Combining the datasets
+
+```{r}
+amsterdam = run_query(getSQL("sql/amsterdam_sql/combined.sql" ))
+
+amsterdam$age_fixed = as.factor(amsterdam$age_fixed)
+amsterdam$gender[amsterdam$gender=='Male']<-1
+amsterdam$gender[amsterdam$gender=='Female']<-2
+amsterdam$hosp_mortality = amsterdam$actualhospitalmortality
+amsterdam$q_leaking_index = ntile(amsterdam$leaking_index,4)
+amsterdam$highest_q_leaking_index = ntile(amsterdam$leaking_index,2)
+
+age_grouper = function(age) {
+  if (age >=18 & age <=39) {
+    group = '18-39'
+  } else if (age >=40 & age <= 49) {
+    group = '40-49'
+  } else if (age >=50 & age <=59) {
+    group = '50-59'
+  } else if (age >= 60 & age <= 69) {
+    group = '60-69'
+  } else if (age >= 70 & age <= 79) {
+    group = '70-79'
+  } else if (age >= 80) {
+    group = '80+'
+  } else {
+    group = NA
+  }
+  return(group)
+}
+
+selected_df$age_fixed = vapply(selected_df$age_fixed,age_grouper,character(1)) 
+
+amsterdam = amsterdam[names(selected_df)]
+selected_df['db_source'] = 'eicu'
+amsterdam['db_source'] = 'amsterdam'
+combined = rbind(selected_df,amsterdam)
+```
+
+Amsterdam DB Cohort Information:
+
+- Total patients in Amsterdam UMC DB: 23172
+- After excluding patients without diagnosis of sepsis (n=9936): 13236
+- After excluding patients with diagnosis of bleeding (n=4992): 8244
+- After excluding patients who received blood/colloids (n=1757): 6487
+- After excluding patients with missing CLI variables (n=4341): 2146
+- After excluding patients with missing delta SOFA (n=1728): 418
+
+
+# Table 1
+
+```{r}
+table1(~ factor(hosp_mortality) + age_fixed + factor(hosp_mortality) + gender + final_charlson_score + apachescore  + delta_sofa + totalFluid | highest_q_leaking_index, data=combined)
+```
+
+
+# Export dataset
+
+```{r}
+write.csv(combined,'combined.csv')
+selected_df = combined # for compatibility with code below
+```
+
+# Train and test datasets creation
+
+## Spliting de-identified data into testing and training, balanced version.
+
+We want the data to be sampled randomly but always the same way and we want to be sure that train and test must be balanced.
+
+```{r}
+# Creating id for partition 
+selected_df['id']<- seq.int(nrow(selected_df))
+## set the seed to make our partition reproducible
+set.seed(123)
+# createDataPartition: "the random sampling is done within the levels of y when y is a factor in an attempt to balance the class distributions within the splits."
+## 75% of the sample size
+train_idx <- createDataPartition(as.factor(selected_df$hosp_mortality), times = 1, p = 0.75, list=F)
+
+train <- selected_df[train_idx, ]
+test <- selected_df[-train_idx, ]
+
+#Checking outcome is actually balanced
+round(prop.table(table(train$hosp_mortality)),2)
+round(prop.table(table(test$hosp_mortality)),2)
+```
+
+## Separating datasets into outcome and exposures
+
+```{r}
+# train dataset
+train_X<-train[, names(train)!= "hosp_mortality"]
+train_Y<-train$hosp_mortality
+  
+# test dataset
+test_X<-test[, names(test)!= "hosp_mortality"]
+test_Y<-test$hosp_mortality 
+```
+
+
+
+
+
+
+
