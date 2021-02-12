@@ -128,9 +128,6 @@ intake <- run_query(getSQL("sql/intake.sql"))
 # 72hr fluid data
 intake72hrs <- run_query(getSQL("sql/intake72hrs.sql"))
 
-# Patients with Renal Replacement Therapy
-first_rrt <-run_query(getSQL('sql/aki/first_rrt.sql'))
-
 temp <- run_query((getSQL('sql/temp.sql')))
 vent <- run_query((getSQL('sql/vent.sql')))
 ```

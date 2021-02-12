@@ -1,8 +1,6 @@
 -------------------------
 -- Amsterdam DB query
 -------------------------
-
-CREATE OR REPLACE TABLE `amsterdam-translation.amsterdam_custom.capleakmaster` AS (
 WITH adm as (
     SELECT 
     admissionid,
@@ -155,103 +153,7 @@ WITH adm as (
     admissionid,
     CEIL(duration/1440) as unabridgedactualventdays
     FROM `physionet-data.amsterdamdb.processitems` 
-    WHERE item = 'Beademen'
-), sofa_scores as (
-    SELECT
-    admissionid,
-    sofatotal_day1,
-    sofatotal_day2,
-    CASE WHEN sofatotal_day3 IS NOT NULL THEN sofatotal_day3 
-         WHEN sofatotal_day3 IS NULL AND sofatotal_day2 IS NOT NULL THEN sofatotal_day2
-         ELSE NULL END as sofatotal_day3,
-    CASE WHEN sofatotal_day4 IS NOT NULL THEN sofatotal_day4
-         WHEN sofatotal_day4 IS NULL AND sofatotal_day3 IS NOT NULL THEN sofatotal_day3
-         WHEN sofatotal_day4 IS NULL AND sofatotal_day2 IS NOT NULL THEN sofatotal_day3
-         ELSE NULL END AS sofatotal_day4,
-    1 as dummykey
-    FROM (
-        SELECT
-        admissionid,
-        MAX(CASE WHEN day = 1 THEN sofa_score ELSE NULL END) as sofatotal_day1,
-        MAX(CASE WHEN day = 2 THEN sofa_score ELSE NULL END) as sofatotal_day2,
-        MAX(CASE WHEN day = 3 THEN sofa_score ELSE NULL END) as sofatotal_day3,
-        MAX(CASE WHEN day = 4 THEN sofa_score ELSE NULL END) as sofatotal_day4,
-        FROM `amsterdam-translation.amsterdam_custom.daily_sofa_labs`
-        GROUP BY admissionid
-    )
-), sofa_quantiles AS (
-    SELECT 
-    --day of lowest Hb
-    sofatotal_day1_quantiles[OFFSET(0)] AS sofatotal_day1_q1_min,
-    sofatotal_day1_quantiles[OFFSET(1)] AS sofatotal_day1_q1_max,
-    sofatotal_day1_quantiles[OFFSET(1)] + 1 AS sofatotal_day1_q2_min,
-    sofatotal_day1_quantiles[OFFSET(2)] AS sofatotal_day1_q2_max,
-    sofatotal_day1_quantiles[OFFSET(2)] + 1 AS sofatotal_day1_q3_min,
-    sofatotal_day1_quantiles[OFFSET(3)] as sofatotal_day1_q3_max,
-    --day after lowest Hb
-    sofatotal_day4_quantiles[OFFSET(0)] AS sofatotal_day4_q1_min,
-    sofatotal_day4_quantiles[OFFSET(1)] AS sofatotal_day4_q1_max,
-    sofatotal_day4_quantiles[OFFSET(1)] + 1 AS sofatotal_day4_q2_min,
-    sofatotal_day4_quantiles[OFFSET(2)] AS sofatotal_day4_q2_max,
-    sofatotal_day4_quantiles[OFFSET(2)] + 1 AS sofatotal_day4_q3_min,
-    sofatotal_day4_quantiles[OFFSET(3)] as sofatotal_day4_q3_max,
-    1 AS dummykey
-    FROM (
-        SELECT 
-        APPROX_QUANTILES(sofatotal_day1, 3) AS sofatotal_day1_quantiles,
-        APPROX_QUANTILES(sofatotal_day4, 3) AS sofatotal_day4_quantiles
-        FROM sofa_scores
-    )
-), sofa_q as (
-    SELECT
-    admissionid,
-    sofatotal_day1,
-    sofatotal_day2,
-    sofatotal_day3,
-    sofatotal_day4,
-    sofatotal_day1_quantile,
-    sofatotal_day4_quantile,
-    -- t_sofatotal_day1 == 3 & sofatotal_day2 == sofatotal_day1 ~ 1,
-    -- t_sofatotal_day1 == 3 & sofatotal_day2 >  sofatotal_day1 ~ 1,
-    -- t_sofatotal_day1 == 3 & sofatotal_day2 <  sofatotal_day1 ~ 0,
-    -- t_sofatotal_day1 == 2 & sofatotal_day2 == sofatotal_day1 ~ 1,
-    -- t_sofatotal_day1 == 2 & sofatotal_day2 >  sofatotal_day1 ~ 1,
-    -- t_sofatotal_day1 == 2 & sofatotal_day2 <  sofatotal_day1 ~ 0,     
-    -- t_sofatotal_day1 == 1 & sofatotal_day2 == sofatotal_day1 ~ 0,
-    -- t_sofatotal_day1 == 1 & sofatotal_day2 >  sofatotal_day1 ~ 1,
-    -- t_sofatotal_day1 == 1 & sofatotal_day2 <  sofatotal_day1 ~ 0, 
-    CASE WHEN sofatotal_day1_quantile = 3 AND sofatotal_day4_quantile = sofatotal_day1_quantile THEN 1
-         WHEN sofatotal_day1_quantile = 3 AND sofatotal_day4_quantile > sofatotal_day1_quantile THEN 1
-         WHEN sofatotal_day1_quantile = 3 AND sofatotal_day4_quantile < sofatotal_day1_quantile THEN 0
-         WHEN sofatotal_day1_quantile = 2 AND sofatotal_day4_quantile = sofatotal_day1_quantile THEN 1
-         WHEN sofatotal_day1_quantile = 2 AND sofatotal_day4_quantile > sofatotal_day1_quantile THEN 1
-         WHEN sofatotal_day1_quantile = 2 AND sofatotal_day4_quantile < sofatotal_day1_quantile THEN 0
-         WHEN sofatotal_day1_quantile = 1 AND sofatotal_day4_quantile = sofatotal_day1_quantile THEN 0
-         WHEN sofatotal_day1_quantile = 1 AND sofatotal_day4_quantile > sofatotal_day1_quantile THEN 1
-         WHEN sofatotal_day1_quantile = 1 AND sofatotal_day4_quantile < sofatotal_day1_quantile THEN 0
-         ELSE NULL
-         END AS delta_sofa
-    FROM (
-        SELECT 
-        sofa.admissionid,
-        sofa.sofatotal_day1,
-        sofa.sofatotal_day2,
-        sofa.sofatotal_day3,
-        sofa.sofatotal_day4,
-        CASE WHEN sofatotal_day1 BETWEEN sofa_quantiles.sofatotal_day1_q1_min AND sofa_quantiles.sofatotal_day1_q1_max THEN 1
-            WHEN sofatotal_day1 BETWEEN sofa_quantiles.sofatotal_day1_q2_min AND sofa_quantiles.sofatotal_day1_q2_max THEN 2
-            WHEN sofatotal_day1 BETWEEN sofa_quantiles.sofatotal_day1_q2_min AND sofa_quantiles.sofatotal_day1_q3_max THEN 2
-            ELSE NULL
-            END AS sofatotal_day1_quantile,
-        CASE WHEN sofatotal_day4 BETWEEN sofa_quantiles.sofatotal_day4_q1_min AND sofa_quantiles.sofatotal_day4_q1_max THEN 1
-            WHEN sofatotal_day4 BETWEEN sofa_quantiles.sofatotal_day4_q2_min AND sofa_quantiles.sofatotal_day4_q2_max THEN 2
-            WHEN sofatotal_day4 BETWEEN sofa_quantiles.sofatotal_day4_q2_min AND sofa_quantiles.sofatotal_day4_q3_max THEN 2
-            ELSE NULL
-            END AS sofatotal_day4_quantile,
-        FROM sofa_scores sofa
-        LEFT JOIN sofa_quantiles
-            ON sofa.dummykey=sofa_quantiles.dummykey
-    ) 
+    WHERE item = 'Beademen' 
 ), fluids as (
     SELECT 
     fluidin_daily.admissionid,
@@ -334,31 +236,6 @@ SELECT
     MAX(fluids.daily_fluid_in) as intakes,
     MAX(fluids.daily_fluid_out) as outputs,
     MAX(fluids.totalFluid) as totalFluid,
-    --charlson components
-    MAX(chl.mets_score) as mets6,
-    MAX(chl.aids_score) as aids6,
-    MAX(chl.liver_score) as liver1,
-    MAX(chl.stroke_score) as stroke2,
-    MAX(chl.renal_score) as renal2,
-    MAX(chl.dm_score) as dm,
-    MAX(chl.cancer_score) as cancer2,
-    MAX(chl.leukemia_score) as leukemia2,
-    MAX(chl.lymphoma_score) as lymphoma2,
-    MAX(chl.mi_score) as mi1,
-    MAX(chl.chf_score) as chf1,
-    MAX(chl.pvd_score) as pvd1,
-    MAX(chl.dem_score) as dementia1,
-    MAX(chl.copd_score) as copd1,
-    MAX(chl.ctd_score) as ctd1,
-    MAX(chl.pud_score) as pud1,
-    MAX(chl.age_score_charlson) as age_score_charlson,
-    MAX(chl.charlson_score) as finallcharlson_score,
-    MAX(sofa_q.sofatotal_day1) as sofatotal_day1,
-    MAX(sofa_q.sofatotal_day2) as sofatotal_day2,
-    MAX(sofa_q.sofatotal_day3) as sofatotal_day3,
-    MAX(sofa_q.sofatotal_day4) as sofatotal_day4,
-    MAX((SAFE_DIVIDE(hct.delta_hct,fluids.totalFluid))*body_surface_area) as leaking_index,
-    MAX(sofa_q.delta_sofa) AS delta_sofa,
 FROM adm
 LEFT JOIN (
     SELECT 
@@ -373,16 +250,7 @@ LEFT JOIN fluids
     ON adm.admissionid=fluids.admissionid
 LEFT JOIN hct
     ON adm.admissionid=hct.admissionid
-LEFT JOIN (
-    SELECT 
-    *
-    FROM `amsterdam-translation.amsterdam_custom.charlson`
-) chl
-    ON adm.admissionid = chl.admissionid
 LEFT JOIN ventilation vent 
     ON adm.admissionid = vent.admissionid
-LEFT JOIN sofa_q
-    ON adm.admissionid = sofa_q.admissionid
 GROUP BY adm.admissionid
 ORDER BY adm.admissionid
-)
