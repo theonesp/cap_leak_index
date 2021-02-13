@@ -370,7 +370,6 @@ selected_df <- vol_leak_index_dataset%>%dplyr::select(
     ,fluid_balance
     ,mean_hct_24_36hrs
     ,first_hct_6hrs
-    ,fluid_balance_72
   )
 # these variables are factors
 ```

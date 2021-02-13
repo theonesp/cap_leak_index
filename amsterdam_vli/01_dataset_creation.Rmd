@@ -89,6 +89,7 @@ Loads all queries from the sql files in the extraction folder and runs them into
 ```{r}
 amsterdam = run_query(getSQL("sql/amsterdam 2.sql" ))
 ```
+
 ```{r}
 charlson = run_query(getSQL("sql/charlson 2.sql" ))
 ```
@@ -122,7 +123,7 @@ nrow(sepsis)
 print('Patients bleeding')
 nrow(patient_inexcluded_icd9)
 
-patient_included_vector <- sepsis[sepsis$admissionid %!in% patient_inexcluded_icd9$patientunitstayid  ,]
+patient_included_vector <- sepsis[sepsis$admissionid %!in% patient_inexcluded_icd9$admissionid  ,]
 patient_included <- data.frame(patientunitstayid=integer(length(patient_included_vector))) 
 patient_included$patientunitstayid<-patient_included_vector
 
@@ -147,6 +148,7 @@ nrow(selected_cohort)
 vol_leak_index_dataset<-Reduce(function(...) merge(..., all.x=TRUE), list(
    selected_cohort
   ,charlson
+  ,sofa
 ))
 
 # Removes Patients without intake data
@@ -163,6 +165,7 @@ WHERE totalFluid > 0 ')
 
 print('patients with positive fluid data')
 nrow(vol_leak_index_dataset)
+# Alter fluid data so all is positive
 ```
 
 ## Creating new variables
@@ -192,7 +195,7 @@ vol_leak_index_dataset<-vol_leak_index_dataset%>%
 # amsterdam$age_fixed = as.factor(amsterdam$age_fixed)
 # amsterdam$gender[amsterdam$gender=='Male']<-1
 # amsterdam$gender[amsterdam$gender=='Female']<-2
-vol_leak_index_dataset$q_leaking_index$hosp_mortality = vol_leak_index_dataset$q_leaking_index$actualhospitalmortality
+vol_leak_index_dataset$hosp_mortality = vol_leak_index_dataset$actualhospitalmortality
 vol_leak_index_dataset$q_leaking_index = ntile(vol_leak_index_dataset$leaking_index,4)
 
 # age_grouper = function(age) {
@@ -242,6 +245,19 @@ selected_df<-selected_df[complete.cases(selected_df),]
 
 ```
 
+### Addressing VLI and Fluid outliers
+
+```{r eval=FALSE, include=FALSE}
+
+# We are removing fluid balance outliers
+# outliers <- boxplot(vol_leak_index_dataset$fluid_balance, plot=FALSE)$out
+# vol_leak_index_dataset$fluid_balance[which(vol_leak_index_dataset$fluid_balance %in% outliers)]<-NA
+
+## We are removing VLI outliers
+outliers <- boxplot(vol_leak_index_dataset$leaking_index, plot=FALSE)$out
+vol_leak_index_dataset$leaking_index[which(vol_leak_index_dataset$leaking_index %in% outliers)]<-NA
+```
+
 Amsterdam DB Cohort Information:
 
 - Total patients in Amsterdam UMC DB: 23172
@@ -250,6 +266,7 @@ Amsterdam DB Cohort Information:
 - After excluding patients who received blood/colloids (n=1757): 6487
 - After excluding patients with missing CLI variables (n=4341): 2146
 - After excluding patients with missing delta SOFA (n=1728): 418
+(not using Apache because only 4869 patients in the entire dataset have apache)
 
 
 # Table 1
