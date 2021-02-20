@@ -84,7 +84,7 @@ getSQL <- function(filepath){
 
 # Loading queries and extracting the data
 
-Loads all queries from the sql files in the extraction folder and runs them into RBigQuey to extract the data.
+Loads all queries from the sql files in the extraction folder and runs them into RBigQuery to extract the data.
 
 ```{r}
 amsterdam = run_query(getSQL("sql/amsterdam 2.sql" ))
@@ -108,6 +108,9 @@ patient_inexcluded_icd9 <- run_query(getSQL('sql/patient_inexcluded_icd9.sql'))
 
 #exclude patients who have recieved blood (I don't think we are doing this in eicu or mimic)
 blood_infus <- run_query(getSQL('sql/blood_infus.sql'))
+
+#72hr Fluid Data
+fluid_72hrs <- run_query(getSQL('sql/fluid_72hrs.sql'))
 ```
 
 # Exclusion criteria 1
@@ -147,15 +150,18 @@ nrow(selected_cohort)
 # We are using a left join to join them
 vol_leak_index_dataset<-Reduce(function(...) merge(..., all.x=TRUE), list(
    selected_cohort
+   ,fluid_72hrs
   ,charlson
-  ,sofa
 ))
 
 # Removes Patients without intake data
 vol_leak_index_dataset<-sqldf('
 SELECT * FROM
 vol_leak_index_dataset
-WHERE totalFluid IS NOT null')
+WHERE intakes IS NOT null')
+
+print('patients with fluid data')
+nrow(vol_leak_index_dataset)
 
 # Ensures fluid intake is greater than 0.
 vol_leak_index_dataset<-sqldf('
@@ -196,7 +202,7 @@ vol_leak_index_dataset<-vol_leak_index_dataset%>%
 # amsterdam$gender[amsterdam$gender=='Male']<-1
 # amsterdam$gender[amsterdam$gender=='Female']<-2
 vol_leak_index_dataset$hosp_mortality = vol_leak_index_dataset$actualhospitalmortality
-vol_leak_index_dataset$q_leaking_index = ntile(vol_leak_index_dataset$leaking_index,4)
+vol_leak_index_dataset$q_leaking_index = as.factor(ntile(vol_leak_index_dataset$leaking_index,4))
 
 # age_grouper = function(age) {
 #   if (age >=18 & age <=39) {
@@ -233,6 +239,7 @@ selected_df <- vol_leak_index_dataset%>%mutate(
     # ,apachescore
     # ,delta_sofa
     ,totalFluid
+    ,totalFluid_72
     # ,highest_q_leaking_index
     ,q_leaking_index
     ,leaking_index
@@ -245,7 +252,7 @@ selected_df<-selected_df[complete.cases(selected_df),]
 
 ```
 
-### Addressing VLI and Fluid outliers
+### Addressing VLI and Fluid outliers (not anymore)
 
 ```{r eval=FALSE, include=FALSE}
 
@@ -254,8 +261,8 @@ selected_df<-selected_df[complete.cases(selected_df),]
 # vol_leak_index_dataset$fluid_balance[which(vol_leak_index_dataset$fluid_balance %in% outliers)]<-NA
 
 ## We are removing VLI outliers
-outliers <- boxplot(vol_leak_index_dataset$leaking_index, plot=FALSE)$out
-vol_leak_index_dataset$leaking_index[which(vol_leak_index_dataset$leaking_index %in% outliers)]<-NA
+# outliers <- boxplot(vol_leak_index_dataset$leaking_index, plot=FALSE)$out
+# vol_leak_index_dataset$leaking_index[which(vol_leak_index_dataset$leaking_index %in% outliers)]<-NA
 ```
 
 Amsterdam DB Cohort Information:
@@ -274,15 +281,14 @@ Amsterdam DB Cohort Information:
 ```{r}
 # table1(~ age_fixed + hosp_mortality + gender + charlson_score + apachescore + totalFluid + mean_hct_24_36hrs + first_hct_6hrs| q_leaking_index, data=selected_df)
 
-table1(~ gender + age_fixed + hosp_mortality + totalFluid + mean_hct_24_36hrs + first_hct_6hrs + charlson_score| q_leaking_index, data=selected_df)
+table1(~ gender + age_fixed + hosp_mortality + totalFluid + totalFluid_72 + mean_hct_24_36hrs + first_hct_6hrs + charlson_score| q_leaking_index, data=selected_df)
 ```
 
-
-# Export dataset
-
+# 72hr Fluid Regression Analysis
 ```{r}
-write.csv(combined,'combined.csv')
-selected_df = combined # for compatibility with code below
+plot (selected_df$leaking_index, selected_df$totalFluid_72, xlab = 'leaking_index', ylab = 'fluid balance at 72hrs', main = 'Leaking Index as a predictor of Fluid Balance at 72 hrs')
+linearMod <- lm(totalFluid_72 ~ q_leaking_index, data=selected_df)
+summary(linearMod)
 ```
 
 # Train and test datasets creation

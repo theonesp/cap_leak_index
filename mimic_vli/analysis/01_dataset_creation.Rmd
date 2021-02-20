@@ -108,20 +108,31 @@ sepsis <- run_query(getSQL('sql/sepsis.sql'))
 # intake data
 intake <- run_query(getSQL("sql/intake.sql"))
 intake_full <- run_query(getSQL("sql/intake_full.sql"))
+intake72hrs <- run_query(getSQL("sql/intake_72hrs.sql"))
 
 # output data
 output <- run_query(getSQL("sql/output.sql"))
+output72hrs <- run_query(getSQL("sql/output_72hrs.sql"))
 
 # unused fluid data to correct for excess flow
 pre_adm_fluid<-run_query(getSQL('sql/intake/pre_adm_fluid.sql'))
 real_time_intake_mv<-run_query(getSQL('sql/intake/real_time_intake_mv.sql'))
 real_time_intake_cv<-run_query(getSQL('sql/intake/real_time_intake_cv.sql'))
+
+demographic <- run_query(getSQL('sql/demographics.sql'))
 ```
 ```{r}
 #demographic data separated due to error in processing "numeric" type
 demographic <- run_query(getSQL('sql/demographics.sql'))
 demographic2 <- run_query(getSQL('sql/demographics2.sql'))
 ```
+
+```{r}
+# 72hr fluid values
+output72hrs <- run_query(getSQL("sql/output_72hrs.sql"))
+intake72hrs <- run_query(getSQL("sql/intake_72hrs.sql"))
+```
+
 
 # Exclusion criteria 1
 
@@ -168,6 +179,8 @@ vol_leak_index_dataset<-Reduce(function(...) merge(..., all.x=TRUE), list(
   ,hct
   ,intake
   ,output
+  ,intake72hrs
+  ,output72hrs
   ,oasis_related
   ,elixhauser_score
   ,sofa_total_day1_to_day4
@@ -193,11 +206,13 @@ nrow(vol_leak_index_dataset)
 
 ```{r}
 vol_leak_index_dataset$outputs_total[is.na(vol_leak_index_dataset$outputs_total)] = 0
+vol_leak_index_dataset$outputs_total_72[is.na(vol_leak_index_dataset$outputs_total_72)] = 0
 
 # Calculates Fluid Balance
 vol_leak_index_dataset<-vol_leak_index_dataset%>%
   mutate(
     fluid_balance=(intakes_total-outputs_total),
+    fluid_balance_72=(intakes_total_72-outputs_total_72)
   )  
 
 # Ensures fluid balance is greater than 0.
@@ -216,7 +231,7 @@ vol_leak_index_dataset<-vol_leak_index_dataset%>%
     leaking_index=((mean_hct_24_36hrs - first_hct_6hrs) / fluid_balance) * body_surface_area
   ) 
 
-# Removes leaking index greater than 0 (means that hematocrit increases over time with fluid)
+# Removes leaking index greater than 0 (means that hematocrit increases over time with fluid). We are not doing this because an increase in hematocrit is clinically possible
 # vol_leak_index_dataset<-sqldf('
 # SELECT * FROM
 # vol_leak_index_dataset
@@ -322,6 +337,7 @@ selected_df <- vol_leak_index_dataset%>%dplyr::select(
     ,leaking_index
     ,delta_sofa
     ,fluid_balance
+    ,fluid_balance_72
     ,mean_hct_24_36hrs
     ,first_hct_6hrs
   )
@@ -426,7 +442,7 @@ nrow(selected_df)
 *Stratified by q_leaking_index*
 
 ```{r}
-mimicTable1 <- table1(~ age_fixed + hosp_mortality + gender + final_elixhauser_score + oasis  + delta_sofa + fluid_balance + mean_hct_24_36hrs + first_hct_6hrs | q_leaking_index, data=selected_df)
+mimicTable1 <- table1(~ age_fixed + hosp_mortality + gender + final_elixhauser_score + oasis  + delta_sofa + fluid_balance + fluid_balance_72+ mean_hct_24_36hrs + first_hct_6hrs | q_leaking_index, data=selected_df)
 mimicTable1
 ```
 
@@ -434,4 +450,11 @@ mimicTable1
 
 ```{r}
 write.csv(selected_df,'selected_df.csv')
+```
+
+# 72hr Fluid Regression Analysis
+```{r}
+plot (selected_df$leaking_index, selected_df$fluid_balance_72, xlab = 'leaking_index', ylab = 'fluid balance at 72hrs', main = 'Leaking Index as a predictor of Fluid Balance at 72 hrs')
+linearMod <- lm(fluid_balance_72 ~ leaking_index, data=selected_df)
+summary(linearMod)
 ```
