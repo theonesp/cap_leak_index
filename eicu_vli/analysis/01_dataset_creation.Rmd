@@ -369,6 +369,7 @@ selected_df <- vol_leak_index_dataset%>%dplyr::select(
     ,leaking_index
     ,delta_sofa
     ,fluid_balance
+    ,fluid_balance_72
     ,mean_hct_24_36hrs
     ,first_hct_6hrs
   )
@@ -456,5 +457,12 @@ summary(linearMod)
 ```{r}
 plot (vol_leak_index_dataset$leaking_index, vol_leak_index_dataset$fluid_balance_72, xlab = 'leaking_index', ylab = 'fluid balance at 72hrs', main = 'Leaking Index as a predictor of Fluid Balance at 72 hrs')
 linearMod <- lm(fluid_balance_72 ~ leaking_index, data=vol_leak_index_dataset)
+summary(linearMod)
+```
+
+# 72hr Fluid Regression Based on Quartiles
+```{r}
+plot (selected_df$q_leaking_index, selected_df$fluid_balance_72, xlab = 'leaking_index', ylab = 'fluid balance at 72hrs', main = 'Leaking Index as a predictor of Fluid Balance at 72 hrs')
+linearMod <- lm(fluid_balance_72 ~ q_leaking_index, data=selected_df)
 summary(linearMod)
 ```
