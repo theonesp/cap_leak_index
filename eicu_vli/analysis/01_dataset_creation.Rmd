@@ -134,7 +134,7 @@ vent <- run_query((getSQL('sql/vent.sql')))
 
 ```{r}
 # Separate fluid intake calls ("full" fluid means all fluid for a patient, not just
-# crystalloids)
+# crystalloids). We are not using the full fluid intakes. We are only interested in crystalloiods.
 intake <- run_query(getSQL("sql/intake.sql"))
 intake_full <-run_query(getSQL("sql/intake_full.sql"))
 intake72hrs <- run_query(getSQL("sql/intake72hrs.sql"))
@@ -236,7 +236,7 @@ nrow(vol_leak_index_dataset)
 vol_leak_index_dataset$outputs_total[is.na(vol_leak_index_dataset$outputs_total)] = 0
 vol_leak_index_dataset<-vol_leak_index_dataset%>%
   mutate(
-    fluid_balance=(intakes_total - outputs_total),
+    fluid_balance=(intakes_total-outputs_total),
     fluid_balance_72 = (intakes_total72 - outputs_total72)
   )  
 hist(vol_leak_index_dataset['fluid_balance'])
@@ -257,7 +257,7 @@ vol_leak_index_dataset<-vol_leak_index_dataset%>%
     leaking_index=((mean_hct_24_36hrs - first_hct_6hrs) / fluid_balance) * body_surface_area
   )  
 
-# Removes leaking index greater than 0 (means that hematocrit increases over time with fluid)
+# Removes leaking index greater than 0 (means that hematocrit increases over time with fluid). We are not doing this now.
 # vol_leak_index_dataset<-sqldf('
 # SELECT * FROM
 # vol_leak_index_dataset
@@ -285,6 +285,7 @@ cat(summary(vol_leak_index_dataset['leaking_index']),'\n',sep = '|')
 ```
 
 ### Addressing VLI and Fluid outliers
+Not addressing outliers anymore
 
 ```{r eval=FALSE, include=FALSE}
 
@@ -293,8 +294,8 @@ cat(summary(vol_leak_index_dataset['leaking_index']),'\n',sep = '|')
 # vol_leak_index_dataset$fluid_balance[which(vol_leak_index_dataset$fluid_balance %in% outliers)]<-NA
 
 ## We are removing VLI outliers
-outliers <- boxplot(vol_leak_index_dataset$leaking_index, plot=FALSE)$out
-vol_leak_index_dataset$leaking_index[which(vol_leak_index_dataset$leaking_index %in% outliers)]<-NA
+# outliers <- boxplot(vol_leak_index_dataset$leaking_index, plot=FALSE)$out
+# vol_leak_index_dataset$leaking_index[which(vol_leak_index_dataset$leaking_index %in% outliers)]<-NA
 ```
 
 ### VLI Distribution after removing outliers
@@ -445,12 +446,13 @@ table1(~ age_fixed + hosp_mortality + gender + final_charlson_score + apache_iv 
 write.csv(selected_df,'selected_df.csv')
 ```
 
-# Fluid Regression Analysis
+# Fluid Balance Regression Analysis
 ```{r}
 plot (vol_leak_index_dataset$fluid_balance, vol_leak_index_dataset$hosp_mortality, xlim = c(0, 25000))
 linearMod <- lm(hosp_mortality ~ fluid_balance, data=vol_leak_index_dataset)
 summary(linearMod)
 ```
+# 72hr Fluid Regression Analysis
 ```{r}
 plot (vol_leak_index_dataset$leaking_index, vol_leak_index_dataset$fluid_balance_72, xlab = 'leaking_index', ylab = 'fluid balance at 72hrs', main = 'Leaking Index as a predictor of Fluid Balance at 72 hrs')
 linearMod <- lm(fluid_balance_72 ~ leaking_index, data=vol_leak_index_dataset)

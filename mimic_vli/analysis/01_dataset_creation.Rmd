@@ -197,7 +197,7 @@ vol_leak_index_dataset$outputs_total[is.na(vol_leak_index_dataset$outputs_total)
 # Calculates Fluid Balance
 vol_leak_index_dataset<-vol_leak_index_dataset%>%
   mutate(
-    fluid_balance=(intakes_total - outputs_total),
+    fluid_balance=(intakes_total-outputs_total),
   )  
 
 # Ensures fluid balance is greater than 0.
@@ -249,8 +249,8 @@ We are not addressing outliers anymore
 ```{r eval=FALSE, include=FALSE}
 
 ## We are removing VLI outliers
-outliers <- boxplot(vol_leak_index_dataset$leaking_index, plot=FALSE)$out
-vol_leak_index_dataset$leaking_index[which(vol_leak_index_dataset$leaking_index %in% outliers)]<-NA
+# outliers <- boxplot(vol_leak_index_dataset$leaking_index, plot=FALSE)$out
+# vol_leak_index_dataset$leaking_index[which(vol_leak_index_dataset$leaking_index %in% outliers)]<-NA
 ```
 
 ### VLI Distribution after removing outliers
@@ -426,7 +426,8 @@ nrow(selected_df)
 *Stratified by q_leaking_index*
 
 ```{r}
-table1(~ age_fixed + hosp_mortality + gender + final_elixhauser_score + oasis  + delta_sofa + fluid_balance + mean_hct_24_36hrs + first_hct_6hrs | q_leaking_index, data=selected_df)
+mimicTable1 <- table1(~ age_fixed + hosp_mortality + gender + final_elixhauser_score + oasis  + delta_sofa + fluid_balance + mean_hct_24_36hrs + first_hct_6hrs | q_leaking_index, data=selected_df)
+mimicTable1
 ```
 
 # Export dataset
