@@ -406,7 +406,7 @@ nrow(selected_df)
 ```{r}
 selected_df<-selected_df%>%
   mutate(
-     q_leaking_index=as.factor(as.numeric(cut2(leaking_index, g=4)))
+     q_leaking_index=as.factor(as.numeric(cut2(leaking_index, g=8)))
 )
 ```
 
@@ -420,7 +420,7 @@ selected_df<-selected_df%>%mutate(
 selected_df$highest_q_leaking_index<-as.factor(selected_df$highest_q_leaking_index)
 
 print('cutoff points')
-unique(cut2(selected_df$leaking_index, g=4))
+unique(cut2(selected_df$leaking_index, g=8))
 ```
 
 # Exclusion criteria 4
@@ -463,6 +463,6 @@ summary(linearMod)
 # 72hr Fluid Regression Based on Quartiles
 ```{r}
 plot (selected_df$q_leaking_index, selected_df$fluid_balance_72, xlab = 'leaking_index', ylab = 'fluid balance at 72hrs', main = 'Leaking Index as a predictor of Fluid Balance at 72 hrs')
-linearMod <- lm(fluid_balance_72 ~ q_leaking_index, data=selected_df)
+linearMod <- lm(fluid_balance_72 ~ q_leaking_index + age_fixed + gender + fluid_balance + apache_iv + final_charlson_score, data=selected_df)
 summary(linearMod)
 ```

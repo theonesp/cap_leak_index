@@ -50,6 +50,7 @@ model_gam <- gam( apache_iv ~
                          + age_fixed
                          + gender
                          + final_charlson_score
+                         + apache_iv
                          ,data=selected_df)
 
 plotgam_model_gam<-mgcv::plot.gam(model_gam, n=200,select = 0)

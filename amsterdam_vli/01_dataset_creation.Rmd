@@ -287,7 +287,7 @@ table1(~ gender + age_fixed + hosp_mortality + totalFluid + totalFluid_72 + mean
 # 72hr Fluid Regression Analysis
 ```{r}
 plot (selected_df$leaking_index, selected_df$totalFluid_72, xlab = 'leaking_index', ylab = 'fluid balance at 72hrs', main = 'Leaking Index as a predictor of Fluid Balance at 72 hrs')
-linearMod <- lm(totalFluid_72 ~ q_leaking_index, data=selected_df)
+linearMod <- lm(totalFluid_72 ~ q_leaking_index + totalFluid + charlson_score + gender, data=selected_df)
 summary(linearMod)
 ```
 
