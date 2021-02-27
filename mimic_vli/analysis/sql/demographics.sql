@@ -1,15 +1,20 @@
 -- Patients demographics
 SELECT
   icustay_id,
-  gender,
-  admission_age AS age_fixed,
+  icustay_detail.gender,
+  CASE WHEN admission_age > 89 THEN 91.4 ELSE admission_age END AS age_fixed,
   hospital_expire_flag AS hosp_mortality ,
-  ROUND(SQRT((height_max*weight_max) / 3600),2) AS body_surface_area
+  CASE WHEN hospital_expire_flag = 1 THEN DATETIME_DIFF(dod_hosp, INTIME, MINUTE) ELSE 0 END AS hosp_mortality_offset,
+  CAST(ROUND(SQRT((height_max*weight_max) / 3600),2) AS INT64) AS body_surface_area
 FROM
-  `physionet-data.mimiciii_derived.icustay_detail`
+  `physionet-data.mimiciii_derived.icustay_detail` icustay_detail
 LEFT JOIN
   `physionet-data.mimiciii_derived.heightweight`
 USING
-  (icustay_id)  
+  (icustay_id)
+LEFT JOIN
+  `physionet-data.mimiciii_clinical.patients` patients
+USING
+    (subject_id)    
 WHERE  
   admission_age >=16

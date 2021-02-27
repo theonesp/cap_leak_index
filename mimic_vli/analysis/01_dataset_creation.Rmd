@@ -43,7 +43,7 @@ This chunks also creates the run_query and get_sql function.
 
 ```{r setup, include=FALSE}
 # Updated for our year
-project_id <- "hst-953-2019"
+project_id <- "hst-953-2018"
 options(httr_oauth_cache=FALSE)
 # Function that takes in a sql command and runs it on bigquery
 run_query <- function(query){
@@ -114,26 +114,9 @@ intake72hrs <- run_query(getSQL("sql/intake_72hrs.sql"))
 output <- run_query(getSQL("sql/output.sql"))
 output72hrs <- run_query(getSQL("sql/output_72hrs.sql"))
 
-# unused fluid data to correct for excess flow
-pre_adm_fluid<-run_query(getSQL('sql/intake/pre_adm_fluid.sql'))
-real_time_intake_mv<-run_query(getSQL('sql/intake/real_time_intake_mv.sql'))
-real_time_intake_cv<-run_query(getSQL('sql/intake/real_time_intake_cv.sql'))
-
-demographic <- run_query(getSQL('sql/demographics.sql'))
-```
-```{r}
 #demographic data separated due to error in processing "numeric" type
 demographic <- run_query(getSQL('sql/demographics.sql'))
-demographic2 <- run_query(getSQL('sql/demographics2.sql'))
 ```
-
-```{r}
-# 72hr fluid values
-output72hrs <- run_query(getSQL("sql/output_72hrs.sql"))
-intake72hrs <- run_query(getSQL("sql/intake_72hrs.sql"))
-```
-
-
 # Exclusion criteria 1
 
 Patients with sepsis (not bleeding) 
@@ -330,6 +313,7 @@ vol_leak_index_dataset<-vol_leak_index_dataset%>%
 selected_df <- vol_leak_index_dataset%>%dplyr::select(
      icustay_id
     ,hosp_mortality
+    ,hosp_mortality_offset
     ,age_fixed
     ,gender
     ,final_elixhauser_score

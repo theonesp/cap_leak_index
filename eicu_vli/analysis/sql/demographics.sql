@@ -149,7 +149,8 @@ END
   --location from where the patient was admitted to the hospital e.g.: Direct Admit, Floor, Chest Pain Center. etc.
   hospitalAdmitSource,
   -- length of hospital stay prior to ICU admission (days)
-  basic_demographics.hosp_mortality
+  basic_demographics.hosp_mortality,
+  CASE WHEN basic_demographics.hosp_mortality = 1 THEN patient.hospitalDischargeOffset ELSE 0 END AS hosp_mortality_offset
 FROM
   demographics
 LEFT JOIN
