@@ -24,25 +24,20 @@ library(ggplot2)
 ggplot(selected_df, aes(leaking_index,hosp_mortality) ) +
   stat_smooth()
 ```
-```{r}
-ggplot(selected_df, aes(leaking_index,delta_sofa) ) +
-  stat_smooth()
-```
-```{r}
-ggplot(selected_df_fluid, aes(leaking_index,fluid_balance_72) ) +
-  stat_smooth()
-```
 
+```{r}
+ggplot(selected_df, aes(leaking_index,totalFluid_72) ) +
+  stat_smooth()
+```
 
 # GAM analysis
 
 ```{r}
-model_gam <- gam(hosp_mortality ~
+model_gam <- gam( hosp_mortality ~
                          + s(leaking_index)
                          + age_fixed
                          + gender
-                         + final_elixhauser_score
-                         + oasis
+                          +charlson_score
                          ,data=selected_df)
 
 plotgam_model_gam<-mgcv::plot.gam(model_gam, n=200,select = 0)
@@ -80,72 +75,19 @@ ggplot(data=plotgam_model_gam_exp, aes(vli, fit,colour='#039be5'))+
   geom_line()+
   geom_ribbon(data=plotgam_model_gam_exp,aes(x=vli,ymin=lci,ymax=uci,fill='#039be5'),alpha=0.3,inherit.aes=FALSE)+
   xlab('VLI')+
-  ylab('mortality')+
+  ylab('Mortality')+
   #scale_color_manual(labels = c("Black", "White"), values = c("#1abc9c","#f1c40f"))+
   #scale_fill_manual(labels = c("Black", "White"), values = c("#1abc9c","#f1c40f"))+
   labs(colour='Trend', fill='Trend') +
-  theme_minimal()+theme(legend.position = 'none')  
+  theme_minimal()+theme(legend.position = 'none') 
 ```
-
 ```{r}
-model_gam <- gam(fluid_balance_72 ~
+model_gam <- gam(totalFluid_72 ~
                          + s(leaking_index)
                          + age_fixed
                          + gender
-                         + final_elixhauser_score
-                         + oasis
-                         + fluid_balance
-                         ,data=selected_df_fluid)
-
-plotgam_model_gam<-mgcv::plot.gam(model_gam, n=200,select = 0)
-
-plotgam_model_gam_exp<-as.data.frame(
-  rbind(  
-    cbind(
-      plotgam_model_gam[[1]][["x"]] 
-      ,plotgam_model_gam[[1]][["fit"]] + coef(model_gam)[1]
-      ,plotgam_model_gam[[1]][["se"]] 
-      #,'F'
-      
-    )
-    
-  #  ,cbind(
-  #    plotgam_model_gam[[2]][["x"]] 
-  #    ,plotgam_model_gam[[2]][["fit"]] + coef(model_gam)[1]
-  #    ,plotgam_model_gam[[2]][["se"]]  
-  #    ,'M'
-  #  )
-  ))
-
-plotgam_model_gam_exp[,c(1:3)] <- apply(plotgam_model_gam_exp[,c(1:3)], 2, function(x) as.numeric(as.character(x)))
-
-colnames(plotgam_model_gam_exp)[1]<-'vli'
-colnames(plotgam_model_gam_exp)[2]<-'fit'
-colnames(plotgam_model_gam_exp)[3]<-'se.fit'
-#colnames(plotgam_model_gam_exp)[4]<-'group'
-
-#plotgam_model_GFR_Cys_0C_exp$gfr_unlog<-exp(plotgam_model_GFR_Cys_0C_exp$fit)
-plotgam_model_gam_exp$lci<- plotgam_model_gam_exp$fit - 2 * plotgam_model_gam_exp$se.fit
-plotgam_model_gam_exp$uci<- plotgam_model_gam_exp$fit + 2 * plotgam_model_gam_exp$se.fit
-
-ggplot(data=plotgam_model_gam_exp, aes(vli, fit,colour='#039be5'))+
-  geom_line()+
-  geom_ribbon(data=plotgam_model_gam_exp,aes(x=vli,ymin=lci,ymax=uci,fill='#039be5'),alpha=0.3,inherit.aes=FALSE)+
-  xlab('VLI')+
-  ylab('72hr Fluid')+
-  #scale_color_manual(labels = c("Black", "White"), values = c("#1abc9c","#f1c40f"))+
-  #scale_fill_manual(labels = c("Black", "White"), values = c("#1abc9c","#f1c40f"))+
-  labs(colour='Trend', fill='Trend') +
-  theme_minimal()+theme(legend.position = 'none')  
-```
-
-```{r}
-model_gam <- gam(delta_sofa ~
-                         + s(leaking_index)
-                         + age_fixed
-                         + gender
-                         + final_elixhauser_score
-                         + oasis
+                         + charlson_score
+                         + totalFluid
                          ,data=selected_df)
 
 plotgam_model_gam<-mgcv::plot.gam(model_gam, n=200,select = 0)
@@ -183,11 +125,11 @@ ggplot(data=plotgam_model_gam_exp, aes(vli, fit,colour='#039be5'))+
   geom_line()+
   geom_ribbon(data=plotgam_model_gam_exp,aes(x=vli,ymin=lci,ymax=uci,fill='#039be5'),alpha=0.3,inherit.aes=FALSE)+
   xlab('VLI')+
-  ylab('delta_sofa')+
+  ylab('Fluid Balance at 72hrs')+
   #scale_color_manual(labels = c("Black", "White"), values = c("#1abc9c","#f1c40f"))+
   #scale_fill_manual(labels = c("Black", "White"), values = c("#1abc9c","#f1c40f"))+
   labs(colour='Trend', fill='Trend') +
-  theme_minimal()+theme(legend.position = 'none')  
+  theme_minimal()+theme(legend.position = 'none') 
 ```
 
 # Odds Ratios
@@ -195,11 +137,10 @@ ggplot(data=plotgam_model_gam_exp, aes(vli, fit,colour='#039be5'))+
 vli_prop_score_dataset<-selected_df
 
 ps_model <- glm( hosp_mortality ~ 
-                  q_leaking_index
-                + oasis
+                 q_leaking_index
                 + age_fixed
                 + gender
-                + final_elixhauser_score
+                + charlson_score
                 , family=binomial()
                 , data=vli_prop_score_dataset)
 
@@ -209,3 +150,42 @@ OR_table<-as.data.frame(round(exp(cbind(OR=coef(ps_model), confint.default(ps_mo
 options(scipen=999) # disable scientific notation
 OR_table
 ```
+# Odd Ratio Plots
+
+## Main model
+
+```{r}
+#Generate plot of the odds ratio for quartiles of CLI measured against mortality
+
+labels<-c('CLI Q2', 'CLI Q3', 'CLI Q4')
+number_of_exposures<-length(labels)+1
+
+df <- data.frame(yAxis = 2:number_of_exposures,
+                 boxOdds = OR_table$OR[2:number_of_exposures] ,
+                 boxCILow = OR_table$`2.5 %`[2:number_of_exposures],  
+                 boxCIHigh = OR_table$`97.5 %`[2:number_of_exposures]
+)
+#df <- df[order(df$boxOdds),]
+
+p<-ggplot(df, aes(x = boxOdds
+                  , y = labels
+                  )) + 
+  geom_vline(aes(xintercept = 1), size = .1, linetype = "dashed") + 
+  geom_errorbarh(aes(xmax = boxCIHigh, xmin = boxCILow)
+                 , size = .5
+                 , height = .2
+                 , color = "gray50") +
+  geom_point(size = 2, color = "#2980b9") +
+  #coord_trans(x = scales:::exp_trans(1.01)) +
+  #scale_y_continuous(breaks = c(-1:1),labels = c(-1:1)) +
+  theme_bw()+
+  theme(panel.grid.minor = element_blank()) +
+  ylab("Exposure") +
+  xlab("Odds ratio") +
+  ggtitle("Impact on mortality")
+p<-ggplotly(p)
+p<-ggplotly(p%>%layout(hovermode = 'compare'))
+p
+```
+```
+

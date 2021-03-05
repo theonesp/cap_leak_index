@@ -45,17 +45,24 @@ center_scale <- function(x) {
 
 ```{r}
 ggplot(selected_df, aes(leaking_index,hosp_mortality) ) +
-  geom_point() +
   stat_smooth()
 ```
 
+```{r}
+ggplot(selected_df_fluid, aes(leaking_index,fluid_balance_72) ) +
+  stat_smooth()
+```
+```{r}
+ggplot(selected_df_fluid, aes(leaking_index,delta_sofa) ) +
+  stat_smooth()
+```
 
 # GAM analysis
 
 ```{r}
 model_gam <- gam( hosp_mortality  ~
                          + s(leaking_index)
-                         + age_fixed + gender + fluid_balance + apache_iv + final_charlson_score
+                         + age_fixed + gender + apache_iv + final_charlson_score
                          ,data=selected_df)
 
 plotgam_model_gam<-mgcv::plot.gam(model_gam, n=200,select = 0)
@@ -97,7 +104,103 @@ ggplot(data=plotgam_model_gam_exp, aes(vli, fit))+
   #scale_color_manual(labels = c("Black", "White"), values = c("#1abc9c","#f1c40f"))+
   #scale_fill_manual(labels = c("Black", "White"), values = c("#1abc9c","#f1c40f"))+
   labs(colour='Trend', fill='Trend') +
-  theme_minimal()+theme(legend.position = 'none')  
+  theme_minimal()+theme(legend.position = 'none')
+
+```
+
+```{r}
+model_gam <- gam(fluid_balance_72 ~
+                         + s(leaking_index)
+                         + age_fixed + gender + fluid_balance + apache_iv + final_charlson_score
+                         ,data=selected_df_fluid)
+
+plotgam_model_gam<-mgcv::plot.gam(model_gam, n=200,select = 0)
+
+plotgam_model_gam_exp<-as.data.frame(
+  rbind(  
+    cbind(
+      plotgam_model_gam[[1]][["x"]] 
+      ,plotgam_model_gam[[1]][["fit"]] + coef(model_gam)[1]
+      ,plotgam_model_gam[[1]][["se"]] 
+      #,'F'
+      
+    )
+    
+  #  ,cbind(
+  #    plotgam_model_gam[[2]][["x"]] 
+  #    ,plotgam_model_gam[[2]][["fit"]] + coef(model_gam)[1]
+  #    ,plotgam_model_gam[[2]][["se"]]  
+  #    ,'M'
+  #  )
+  ))
+
+plotgam_model_gam_exp[,c(1:3)] <- apply(plotgam_model_gam_exp[,c(1:3)], 2, function(x) as.numeric(as.character(x)))
+
+colnames(plotgam_model_gam_exp)[1]<-'vli'
+colnames(plotgam_model_gam_exp)[2]<-'fit'
+colnames(plotgam_model_gam_exp)[3]<-'se.fit'
+#colnames(plotgam_model_gam_exp)[4]<-'group'
+
+#plotgam_model_GFR_Cys_0C_exp$gfr_unlog<-exp(plotgam_model_GFR_Cys_0C_exp$fit)
+plotgam_model_gam_exp$lci<- plotgam_model_gam_exp$fit - 2 * plotgam_model_gam_exp$se.fit
+plotgam_model_gam_exp$uci<- plotgam_model_gam_exp$fit + 2 * plotgam_model_gam_exp$se.fit
+
+ggplot(data=plotgam_model_gam_exp, aes(vli, fit))+
+  geom_line()+
+  geom_ribbon(data=plotgam_model_gam_exp,aes(x=vli,ymin=lci,ymax=uci),alpha=0.3,inherit.aes=FALSE)+
+  xlab('VLI')+
+  ylab('Fluid Balance at 72hrs')+
+  #scale_color_manual(labels = c("Black", "White"), values = c("#1abc9c","#f1c40f"))+
+  #scale_fill_manual(labels = c("Black", "White"), values = c("#1abc9c","#f1c40f"))+
+  labs(colour='Trend', fill='Trend') +
+  theme_minimal()+theme(legend.position = 'none')
+```
+```{r}
+model_gam <- gam(delta_sofa ~
+                         + s(leaking_index)
+                         + age_fixed + gender + fluid_balance + apache_iv + final_charlson_score
+                         ,data=selected_df_fluid)
+
+plotgam_model_gam<-mgcv::plot.gam(model_gam, n=200,select = 0)
+
+plotgam_model_gam_exp<-as.data.frame(
+  rbind(  
+    cbind(
+      plotgam_model_gam[[1]][["x"]] 
+      ,plotgam_model_gam[[1]][["fit"]] + coef(model_gam)[1]
+      ,plotgam_model_gam[[1]][["se"]] 
+      #,'F'
+      
+    )
+    
+  #  ,cbind(
+  #    plotgam_model_gam[[2]][["x"]] 
+  #    ,plotgam_model_gam[[2]][["fit"]] + coef(model_gam)[1]
+  #    ,plotgam_model_gam[[2]][["se"]]  
+  #    ,'M'
+  #  )
+  ))
+
+plotgam_model_gam_exp[,c(1:3)] <- apply(plotgam_model_gam_exp[,c(1:3)], 2, function(x) as.numeric(as.character(x)))
+
+colnames(plotgam_model_gam_exp)[1]<-'vli'
+colnames(plotgam_model_gam_exp)[2]<-'fit'
+colnames(plotgam_model_gam_exp)[3]<-'se.fit'
+#colnames(plotgam_model_gam_exp)[4]<-'group'
+
+#plotgam_model_GFR_Cys_0C_exp$gfr_unlog<-exp(plotgam_model_GFR_Cys_0C_exp$fit)
+plotgam_model_gam_exp$lci<- plotgam_model_gam_exp$fit - 2 * plotgam_model_gam_exp$se.fit
+plotgam_model_gam_exp$uci<- plotgam_model_gam_exp$fit + 2 * plotgam_model_gam_exp$se.fit
+
+ggplot(data=plotgam_model_gam_exp, aes(vli, fit))+
+  geom_line()+
+  geom_ribbon(data=plotgam_model_gam_exp,aes(x=vli,ymin=lci,ymax=uci),alpha=0.3,inherit.aes=FALSE)+
+  xlab('VLI')+
+  ylab('Delta Sofa')+
+  #scale_color_manual(labels = c("Black", "White"), values = c("#1abc9c","#f1c40f"))+
+  #scale_fill_manual(labels = c("Black", "White"), values = c("#1abc9c","#f1c40f"))+
+  labs(colour='Trend', fill='Trend') +
+  theme_minimal()+theme(legend.position = 'none')
 ```
 
 # Addressing variables Distribution

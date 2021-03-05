@@ -43,7 +43,7 @@ This chunks also creates the run_query and get_sql function.
 
 ```{r setup, include=FALSE}
 # Updated for our year
-project_id <- "hst-953-2018"
+project_id <- "hst-953-2019"
 options(httr_oauth_cache=FALSE)
 # Function that takes in a sql command and runs it on bigquery
 run_query <- function(query){
@@ -226,7 +226,7 @@ nrow(vol_leak_index_dataset)
 
 ### VLI Distribution
 
-*Before addressing outliers*
+*Without Removing Any Outliers*
 
 ```{r}
 colname<-names(vol_leak_index_dataset['leaking_index'])  
@@ -239,21 +239,15 @@ cat('Summary of ',colname,'\n',sep = '')
 cat(summary(vol_leak_index_dataset['leaking_index']),'\n',sep = '|')
 
 ```
-
-### Addressing outliers
-
-We are not addressing outliers anymore
+### Addressing VLI and Fluid outliers
 
 ```{r eval=FALSE, include=FALSE}
-
-## We are removing VLI outliers
-# outliers <- boxplot(vol_leak_index_dataset$leaking_index, plot=FALSE)$out
-# vol_leak_index_dataset$leaking_index[which(vol_leak_index_dataset$leaking_index %in% outliers)]<-NA
+# We are removing VLI outliers
+outliers <- boxplot(vol_leak_index_dataset$leaking_index, plot=FALSE)$out
+vol_leak_index_dataset$leaking_index[which(vol_leak_index_dataset$leaking_index %in% outliers)]<-NA
 ```
 
-### VLI Distribution after removing outliers
-
-*After addressing outliers*
+*After Removing Any Outliers*
 
 ```{r}
 colname<-names(vol_leak_index_dataset['leaking_index'])  
@@ -266,7 +260,6 @@ cat('Summary of ',colname,'\n',sep = '')
 cat(summary(vol_leak_index_dataset['leaking_index']),'\n',sep = '|')
 
 ```
-
 ## SOFA Delta creation
 
 For calculating delta sofa we need tertiles of sofa day 1.
@@ -321,13 +314,37 @@ selected_df <- vol_leak_index_dataset%>%dplyr::select(
     ,leaking_index
     ,delta_sofa
     ,fluid_balance
+    # ,fluid_balance_72
+    ,mean_hct_24_36hrs
+    ,first_hct_6hrs
+  )
+
+selected_df_fluid <- vol_leak_index_dataset%>%dplyr::select(
+     icustay_id
+    ,hosp_mortality
+    ,hosp_mortality_offset
+    ,age_fixed
+    ,gender
+    ,final_elixhauser_score
+    ,oasis
+    ,leaking_index
+    ,delta_sofa
+    ,fluid_balance
     ,fluid_balance_72
     ,mean_hct_24_36hrs
     ,first_hct_6hrs
   )
 
+selected_df_fluid<-selected_df_fluid[complete.cases(selected_df_fluid),]
+print('Number of patients after removing incomplete data:')
+nrow(selected_df_fluid)
+
+# Removing Patients who died before 72 hours
+selected_df_fluid<-selected_df_fluid%>%filter(hosp_mortality_offset>72*60 | hosp_mortality_offset==0)
+print('Number of patients after excluding patients with hosp_mort_offset <72hrs:')
+nrow(selected_df_fluid)
+
 # these variables are factors
-selected_df$hosp_mortality<-as.factor(selected_df$hosp_mortality)
 selected_df$gender<-as.factor(selected_df$gender)
 
 ```
@@ -397,10 +414,14 @@ h
 ```{r}
 selected_df<-selected_df%>%
   mutate(
-     q_leaking_index=as.factor(as.numeric(cut2(leaking_index, g=6)))
+     q_leaking_index=as.factor(as.numeric(cut2(leaking_index, g=4)))
+)
+selected_df_fluid<-selected_df_fluid%>%
+  mutate(
+     q_leaking_index=as.factor(as.numeric(cut2(leaking_index, g=4)))
 )
 print('cutoff points')
-unique(cut2(selected_df$leaking_index, g=6))
+unique(cut2(selected_df$leaking_index, g=4))
 ```
 
 ## Highest_q_leaking_index
@@ -426,7 +447,7 @@ nrow(selected_df)
 *Stratified by q_leaking_index*
 
 ```{r}
-mimicTable1 <- table1(~ age_fixed + hosp_mortality + gender + final_elixhauser_score + oasis  + delta_sofa + fluid_balance + fluid_balance_72+ mean_hct_24_36hrs + first_hct_6hrs | q_leaking_index, data=selected_df)
+mimicTable1 <- table1(~ age_fixed + hosp_mortality + gender + final_elixhauser_score + oasis  + delta_sofa + fluid_balance + mean_hct_24_36hrs + first_hct_6hrs | q_leaking_index, data=selected_df)
 mimicTable1
 ```
 

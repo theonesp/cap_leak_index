@@ -39,7 +39,7 @@ This chunks also creates the run_query and get_sql function.
 
 ```{r setup, include=FALSE}
 # Updated for our year
-project_id <- "hst-953-2018"
+project_id <- "hst-953-2019"
 options(httr_oauth_cache=FALSE)
 # Function that takes in a sql command and runs it on bigquery
 run_query <- function(query){
@@ -285,17 +285,11 @@ cat(summary(vol_leak_index_dataset['leaking_index']),'\n',sep = '|')
 ```
 
 ### Addressing VLI and Fluid outliers
-Not addressing outliers anymore
 
 ```{r eval=FALSE, include=FALSE}
-
-# We are removing fluid balance outliers
-# outliers <- boxplot(vol_leak_index_dataset$fluid_balance, plot=FALSE)$out
-# vol_leak_index_dataset$fluid_balance[which(vol_leak_index_dataset$fluid_balance %in% outliers)]<-NA
-
-## We are removing VLI outliers
-# outliers <- boxplot(vol_leak_index_dataset$leaking_index, plot=FALSE)$out
-# vol_leak_index_dataset$leaking_index[which(vol_leak_index_dataset$leaking_index %in% outliers)]<-NA
+# We are removing VLI outliers
+outliers <- boxplot(vol_leak_index_dataset$leaking_index, plot=FALSE)$out
+vol_leak_index_dataset$leaking_index[which(vol_leak_index_dataset$leaking_index %in% outliers)]<-NA
 ```
 
 ### VLI Distribution after removing outliers
@@ -370,11 +364,35 @@ selected_df <- vol_leak_index_dataset%>%dplyr::select(
     ,leaking_index
     ,delta_sofa
     ,fluid_balance
+    # ,fluid_balance_72
+    ,mean_hct_24_36hrs
+    ,first_hct_6hrs
+  )
+
+selected_df_fluid <- vol_leak_index_dataset%>%dplyr::select(
+     patientunitstayid
+    ,hosp_mortality
+    ,hosp_mortality_offset
+    ,age_fixed
+    ,gender
+    ,final_charlson_score
+    ,apache_iv
+    ,leaking_index
+    ,delta_sofa
+    ,fluid_balance
     ,fluid_balance_72
     ,mean_hct_24_36hrs
     ,first_hct_6hrs
   )
-# these variables are factors
+
+selected_df_fluid<-selected_df_fluid[complete.cases(selected_df_fluid),]
+print('Number of patients after removing incomplete data:')
+nrow(selected_df_fluid)
+
+# Removing Patients who died before 72 hours
+selected_df_fluid<-selected_df_fluid%>%filter(hosp_mortality_offset>72*60 | hosp_mortality_offset==0)
+print('Number of patients after excluding patients with hosp_mort_offset <72hrs:')
+nrow(selected_df_fluid)
 ```
 
 # Data Imputation
@@ -398,10 +416,6 @@ nrow(selected_df)
 selected_df<-selected_df[complete.cases(selected_df),]
 print('Number of patients after excluding patients with missing data:')
 nrow(selected_df)
-
-selected_df<-selected_df%>%filter(hosp_mortality_offset<72*60)
-print('Number of patients after excluding patients with hosp_mort_offset <72hrs:')
-nrow(selected_df)
 ```
 
 # New Variables Creation
@@ -411,7 +425,12 @@ nrow(selected_df)
 ```{r}
 selected_df<-selected_df%>%
   mutate(
-     q_leaking_index=as.factor(as.numeric(cut2(leaking_index, g=8)))
+     q_leaking_index=as.factor(as.numeric(cut2(leaking_index, g=4)))
+)
+
+selected_df_fluid<-selected_df_fluid%>%
+  mutate(
+     q_leaking_index=as.factor(as.numeric(cut2(leaking_index, g=4)))
 )
 ```
 
@@ -425,7 +444,7 @@ selected_df<-selected_df%>%mutate(
 selected_df$highest_q_leaking_index<-as.factor(selected_df$highest_q_leaking_index)
 
 print('cutoff points')
-unique(cut2(selected_df$leaking_index, g=8))
+unique(cut2(selected_df$leaking_index, g=4))
 ```
 
 # Exclusion criteria 4
@@ -455,20 +474,19 @@ write.csv(selected_df,'selected_df.csv')
 # Fluid Balance Regression Analysis
 
 ```{r}
-plot (vol_leak_index_dataset$fluid_balance, vol_leak_index_dataset$hosp_mortality, xlim = c(0, 25000))
-linearMod <- lm(hosp_mortality ~ fluid_balance, data=vol_leak_index_dataset)
+plot (selected_df_fluid$fluid_balance, selected_df_fluid$hosp_mortality, xlim = c(0, 25000))
+linearMod <- lm(hosp_mortality ~ fluid_balance, data=selected_df_fluid)
 summary(linearMod)
 ```
 # 72hr Fluid Regression Analysis
 ```{r}
-plot (vol_leak_index_dataset$leaking_index, vol_leak_index_dataset$fluid_balance_72, xlab = 'leaking_index', ylab = 'fluid balance at 72hrs', main = 'Leaking Index as a predictor of Fluid Balance at 72 hrs')
-linearMod <- lm(fluid_balance_72 ~ leaking_index, data=vol_leak_index_dataset)
+plot (selected_df_fluid$leaking_index, selected_df_fluid$fluid_balance_72, xlab = 'leaking_index', ylab = 'fluid balance at 72hrs', main = 'Leaking Index as a predictor of Fluid Balance at 72 hrs')
+linearMod <- lm(fluid_balance_72 ~ leaking_index, data=selected_df_fluid)
 summary(linearMod)
 ```
 
 # 72hr Fluid Regression Based on Quartiles
 ```{r}
-plot (selected_df$q_leaking_index, selected_df$fluid_balance_72, xlab = 'leaking_index', ylab = 'fluid balance at 72hrs', main = 'Leaking Index as a predictor of Fluid Balance at 72 hrs')
-linearMod <- lm(fluid_balance_72 ~ q_leaking_index + age_fixed + gender + fluid_balance + apache_iv + final_charlson_score, data=selected_df)
+linearMod <- lm(fluid_balance_72 ~ q_leaking_index + age_fixed + gender + fluid_balance + apache_iv + final_charlson_score, data=selected_df_fluid)
 summary(linearMod)
 ```
