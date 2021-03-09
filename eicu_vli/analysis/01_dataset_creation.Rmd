@@ -393,6 +393,8 @@ selected_df <- vol_leak_index_dataset%>%dplyr::select(
  - We are removing patients not in VLI Q2 or VLI Q3.
  - We are removing cases with missing data.
 
+
+
 ```{r}
 print('Number of patients in our dataset so far:')
 nrow(selected_df)
@@ -400,6 +402,9 @@ nrow(selected_df)
 selected_df<-selected_df[complete.cases(selected_df),]
 print('Number of patients after excluding patients with missing data:')
 nrow(selected_df)
+
+#  we don’t want to remove patients that died before 72hrs for the mortality/delta_sofa analysis. This removes a significant number of patients who passed away from our analysis and we don’t see as strong of a signal.
+
 
 # selected_df<-selected_df%>%filter(hosp_mortality_offset<72*60)
 # print('Number of patients after excluding patients with hosp_mort_offset <72hrs:')

@@ -20,21 +20,40 @@ library(mgcv)
 library(ggplot2)
 ```
 
+# Plotting relationship
+
 ```{r}
 ggplot(selected_df, aes(leaking_index,hosp_mortality) ) +
   stat_smooth()
-```
-```{r}
+
 ggplot(selected_df, aes(leaking_index,delta_sofa) ) +
   stat_smooth()
-```
-```{r}
+
 ggplot(selected_df_fluid, aes(leaking_index,fluid_balance_72) ) +
   stat_smooth()
 ```
-
-
 # GAM analysis
+
+```{r}
+# Build the model
+model <- gam(hosp_mortality  ~
+                         + s(leaking_index)
+                         + age_fixed + gender + oasis + final_elixhauser_score
+                         ,data=selected_df)
+# Make predictions
+predictions <- model %>% predict(selected_df)
+# Model performance
+data.frame(
+  RMSE = RMSE(predictions, selected_df$hosp_mortality),
+  R2 = R2(predictions, selected_df$hosp_mortality)
+)
+
+ggplot(selected_df, aes(leaking_index, hosp_mortality) ) +
+  geom_point() +
+  stat_smooth(method = gam, formula = y ~ s(x))
+```
+
+# GAM analysis  (to be removed if we validate the previous code)
 
 ```{r}
 model_gam <- gam(hosp_mortality ~

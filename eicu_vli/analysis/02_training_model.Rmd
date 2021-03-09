@@ -44,12 +44,15 @@ center_scale <- function(x) {
 }
 ```
 
+# Plotting relationship
 
 ```{r}
 ggplot(selected_df, aes(leaking_index,hosp_mortality) ) +
   geom_point() +
   stat_smooth()
 ```
+
+# GAM analysis
 
 ```{r}
 library(mgcv)
@@ -73,7 +76,7 @@ ggplot(selected_df, aes(leaking_index, hosp_mortality) ) +
 
 
 
-# GAM analysis
+# GAM analysis (to be removed if we validate the previous code)
 
 ```{r}
 model_gam <- gam( hosp_mortality  ~
