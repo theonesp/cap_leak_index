@@ -73,7 +73,7 @@ or_gam(data = selected_df, model = model, pred = "final_elixhauser_score",
                    values = c(min(selected_df$final_elixhauser_score), max(selected_df$final_elixhauser_score)))
 
 or_gam(data = selected_df, model = model, pred = "gender", 
-                   values = c(min('F'), max( 'M' )))
+                   values = c('F', 'M') )
 ```
 
 
