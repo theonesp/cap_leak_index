@@ -18,6 +18,7 @@ knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, encoding = e
 ```{r}
 library(mgcv)
 library(ggplot2)
+library(oddsratio)
 ```
 
 # Plotting relationship
@@ -32,7 +33,10 @@ ggplot(selected_df, aes(leaking_index,delta_sofa) ) +
 ggplot(selected_df_fluid, aes(leaking_index,fluid_balance_72) ) +
   stat_smooth()
 ```
-# GAM analysis
+
+# Overall cohort
+
+## GAM analysis
 
 ```{r}
 # Build the model
@@ -53,178 +57,23 @@ ggplot(selected_df, aes(leaking_index, hosp_mortality) ) +
   stat_smooth(method = gam, formula = y ~ s(x))
 ```
 
-# GAM analysis  (to be removed if we validate the previous code)
+### Odds ratio
 
 ```{r}
-model_gam <- gam(hosp_mortality ~
-                         + s(leaking_index)
-                         + age_fixed
-                         + gender
-                         + final_elixhauser_score
-                         + oasis
-                         ,data=selected_df)
+or_gam(data = selected_df, model = model, pred = "leaking_index", 
+                   values = c(min(selected_df$leaking_index), max(selected_df$leaking_index)))
 
-plotgam_model_gam<-mgcv::plot.gam(model_gam, n=200,select = 0)
+or_gam(data = selected_df, model = model, pred = "age_fixed", 
+                   values = c(min(selected_df$age_fixed), max(selected_df$age_fixed)))
 
-plotgam_model_gam_exp<-as.data.frame(
-  rbind(  
-    cbind(
-      plotgam_model_gam[[1]][["x"]] 
-      ,plotgam_model_gam[[1]][["fit"]] + coef(model_gam)[1]
-      ,plotgam_model_gam[[1]][["se"]] 
-      #,'F'
-      
-    )
-    
-  #  ,cbind(
-  #    plotgam_model_gam[[2]][["x"]] 
-  #    ,plotgam_model_gam[[2]][["fit"]] + coef(model_gam)[1]
-  #    ,plotgam_model_gam[[2]][["se"]]  
-  #    ,'M'
-  #  )
-  ))
+or_gam(data = selected_df, model = model, pred = "oasis", 
+                   values = c(min(selected_df$oasis), max(selected_df$oasis)))
 
-plotgam_model_gam_exp[,c(1:3)] <- apply(plotgam_model_gam_exp[,c(1:3)], 2, function(x) as.numeric(as.character(x)))
+or_gam(data = selected_df, model = model, pred = "final_elixhauser_score", 
+                   values = c(min(selected_df$final_elixhauser_score), max(selected_df$final_elixhauser_score)))
 
-colnames(plotgam_model_gam_exp)[1]<-'vli'
-colnames(plotgam_model_gam_exp)[2]<-'fit'
-colnames(plotgam_model_gam_exp)[3]<-'se.fit'
-#colnames(plotgam_model_gam_exp)[4]<-'group'
-
-#plotgam_model_GFR_Cys_0C_exp$gfr_unlog<-exp(plotgam_model_GFR_Cys_0C_exp$fit)
-plotgam_model_gam_exp$lci<- plotgam_model_gam_exp$fit - 2 * plotgam_model_gam_exp$se.fit
-plotgam_model_gam_exp$uci<- plotgam_model_gam_exp$fit + 2 * plotgam_model_gam_exp$se.fit
-
-ggplot(data=plotgam_model_gam_exp, aes(vli, fit,colour='#039be5'))+
-  geom_line()+
-  geom_ribbon(data=plotgam_model_gam_exp,aes(x=vli,ymin=lci,ymax=uci,fill='#039be5'),alpha=0.3,inherit.aes=FALSE)+
-  xlab('VLI')+
-  ylab('mortality')+
-  #scale_color_manual(labels = c("Black", "White"), values = c("#1abc9c","#f1c40f"))+
-  #scale_fill_manual(labels = c("Black", "White"), values = c("#1abc9c","#f1c40f"))+
-  labs(colour='Trend', fill='Trend') +
-  theme_minimal()+theme(legend.position = 'none')  
+or_gam(data = selected_df, model = model, pred = "gender", 
+                   values = c(min('F'), max( 'M' )))
 ```
 
-```{r}
-model_gam <- gam(fluid_balance_72 ~
-                         + s(leaking_index)
-                         + age_fixed
-                         + gender
-                         + final_elixhauser_score
-                         + oasis
-                         + fluid_balance
-                         ,data=selected_df_fluid)
 
-plotgam_model_gam<-mgcv::plot.gam(model_gam, n=200,select = 0)
-
-plotgam_model_gam_exp<-as.data.frame(
-  rbind(  
-    cbind(
-      plotgam_model_gam[[1]][["x"]] 
-      ,plotgam_model_gam[[1]][["fit"]] + coef(model_gam)[1]
-      ,plotgam_model_gam[[1]][["se"]] 
-      #,'F'
-      
-    )
-    
-  #  ,cbind(
-  #    plotgam_model_gam[[2]][["x"]] 
-  #    ,plotgam_model_gam[[2]][["fit"]] + coef(model_gam)[1]
-  #    ,plotgam_model_gam[[2]][["se"]]  
-  #    ,'M'
-  #  )
-  ))
-
-plotgam_model_gam_exp[,c(1:3)] <- apply(plotgam_model_gam_exp[,c(1:3)], 2, function(x) as.numeric(as.character(x)))
-
-colnames(plotgam_model_gam_exp)[1]<-'vli'
-colnames(plotgam_model_gam_exp)[2]<-'fit'
-colnames(plotgam_model_gam_exp)[3]<-'se.fit'
-#colnames(plotgam_model_gam_exp)[4]<-'group'
-
-#plotgam_model_GFR_Cys_0C_exp$gfr_unlog<-exp(plotgam_model_GFR_Cys_0C_exp$fit)
-plotgam_model_gam_exp$lci<- plotgam_model_gam_exp$fit - 2 * plotgam_model_gam_exp$se.fit
-plotgam_model_gam_exp$uci<- plotgam_model_gam_exp$fit + 2 * plotgam_model_gam_exp$se.fit
-
-ggplot(data=plotgam_model_gam_exp, aes(vli, fit,colour='#039be5'))+
-  geom_line()+
-  geom_ribbon(data=plotgam_model_gam_exp,aes(x=vli,ymin=lci,ymax=uci,fill='#039be5'),alpha=0.3,inherit.aes=FALSE)+
-  xlab('VLI')+
-  ylab('72hr Fluid')+
-  #scale_color_manual(labels = c("Black", "White"), values = c("#1abc9c","#f1c40f"))+
-  #scale_fill_manual(labels = c("Black", "White"), values = c("#1abc9c","#f1c40f"))+
-  labs(colour='Trend', fill='Trend') +
-  theme_minimal()+theme(legend.position = 'none')  
-```
-
-```{r}
-model_gam <- gam(delta_sofa ~
-                         + s(leaking_index)
-                         + age_fixed
-                         + gender
-                         + final_elixhauser_score
-                         + oasis
-                         ,data=selected_df)
-
-plotgam_model_gam<-mgcv::plot.gam(model_gam, n=200,select = 0)
-
-plotgam_model_gam_exp<-as.data.frame(
-  rbind(  
-    cbind(
-      plotgam_model_gam[[1]][["x"]] 
-      ,plotgam_model_gam[[1]][["fit"]] + coef(model_gam)[1]
-      ,plotgam_model_gam[[1]][["se"]] 
-      #,'F'
-      
-    )
-    
-  #  ,cbind(
-  #    plotgam_model_gam[[2]][["x"]] 
-  #    ,plotgam_model_gam[[2]][["fit"]] + coef(model_gam)[1]
-  #    ,plotgam_model_gam[[2]][["se"]]  
-  #    ,'M'
-  #  )
-  ))
-
-plotgam_model_gam_exp[,c(1:3)] <- apply(plotgam_model_gam_exp[,c(1:3)], 2, function(x) as.numeric(as.character(x)))
-
-colnames(plotgam_model_gam_exp)[1]<-'vli'
-colnames(plotgam_model_gam_exp)[2]<-'fit'
-colnames(plotgam_model_gam_exp)[3]<-'se.fit'
-#colnames(plotgam_model_gam_exp)[4]<-'group'
-
-#plotgam_model_GFR_Cys_0C_exp$gfr_unlog<-exp(plotgam_model_GFR_Cys_0C_exp$fit)
-plotgam_model_gam_exp$lci<- plotgam_model_gam_exp$fit - 2 * plotgam_model_gam_exp$se.fit
-plotgam_model_gam_exp$uci<- plotgam_model_gam_exp$fit + 2 * plotgam_model_gam_exp$se.fit
-
-ggplot(data=plotgam_model_gam_exp, aes(vli, fit,colour='#039be5'))+
-  geom_line()+
-  geom_ribbon(data=plotgam_model_gam_exp,aes(x=vli,ymin=lci,ymax=uci,fill='#039be5'),alpha=0.3,inherit.aes=FALSE)+
-  xlab('VLI')+
-  ylab('delta_sofa')+
-  #scale_color_manual(labels = c("Black", "White"), values = c("#1abc9c","#f1c40f"))+
-  #scale_fill_manual(labels = c("Black", "White"), values = c("#1abc9c","#f1c40f"))+
-  labs(colour='Trend', fill='Trend') +
-  theme_minimal()+theme(legend.position = 'none')  
-```
-
-# Odds Ratios
-```{r}
-vli_prop_score_dataset<-selected_df
-
-ps_model <- glm( hosp_mortality ~ 
-                  q_leaking_index
-                + oasis
-                + age_fixed
-                + gender
-                + final_elixhauser_score
-                , family=binomial()
-                , data=vli_prop_score_dataset)
-
-summary(ps_model)
-
-OR_table<-as.data.frame(round(exp(cbind(OR=coef(ps_model), confint.default(ps_model))),2))
-options(scipen=999) # disable scientific notation
-OR_table
-```

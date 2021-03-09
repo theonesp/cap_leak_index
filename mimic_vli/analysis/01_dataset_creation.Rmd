@@ -117,6 +117,7 @@ output72hrs <- run_query(getSQL("sql/output_72hrs.sql"))
 #demographic data separated due to error in processing "numeric" type
 demographic <- run_query(getSQL('sql/demographics.sql'))
 ```
+
 # Exclusion criteria 1
 
 Patients with sepsis (not bleeding) 
@@ -137,18 +138,13 @@ patient_included$icustay_id<-patient_included_vector
 print('Septic patients that are not bleeding')
 nrow(patient_included)
 
-```
+# Exclusion criteria and dataset join (we need new datasets to address exclusion criteria)
 
-# Exclusion criteria 2 and JOIN
-
-Exclusion criteria and dataset join (we need new datasets to address exclusion criteria)
-
-```{r}
 selected_cohort<-inner_join(demographic,patient_included)
 print('Patients >=16 years old:')
 nrow(selected_cohort)
 
-#exlusion based on output amount
+#exclusion based on output amount
 ## we want to exclude blood output or gastric >= 500 OR stool >= 500 OR emesis >= 500
 
 selected_cohort<-selected_cohort%>%filter(icustay_id %!in% IO_exclusion$ICUSTAY_ID) 
@@ -178,8 +174,6 @@ WHERE intakes_total > 0 ')
 print('patients with fluid intake greater than 0')
 nrow(vol_leak_index_dataset)
 ```
-
-
 
 # Variables creation
 
@@ -239,6 +233,7 @@ cat('Summary of ',colname,'\n',sep = '')
 cat(summary(vol_leak_index_dataset['leaking_index']),'\n',sep = '|')
 
 ```
+
 ### Addressing VLI outliers
 
 ```{r eval=FALSE, include=FALSE}
@@ -265,6 +260,7 @@ cat('Summary of ',colname,'\n',sep = '')
 cat(summary(vol_leak_index_dataset['leaking_index']),'\n',sep = '|')
 
 ```
+
 ## SOFA Delta creation
 
 For calculating delta sofa we need tertiles of sofa day 1.
@@ -360,7 +356,7 @@ selected_df$gender<-as.factor(selected_df$gender)
 
 We are not imputing mortality
 
-# Exclusion Criteria 3
+# Exclusion Criteria 2
 
 
 *Please note there are several exclusion criteria and the order in which they are applied is really important.*
@@ -439,7 +435,7 @@ selected_df<-selected_df%>%mutate(
 selected_df$highest_q_leaking_index<-as.factor(selected_df$highest_q_leaking_index)
 ```
 
-# Exclusion criteria 4
+# Exclusion criteria 3
 
 ```{r}
 #selected_df<-selected_df%>%filter(q_leaking_index %in% c('4','1'))
@@ -463,6 +459,7 @@ write.csv(selected_df,'selected_df.csv')
 ```
 
 # 72hr Fluid Regression Analysis
+
 ```{r}
 plot (selected_df$leaking_index, selected_df$fluid_balance_72, xlab = 'leaking_index', ylab = 'fluid balance at 72hrs', main = 'Leaking Index as a predictor of Fluid Balance at 72 hrs')
 linearMod <- lm(fluid_balance_72 ~ leaking_index, data=selected_df)
