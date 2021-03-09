@@ -40,7 +40,7 @@ This chunks also creates the run_query and get_sql function.
 
 ```{r setup, include=FALSE}
 # Updated for our year
-project_id <- "hst-953-2018"
+project_id <- "hst-953-2019"
 options(httr_oauth_cache=FALSE)
 # Function that takes in a sql command and runs it on bigquery
 run_query <- function(query){
@@ -287,25 +287,18 @@ Not addressing outliers anymore
 # vol_leak_index_dataset$fluid_balance[which(vol_leak_index_dataset$fluid_balance %in% outliers)]<-NA
 
 ## We are removing VLI outliers
-outliers <- boxplot(vol_leak_index_dataset$leaking_index, plot=FALSE)$out
+# outliers <- boxplot(vol_leak_index_dataset$leaking_index, plot=FALSE)$out
 #vol_leak_index_dataset$leaking_index[which(vol_leak_index_dataset$leaking_index %in% outliers)]<-median(vol_leak_index_dataset$leaking_index,na.rm = T)
 
 #how many patients are we imputing?
 
-extreme_quants<-as.numeric(quantile(vol_leak_index_dataset$leaking_index, c(.05, .95),na.rm = T))
+extreme_quants<-as.numeric(quantile(vol_leak_index_dataset$leaking_index, c(.025, .975),na.rm = T))
 
-vol_leak_index_dataset%>%
-  filter(leaking_index< extreme_quants[1] |leaking_index>extreme_quants[2])%>%
-  tally()
+print('Number of patients with imputed data:')
+length(which(vol_leak_index_dataset$leaking_index< extreme_quants[1] | vol_leak_index_dataset$leaking_index> extreme_quants[2]))
 
-
-vol_leak_index_dataset<-vol_leak_index_dataset%>%
-  mutate(leaking_index=
-           if_else(leaking_index< extreme_quants[1] | leaking_index>leaking_index[2], median(leaking_index,na.rm = T),leaking_index)
-         )
-
-# vol_leak_index_dataset$leaking_index<-Winsorize(vol_leak_index_dataset$leaking_index,na.rm = T)  
-# quantile(vol_leak_index_dataset$leaking_index, c(.05, .95),na.rm = T)
+medLeak = median(vol_leak_index_dataset$leaking_index)
+vol_leak_index_dataset$leaking_index[which(vol_leak_index_dataset$leaking_index< extreme_quants[1] | vol_leak_index_dataset$leaking_index> extreme_quants[2])] = medLeak
 ```
 
 ### VLI Distribution after removing outliers
@@ -379,7 +372,7 @@ selected_df <- vol_leak_index_dataset%>%dplyr::select(
     ,leaking_index
     ,delta_sofa
     ,fluid_balance
-    ,fluid_balance_72
+    # ,fluid_balance_72
     ,mean_hct_24_36hrs
     ,first_hct_6hrs
   )
@@ -408,9 +401,9 @@ selected_df<-selected_df[complete.cases(selected_df),]
 print('Number of patients after excluding patients with missing data:')
 nrow(selected_df)
 
-selected_df<-selected_df%>%filter(hosp_mortality_offset<72*60)
-print('Number of patients after excluding patients with hosp_mort_offset <72hrs:')
-nrow(selected_df)
+# selected_df<-selected_df%>%filter(hosp_mortality_offset<72*60)
+# print('Number of patients after excluding patients with hosp_mort_offset <72hrs:')
+# nrow(selected_df)
 ```
 
 # New Variables Creation
@@ -420,7 +413,7 @@ nrow(selected_df)
 ```{r}
 selected_df<-selected_df%>%
   mutate(
-     q_leaking_index=as.factor(as.numeric(cut2(leaking_index, g=8)))
+     q_leaking_index=as.factor(as.numeric(cut2(leaking_index, g=4)))
 )
 ```
 
@@ -434,7 +427,7 @@ selected_df<-selected_df%>%mutate(
 selected_df$highest_q_leaking_index<-as.factor(selected_df$highest_q_leaking_index)
 
 print('cutoff points')
-unique(cut2(selected_df$leaking_index, g=8))
+unique(cut2(selected_df$leaking_index, g=4))
 ```
 
 # Exclusion criteria 4
