@@ -38,6 +38,16 @@ ggplot(selected_df_fluid, aes(leaking_index,fluid_balance_72) ) +
 
 ## GAM analysis
 
+GAM is a powerful and yet simple technique. Hence, the purpose of this post is to convince more data scientists to use GAM. Of course, GAM is no silver bullet, but it is a technique you should add to your arsenal. Here are three key reasons:
+
+- Easy to interpret.
+- Flexible predictor functions can uncover hidden patterns in the data.
+- Regularization of predictor functions helps avoid overfitting.
+
+In general, GAM has the interpretability advantages of GLMs where the contribution of each independent variable to the prediction is clearly encoded. However, it has substantially more flexibility because the relationships between independent and dependent variable are not assumed to be linear. In fact, we don’t have to know a priori what type of predictive functions we will eventually need. From an estimation standpoint, the use of regularized, nonparametric functions avoids the pitfalls of dealing with higher order polynomial terms in linear models. From an accuracy standpoint, GAMs are competitive with popular learning techniques.
+
+Ref.:https://multithreaded.stitchfix.com/blog/2015/07/30/gam/
+
 ```{r}
 # Build the model
 model <- gam(hosp_mortality  ~
