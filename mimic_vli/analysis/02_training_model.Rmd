@@ -48,6 +48,7 @@ In general, GAM has the interpretability advantages of GLMs where the contributi
 
 Ref.:https://multithreaded.stitchfix.com/blog/2015/07/30/gam/
 
+### Mortality
 ```{r}
 # Build the model
 model <- gam(hosp_mortality  ~
@@ -56,6 +57,8 @@ model <- gam(hosp_mortality  ~
                          ,data=selected_df)
 # Make predictions
 predictions <- model %>% predict(selected_df)
+
+summary(model)
 # Model performance
 data.frame(
   RMSE = RMSE(predictions, selected_df$hosp_mortality),
@@ -63,27 +66,83 @@ data.frame(
 )
 
 ggplot(selected_df, aes(leaking_index, hosp_mortality) ) +
-  geom_point() +
-  stat_smooth(method = gam, formula = y ~ s(x))
+  stat_smooth(method = gam, formula = y ~ s(x)) +
+  ggtitle("GAM Model for Leaking Index and Hospital Mortality") +
+  labs(y="Hospital Mortality", x = "Leaking Index")
+```
+### Delta Sofa
+```{r}
+# Build the model
+model <- gam(delta_sofa  ~
+                         + s(leaking_index)
+                         + age_fixed + gender + oasis + final_elixhauser_score
+                         ,data=selected_df)
+# Make predictions
+predictions <- model %>% predict(selected_df)
+
+summary(model)
+# Model performance
+data.frame(
+  RMSE = RMSE(predictions, selected_df$delta_sofa),
+  R2 = R2(predictions, selected_df$delta_sofa)
+)
+
+ggplot(selected_df, aes(leaking_index, delta_sofa) ) +
+  stat_smooth(method = gam, formula = y ~ s(x)) +
+  ggtitle("GAM Model for Leaking Index and Delta Sofa") +
+  labs(y="Delta Sofa", x = "Leaking Index")
+```
+# Cohort with Fluid Balance at 72hrs and alive past 72hrs
+## GAM Analysis
+### Fluid Balance 72hrs
+
+```{r}
+# Build the model
+model <- gam(fluid_balance_72  ~
+                         + q_leaking_index
+                         + age_fixed + gender + oasis + final_elixhauser_score + fluid_balance
+                         ,data=selected_df_fluid)
+# Make predictions
+predictions <- model %>% predict(selected_df_fluid)
+
+summary(model)
+# Model performance
+data.frame(
+  RMSE = RMSE(predictions, selected_df_fluid$fluid_balance_72),
+  R2 = R2(predictions, selected_df_fluid$fluid_balance_72)
+)
+
+ggplot(selected_df_fluid, aes(leaking_index, fluid_balance_72) ) +
+  stat_smooth(method = gam, formula = y ~ s(x)) + 
+  ggtitle("GAM Model for Leaking Index and Fluid Balance 72hrs") +
+  labs(y="Fluid Balance 72hrs", x = "Leaking Index")
 ```
 
 ### Odds ratio
 
 ```{r}
-or_gam(data = selected_df, model = model, pred = "leaking_index", 
-                   values = c(min(selected_df$leaking_index), max(selected_df$leaking_index)))
+# Quartiles
+model <- gam(hosp_mortality  ~
+                         + q_leaking_index
+                         + age_fixed + gender + oasis + final_elixhauser_score,
+                          family = binomial
+                         ,data=selected_df)
 
-or_gam(data = selected_df, model = model, pred = "age_fixed", 
-                   values = c(min(selected_df$age_fixed), max(selected_df$age_fixed)))
+OR_table<-as.data.frame(round(exp(cbind(OR=coef(model), confint.default(model))),2))
+options(scipen=999) # disable scientific notation
+OR_table
 
-or_gam(data = selected_df, model = model, pred = "oasis", 
-                   values = c(min(selected_df$oasis), max(selected_df$oasis)))
+# Continuous Variable
+model <- gam(hosp_mortality  ~
+                         + leaking_index
+                         + age_fixed + gender + oasis + final_elixhauser_score,
+                          family = binomial
+                         ,data=selected_df)
 
-or_gam(data = selected_df, model = model, pred = "final_elixhauser_score", 
-                   values = c(min(selected_df$final_elixhauser_score), max(selected_df$final_elixhauser_score)))
+OR_table<-as.data.frame(round(exp(cbind(OR=coef(model), confint.default(model))),2))
+options(scipen=999) # disable scientific notation
+OR_table
 
-or_gam(data = selected_df, model = model, pred = "gender", 
-                   values = c('F', 'M') )
 ```
 
 
