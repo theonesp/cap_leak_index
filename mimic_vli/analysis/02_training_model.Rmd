@@ -19,6 +19,23 @@ knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, encoding = e
 library(mgcv)
 library(ggplot2)
 library(oddsratio)
+require(foreign)
+require(ggplot2)
+require(MASS)
+require(Hmisc)
+require(reshape2)
+require(boot)
+require(pROC)
+library(mlbench)
+library(ggthemr)
+library(MLmetrics)
+library(plotly)
+library(gbm)
+library(xgboost)
+library(survey)
+library(table1)
+library(sandwich)
+library(dplyr)
 ```
 
 # Plotting relationship
@@ -34,9 +51,7 @@ ggplot(selected_df_fluid, aes(leaking_index,fluid_balance_72) ) +
   stat_smooth()
 ```
 
-# Overall cohort
-
-## GAM analysis
+# GAM analysis
 
 GAM is a powerful and yet simple technique. Hence, the purpose of this post is to convince more data scientists to use GAM. Of course, GAM is no silver bullet, but it is a technique you should add to your arsenal. Here are three key reasons:
 
@@ -48,7 +63,7 @@ In general, GAM has the interpretability advantages of GLMs where the contributi
 
 Ref.:https://multithreaded.stitchfix.com/blog/2015/07/30/gam/
 
-### Mortality
+## Mortality
 ```{r}
 # Build the model
 model <- gam(hosp_mortality  ~
@@ -70,7 +85,7 @@ ggplot(selected_df, aes(leaking_index, hosp_mortality) ) +
   ggtitle("GAM Model for Leaking Index and Hospital Mortality") +
   labs(y="Hospital Mortality", x = "Leaking Index")
 ```
-### Delta Sofa
+## Delta Sofa
 ```{r}
 # Build the model
 model <- gam(delta_sofa  ~
@@ -92,31 +107,7 @@ ggplot(selected_df, aes(leaking_index, delta_sofa) ) +
   ggtitle("GAM Model for Leaking Index and Delta Sofa") +
   labs(y="Delta Sofa", x = "Leaking Index")
 ```
-# Cohort with Fluid Balance at 72hrs and alive past 72hrs
-## GAM Analysis
-### Fluid Balance 72hrs
 
-```{r}
-# Build the model
-model <- gam(fluid_balance_72  ~
-                         + q_leaking_index
-                         + age_fixed + gender + oasis + final_elixhauser_score + fluid_balance
-                         ,data=selected_df_fluid)
-# Make predictions
-predictions <- model %>% predict(selected_df_fluid)
-
-summary(model)
-# Model performance
-data.frame(
-  RMSE = RMSE(predictions, selected_df_fluid$fluid_balance_72),
-  R2 = R2(predictions, selected_df_fluid$fluid_balance_72)
-)
-
-ggplot(selected_df_fluid, aes(leaking_index, fluid_balance_72) ) +
-  stat_smooth(method = gam, formula = y ~ s(x)) + 
-  ggtitle("GAM Model for Leaking Index and Fluid Balance 72hrs") +
-  labs(y="Fluid Balance 72hrs", x = "Leaking Index")
-```
 
 ### Odds ratio
 
@@ -144,5 +135,3 @@ options(scipen=999) # disable scientific notation
 OR_table
 
 ```
-
-

@@ -25,6 +25,7 @@ require(reshape2)
 require(boot)
 require(pROC)
 library(mlbench)
+library(ggthemr)
 library(MLmetrics)
 library(plotly)
 library(gbm)
@@ -49,22 +50,20 @@ center_scale <- function(x) {
 ```{r}
 ggplot(selected_df, aes(leaking_index,hosp_mortality) ) +
   stat_smooth() +
-  ggtitle("GAM Model for Leaking Index and Hospital Mortality") +
+  ggtitle("Leaking Index and Hospital Mortality") +
   labs(y="Hospital Mortality", x = "Leaking Index")
 ```
 
 ```{r}
 ggplot(selected_df, aes(leaking_index,delta_sofa) ) +
   stat_smooth() +
-  ggtitle("GAM Model for Leaking Index and Hospital Mortality") +
+  ggtitle("GAM Model for Leaking Index and Delta Sofa") +
   labs(y="Delta Sofa", x = "Leaking Index")
 ```
 
-# Overall cohort
+# GAM analysis
 
-## GAM analysis
-
-### Mortality
+## Mortality
 ```{r}
 library(mgcv)
 # Build the model
@@ -86,7 +85,7 @@ ggplot(selected_df, aes(leaking_index, hosp_mortality) ) +
   labs(y="Hospital Mortality", x = "Leaking Index")
 ```
 
-### Odds ratio
+## Odds ratio
 
 ```{r}
 # Quartiles
@@ -112,7 +111,7 @@ options(scipen=999) # disable scientific notation
 OR_table
 ```
 
-### Delta Sofa
+## Delta Sofa
 ```{r}
 library(mgcv)
 # Build the model
@@ -133,35 +132,13 @@ ggplot(selected_df, aes(leaking_index, delta_sofa) ) +
   ggtitle("GAM Model for Leaking Index and Delta_Sofa") +
   labs(y="Delta_Sofa", x = "Leaking Index")
 ```
-# Cohort with Fluid Balance at 72hrs and alive past 72hrs
-## GAM Analysis
-### Fluid Balance 72hrs
+
+## Old GAM Analysis
 ```{r}
-library(mgcv)
-# Build the model
-model <- gam(fluid_balance_72  ~
-                         + q_leaking_index
-                         + age_fixed + gender + fluid_balance + apache_iv + final_charlson_score
-                         ,data=selected_df_fluid)
-# Make predictions
-predictions <- model %>% predict(selected_df_fluid)
-# Model performance
-data.frame(
-  RMSE = RMSE(predictions, selected_df_fluid$fluid_balance_72),
-  R2 = R2(predictions, selected_df_fluid$fluid_balance_72)
-)
-summary(model)
-ggplot(selected_df_fluid, aes(leaking_index, fluid_balance_72) ) +
-  stat_smooth(method = gam, formula = y ~ s(x)) +
-  ggtitle("GAM Model for Leaking Index and Fluid Balance") +
-  labs(y="Fluid Balance 72hrs", x = "Leaking Index")
-```
-### Old GAM Fluid Balance 72hrs
-```{r}
-model_gam <- gam(fluid_balance_72  ~
+model_gam <- gam(delta_sofa  ~
                          + s(leaking_index)
                          + age_fixed + gender + fluid_balance + apache_iv + final_charlson_score
-                         ,data=selected_df_fluid)
+                         ,data=selected_df)
 plotgam_model_gam<-mgcv::plot.gam(model_gam, n=200,select = 0)
 plotgam_model_gam_exp<-as.data.frame(
   rbind(  
@@ -189,7 +166,10 @@ ggplot(data=plotgam_model_gam_exp, aes(vli, fit,colour='#039be5'))+
   labs(colour='Trend', fill='Trend') +
   theme_minimal()+theme(legend.position = 'none')  
 ```
-# Causal inference
+
+
+
+# Causal inference (Not Using this Analysis Anymore)
 
 ## Propensity Score Matching - logistic regression
 

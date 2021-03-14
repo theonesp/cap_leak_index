@@ -18,13 +18,11 @@ knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, encoding = e
 ```{r}
 library(mgcv)
 library(ggplot2)
+library(tidymv)
 ```
 
 ```{r}
 ggplot(selected_df, aes(leaking_index,hosp_mortality) ) +
-  stat_smooth()
-
-ggplot(selected_df, aes(leaking_index,totalFluid_72) ) +
   stat_smooth()
 ```
 
@@ -37,7 +35,8 @@ model <- gam(hosp_mortality ~
                 + age_fixed
                 + gender
                 + charlson_score
-                ,data=selected_df)
+                ,data=selected_df
+                , family = poisson)
 # Make predictions
 predictions <- model %>% predict(selected_df)
 
@@ -53,30 +52,7 @@ ggplot(selected_df, aes(leaking_index, hosp_mortality) ) +
   ggtitle("GAM Model for Leaking Index and Hospital Mortality") +
   labs(y="Hospital Mortality", x = "Leaking Index")
 ```
-```{r}
-# Build the model
-model <- gam(totalFluid_72 ~ 
-                 q_leaking_index
-                + age_fixed
-                + gender
-                +totalFluid
-                + charlson_score
-                ,data=selected_df)
-# Make predictions
-predictions <- model %>% predict(selected_df)
 
-summary(model)
-# Model performance
-data.frame(
-  RMSE = RMSE(predictions, selected_df$totalFluid_72),
-  R2 = R2(predictions, selected_df$totalFluid_72)
-)
-
-ggplot(selected_df, aes(leaking_index, totalFluid_72) ) +
-  stat_smooth(method = gam, formula = y ~ s(x)) +
-  ggtitle("GAM Model for Leaking Index and Fluid Balance 72hrs") +
-  labs(y="Fluid Balance 72hrs", x = "Leaking Index")
-```
 
 ## Odds Ratios
 ```{r}
