@@ -251,6 +251,12 @@ vol_leak_index_dataset<-vol_leak_index_dataset%>%
     leaking_index=((mean_hct_24_36hrs - first_hct_6hrs) / fluid_balance) * body_surface_area
   )  
 
+# Removes leaking index greater than 0 (means that hematocrit increases over time with fluid). We are not doing this now.
+# vol_leak_index_dataset<-sqldf('
+# SELECT * FROM
+# vol_leak_index_dataset
+# WHERE leaking_index < 0 ')
+
 
 ```
 
@@ -281,7 +287,7 @@ extreme_quants<-as.numeric(quantile(vol_leak_index_dataset$leaking_index, c(.025
 print('Number of patients with imputed data:')
 length(which(vol_leak_index_dataset$leaking_index< extreme_quants[1] | vol_leak_index_dataset$leaking_index> extreme_quants[2]))
 
-medLeak = median(vol_leak_index_dataset$leaking_index, na.rm = T)
+medLeak = median(vol_leak_index_dataset$leaking_index)
 vol_leak_index_dataset$leaking_index[which(vol_leak_index_dataset$leaking_index< extreme_quants[1] | vol_leak_index_dataset$leaking_index> extreme_quants[2])] = medLeak
 ```
 
@@ -360,6 +366,23 @@ selected_df <- vol_leak_index_dataset%>%dplyr::select(
     ,mean_hct_24_36hrs
     ,first_hct_6hrs
   )
+
+selected_df_fluid <- vol_leak_index_dataset%>%dplyr::select(
+     patientunitstayid
+    ,hosp_mortality
+    ,hosp_mortality_offset
+    ,age_fixed
+    ,gender
+    ,final_charlson_score
+    ,apache_iv
+    ,leaking_index
+    ,delta_sofa
+    ,fluid_balance
+    ,fluid_balance_72
+    ,mean_hct_24_36hrs
+    ,first_hct_6hrs
+  )
+# these variables are factors
 ```
 
 # Data Imputation
@@ -385,6 +408,17 @@ nrow(selected_df)
 selected_df<-selected_df[complete.cases(selected_df),]
 print('Number of patients after excluding patients with missing data:')
 nrow(selected_df)
+
+#  we don’t want to remove patients that died before 72hrs for the mortality/delta_sofa analysis. This removes a significant number of patients who passed away from our analysis and we don’t see as strong of a signal.
+
+
+selected_df_fluid<-selected_df_fluid[complete.cases(selected_df_fluid),]
+print('Number of patients after excluding patients with missing data:')
+nrow(selected_df_fluid)
+
+selected_df_fluid<-selected_df_fluid%>%filter(hosp_mortality_offset>72*60 | hosp_mortality_offset==0)
+print('Number of patients after excluding patients with hosp_mort_offset <72hrs:')
+nrow(selected_df_fluid)
 ```
 
 # New Variables Creation
@@ -393,6 +427,11 @@ nrow(selected_df)
 
 ```{r}
 selected_df<-selected_df%>%
+  mutate(
+     q_leaking_index=as.factor(as.numeric(cut2(leaking_index, g=4)))
+)
+
+selected_df_fluid<-selected_df_fluid%>%
   mutate(
      q_leaking_index=as.factor(as.numeric(cut2(leaking_index, g=4)))
 )
@@ -428,8 +467,31 @@ nrow(selected_df)
 table1(~ age_fixed + hosp_mortality + gender + final_charlson_score + apache_iv  + delta_sofa + fluid_balance + mean_hct_24_36hrs + first_hct_6hrs| q_leaking_index, data=selected_df)
 ```
 
+
+
 # Export dataset
 
 ```{r}
 write.csv(selected_df,'selected_df.csv')
+```
+
+# Fluid Balance Regression Analysis
+
+```{r}
+plot (vol_leak_index_dataset$fluid_balance, vol_leak_index_dataset$hosp_mortality, xlim = c(0, 25000))
+linearMod <- lm(hosp_mortality ~ fluid_balance, data=vol_leak_index_dataset)
+summary(linearMod)
+```
+# 72hr Fluid Regression Analysis
+```{r}
+plot (vol_leak_index_dataset$leaking_index, vol_leak_index_dataset$fluid_balance_72, xlab = 'leaking_index', ylab = 'fluid balance at 72hrs', main = 'Leaking Index as a predictor of Fluid Balance at 72 hrs')
+linearMod <- lm(fluid_balance_72 ~ leaking_index, data=vol_leak_index_dataset)
+summary(linearMod)
+```
+
+# 72hr Fluid Regression Based on Quartiles
+```{r}
+plot (selected_df$q_leaking_index, selected_df$fluid_balance_72, xlab = 'leaking_index', ylab = 'fluid balance at 72hrs', main = 'Leaking Index as a predictor of Fluid Balance at 72 hrs')
+linearMod <- lm(fluid_balance_72 ~ q_leaking_index + age_fixed + gender + fluid_balance + apache_iv + final_charlson_score, data=selected_df)
+summary(linearMod)
 ```

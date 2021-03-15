@@ -196,7 +196,7 @@ extreme_quants<-as.numeric(quantile(vol_leak_index_dataset$leaking_index, c(.025
 print('Number of patients with imputed data:')
 length(which(vol_leak_index_dataset$leaking_index< extreme_quants[1] | vol_leak_index_dataset$leaking_index> extreme_quants[2]))
 
-medLeak = median(vol_leak_index_dataset$leaking_index, na.rm = T)
+medLeak = median(vol_leak_index_dataset$leaking_index)
 vol_leak_index_dataset$leaking_index[which(vol_leak_index_dataset$leaking_index< extreme_quants[1] | vol_leak_index_dataset$leaking_index> extreme_quants[2])] = medLeak
 ```
 
@@ -285,3 +285,52 @@ Amsterdam DB Cohort Information:
 
 table1(~ gender + age_fixed + hosp_mortality + totalFluid + mean_hct_24_36hrs + first_hct_6hrs + charlson_score| q_leaking_index, data=selected_df)
 ```
+
+# 72hr Fluid Regression Analysis
+```{r}
+plot (selected_df$leaking_index, selected_df$totalFluid_72, xlab = 'leaking_index', ylab = 'fluid balance at 72hrs', main = 'Leaking Index as a predictor of Fluid Balance at 72 hrs')
+linearMod <- lm(totalFluid_72 ~ q_leaking_index + totalFluid + charlson_score + gender, data=selected_df)
+summary(linearMod)
+```
+
+# Train and test datasets creation
+
+## Spliting de-identified data into testing and training, balanced version.
+
+We want the data to be sampled randomly but always the same way and we want to be sure that train and test must be balanced.
+
+```{r}
+# Creating id for partition 
+selected_df['id']<- seq.int(nrow(selected_df))
+## set the seed to make our partition reproducible
+set.seed(123)
+# createDataPartition: "the random sampling is done within the levels of y when y is a factor in an attempt to balance the class distributions within the splits."
+## 75% of the sample size
+train_idx <- createDataPartition(as.factor(selected_df$hosp_mortality), times = 1, p = 0.75, list=F)
+
+train <- selected_df[train_idx, ]
+test <- selected_df[-train_idx, ]
+
+#Checking outcome is actually balanced
+round(prop.table(table(train$hosp_mortality)),2)
+round(prop.table(table(test$hosp_mortality)),2)
+```
+
+## Separating datasets into outcome and exposures
+
+```{r}
+# train dataset
+train_X<-train[, names(train)!= "hosp_mortality"]
+train_Y<-train$hosp_mortality
+  
+# test dataset
+test_X<-test[, names(test)!= "hosp_mortality"]
+test_Y<-test$hosp_mortality 
+```
+
+
+
+
+
+
+
