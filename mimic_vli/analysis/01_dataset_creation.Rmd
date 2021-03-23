@@ -121,6 +121,7 @@ demographic <- run_query(getSQL('sql/demographics.sql'))
 ```{r}
 intake72hrs <- run_query(getSQL("sql/intake_72hrs.sql"))
 output72hrs <- run_query(getSQL("sql/output_72hrs.sql"))
+rrt <- run_query(getSQL("sql/rrt.sql"))
 ```
 
 # Exclusion criteria 1
@@ -155,6 +156,20 @@ nrow(selected_cohort)
 selected_cohort<-selected_cohort%>%filter(icustay_id %!in% IO_exclusion$ICUSTAY_ID) 
 
 print('Patients with proper amount of output:')
+nrow(selected_cohort)
+
+selected_cohort<-sqldf('
+SELECT * FROM
+selected_cohort
+LEFT JOIN
+rrt
+USING
+(icustay_id)
+WHERE
+rrt.icustay_id IS NULL
+')
+
+print('Patients without RRT:')
 nrow(selected_cohort)
 
 # We are using a left join to join them

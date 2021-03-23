@@ -111,11 +111,14 @@ blood_infus <- run_query(getSQL('sql/blood_infus.sql'))
 
 #72hr Fluid Data
 fluid_72hrs <- run_query(getSQL('sql/fluid_72hrs.sql'))
+
+#Renal Replacement Therapy
+rrt <- run_query(getSQL('sql/RRT.sql'))
 ```
 
 # Exclusion criteria 1
 
-Patients with sepsis (not bleeding) 
+Patients with sepsis (not bleeding)
 
 ```{r}
 # we want to include septic patients that are not bleeding.
@@ -138,13 +141,27 @@ nrow(patient_included)
 
 # Exclusion criteria 2 and JOIN
 
-Exclusion criteria and dataset join (we need new datasets to address exclusion criteria)
+Exclusion criteria and dataset join and not getting rrt (we need new datasets to address exclusion criteria)
 
 ```{r}
 names(amsterdam)[1] <- "admissionid"
 names(patient_included)[1] <- "admissionid"
 selected_cohort<-inner_join(amsterdam,patient_included)
 print('Patients >=16 years old:')
+nrow(selected_cohort)
+
+selected_cohort<-sqldf('
+SELECT * FROM
+selected_cohort
+LEFT JOIN
+rrt
+USING
+(admissionid)
+WHERE
+rrt.admissionid IS NULL
+')
+
+print('Patients not recieving rrt:')
 nrow(selected_cohort)
 
 # We are using a left join to join them
@@ -253,6 +270,23 @@ selected_df <- vol_leak_index_dataset%>%mutate(
     ,charlson_score
     # ,apachescore
     # ,delta_sofa
+    # ,highest_q_leaking_index
+    ,totalFluid
+    ,q_leaking_index
+    ,leaking_index
+    ,first_hct_6hrs
+    ,mean_hct_24_36hrs
+  )
+
+selected_df_fluid <- vol_leak_index_dataset%>%dplyr::select(
+     admissionid
+    ,hosp_mortality
+    ,age_fixed
+    ,gender
+    ,charlson_score
+    # ,apachescore
+    # ,delta_sofa
+    ,hosp_mortality_offset
     ,totalFluid
     ,totalFluid_72
     # ,highest_q_leaking_index
@@ -261,8 +295,21 @@ selected_df <- vol_leak_index_dataset%>%mutate(
     ,first_hct_6hrs
     ,mean_hct_24_36hrs
   )
+
 selected_df<-selected_df[complete.cases(selected_df),]
-selected_df<-selected_df%>%mutate(totalFluid_72_bin = ifelse(totalFluid_72 > 0, 1, 0))
+print('Number of patients after removing incomplete data:')
+nrow(selected_df)
+
+selected_df_fluid<-selected_df_fluid[complete.cases(selected_df_fluid),]
+print('Number of patients after removing incomplete data:')
+nrow(selected_df_fluid)
+
+# Removing Patients who died before 72 hours
+selected_df_fluid<-selected_df_fluid%>%filter(hosp_mortality_offset>72 | hosp_mortality_offset==0)
+print('Number of patients after excluding patients with hosp_mort_offset <72hrs:')
+nrow(selected_df_fluid)
+
+selected_df_fluid<-selected_df_fluid%>%mutate(totalFluid_72_bin = ifelse(totalFluid_72 > 0, 1, 0))
 
 # selected_df$highest_q_leaking_index<-as.factor(selected_df$highest_q_leaking_index)
 
@@ -285,13 +332,6 @@ Amsterdam DB Cohort Information:
 # table1(~ age_fixed + hosp_mortality + gender + charlson_score + apachescore + totalFluid + mean_hct_24_36hrs + first_hct_6hrs| q_leaking_index, data=selected_df)
 
 table1(~ gender + age_fixed + hosp_mortality + totalFluid + mean_hct_24_36hrs + first_hct_6hrs + charlson_score| q_leaking_index, data=selected_df)
-```
-
-# 72hr Fluid Regression Analysis
-```{r}
-plot (selected_df$leaking_index, selected_df$totalFluid_72, xlab = 'leaking_index', ylab = 'fluid balance at 72hrs', main = 'Leaking Index as a predictor of Fluid Balance at 72 hrs')
-linearMod <- lm(totalFluid_72 ~ q_leaking_index + totalFluid + charlson_score + gender, data=selected_df)
-summary(linearMod)
 ```
 
 # Train and test datasets creation

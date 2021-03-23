@@ -104,7 +104,7 @@ plot( sm(b, 1) )
 ```{r}
 # Build the model
 model <- gam(fluid_balance_72  ~
-                         + s(leaking_index)
+                         + q_leaking_index
                          + age_fixed + gender
                          ,data=selected_df_fluid)
 # Make predictions
@@ -112,10 +112,10 @@ predictions <- model %>% predict(selected_df_fluid)
 
 summary(model)
 # Model performance
-# data.frame(
-#   RMSE = RMSE(predictions, selected_df_fluid$fluid_balance_72),
-#   R2 = R2(predictions, selected_df_fluid$fluid_balance_72)
-# )
+data.frame(
+  RMSE = RMSE(predictions, selected_df_fluid$fluid_balance_72),
+  R2 = R2(predictions, selected_df_fluid$fluid_balance_72)
+)
 
 ggplot(selected_df_fluid, aes(leaking_index, fluid_balance_72) ) +
   stat_smooth(method = gam, formula = y ~ s(x)) + 
@@ -129,7 +129,7 @@ plot( sm(b, 1) )
 ```{r}
 # Build the model
 model <- gam(fluid_balance_72_bin  ~
-                         + s(final_elixhauser_score) + fluid_balance + oasis + leaking_index
+                         + s(leaking_index)
                          + age_fixed + gender
                          ,data=selected_df_fluid)
 # Make predictions
@@ -137,12 +137,12 @@ predictions <- model %>% predict(selected_df_fluid)
 
 summary(model)
 # Model performance
-# data.frame(
-#   RMSE = RMSE(predictions, selected_df_fluid$fluid_balance_72),
-#   R2 = R2(predictions, selected_df_fluid$fluid_balance_72)
-# )
+data.frame(
+  RMSE = RMSE(predictions, selected_df_fluid$fluid_balance_72),
+  R2 = R2(predictions, selected_df_fluid$fluid_balance_72)
+)
 
-ggplot(selected_df_fluid, aes(final_elixhauser_score, fluid_balance_72_bin) ) +
+ggplot(selected_df_fluid, aes(leaking_index, fluid_balance_72_bin) ) +
   stat_smooth(method = gam, formula = y ~ s(x)) + 
   ggtitle("GAM Model for Leaking Index and Fluid Balance 72hrs") +
   labs(y="Fluid Balance 72hrs", x = "Leaking Index")

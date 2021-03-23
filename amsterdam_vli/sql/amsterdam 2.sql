@@ -228,7 +228,8 @@ SELECT
     --length of stay outcomes
     MAX(adm.icu_los_hours) as unabridgedunitlos,
     MAX(adm.hospital_los_hours) as unabridgedhosplos,
-    MAX(vent.unabridgedactualventdays) as unabridgedactualventdays, 
+    MAX(vent.unabridgedactualventdays) as unabridgedactualventdays,
+    CASE WHEN MAX(adm.hospital_mortality) = TRUE THEN MAX(adm.hospital_los_hours) ELSE 0 END AS hosp_mortality_offset,
     --hematocrit levels
     MAX(hct.hematocrit_first_6) as first_hct_6hrs,
     MAX(hct.mean_hct_24_36hrs) as mean_hct_24_36hrs,
