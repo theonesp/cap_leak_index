@@ -350,6 +350,8 @@ selected_df_fluid<-selected_df_fluid%>%filter(hosp_mortality_offset>72*60 | hosp
 print('Number of patients after excluding patients with hosp_mort_offset <72hrs:')
 nrow(selected_df_fluid)
 
+selected_df_fluid<-selected_df_fluid%>%mutate(fluid_balance_72_bin = ifelse(fluid_balance_72 > 0, 1, 0))
+
 # these variables are factors
 selected_df$gender<-as.factor(selected_df$gender)
 

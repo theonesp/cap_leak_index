@@ -262,6 +262,7 @@ selected_df <- vol_leak_index_dataset%>%mutate(
     ,mean_hct_24_36hrs
   )
 selected_df<-selected_df[complete.cases(selected_df),]
+selected_df<-selected_df%>%mutate(totalFluid_72_bin = ifelse(totalFluid_72 > 0, 1, 0))
 
 # selected_df$highest_q_leaking_index<-as.factor(selected_df$highest_q_leaking_index)
 
