@@ -513,7 +513,10 @@ table1_base %>%
   kable_classic_2(full_width = F, html_font = "Cambria")%>%
   add_header_above(c(" "," ", 'SOFA day1 Category' = starification_cats," ", "" ))
 ```
-
+```{r}
+eICUTable1 <- table1(~ age_fixed + hosp_mortality + gender + final_charlson_score + apache_iv  + delta_sofa + fluid_balance + mean_hct_24_36hrs + first_hct_6hrs | q_leaking_index, data=selected_df)
+eICUTable1
+```
 
 
 # Export dataset
