@@ -29,6 +29,7 @@ library(plotly)
 library(table1)
 library(Amelia)
 library(DescTools)
+library(kableExtra)
 impute.median <- function(x) replace(x, is.na(x), median(x, na.rm = TRUE))
 options(scipen=999)
 ```
@@ -40,7 +41,7 @@ This chunks also creates the run_query and get_sql function.
 
 ```{r setup, include=FALSE}
 # Updated for our year
-project_id <- "hst-953-2019"
+project_id <- "hst-953-2018"
 options(httr_oauth_cache=FALSE)
 # Function that takes in a sql command and runs it on bigquery
 run_query <- function(query){
@@ -129,8 +130,11 @@ intake <- run_query(getSQL("sql/intake.sql"))
 # 72hr fluid data
 intake72hrs <- run_query(getSQL("sql/intake72hrs.sql"))
 
-temp <- run_query((getSQL('sql/temp.sql')))
+# mech ventilated patients
 vent <- run_query((getSQL('sql/vent.sql')))
+
+#temperature
+temp <- run_query((getSQL('sql/temp.sql')))
 ```
 
 ```{r}
@@ -138,10 +142,7 @@ vent <- run_query((getSQL('sql/vent.sql')))
 # crystalloids). We are not using the full fluid intakes. We are only interested in crystalloiods.
 intake <- run_query(getSQL("sql/intake.sql"))
 intake_full <-run_query(getSQL("sql/intake_full.sql"))
-intake72hrs <- run_query(getSQL("sql/intake72hrs.sql"))
 first_rrt <-run_query(getSQL('sql/aki/first_rrt.sql'))
-temp <- run_query((getSQL('sql/temp.sql')))
-vent <- run_query((getSQL('sql/vent.sql')))
 ```
 
 
@@ -208,6 +209,7 @@ vol_leak_index_dataset<-Reduce(function(...) merge(..., all.x=TRUE), list(
   ,apache_related
   ,charlson_score
   ,sofa_total_day1_to_day4
+  ,vent
 ))
 
 # Removes Patients without intake data
@@ -308,7 +310,7 @@ cat(summary(vol_leak_index_dataset['leaking_index']),'\n',sep = '|')
 
 ```
 
-## SOFA Delta creation
+## SOFA Delta and others creation
 
 For calculating delta sofa we need tertiles of sofa day 1.
 
@@ -343,6 +345,12 @@ vol_leak_index_dataset<-vol_leak_index_dataset%>%
       t_sofatotal_day1 == 1 & sofatotal_day2 >  sofatotal_day1 ~ 1,
       t_sofatotal_day1 == 1 & sofatotal_day2 <  sofatotal_day1 ~ 0, 
     )
+    ,sofatotal_day1_cat=case_when(
+      
+      between(sofatotal_day1,0,7) ~ 'a) 0-7',
+      between(sofatotal_day1,8,11) ~ 'b) 8-11',
+      sofatotal_day1>=12 ~ 'c) >=12'
+    )    
 )
 ```
 
@@ -360,11 +368,17 @@ selected_df <- vol_leak_index_dataset%>%dplyr::select(
     ,final_charlson_score
     ,apache_iv
     ,leaking_index
+    ,sofatotal_day1
+    ,sofatotal_day1_cat
     ,delta_sofa
     ,fluid_balance
     # ,fluid_balance_72
     ,mean_hct_24_36hrs
     ,first_hct_6hrs
+    ,mech_vent
+    , actualicumortality
+    , unabridgedunitlos
+    , unabridgedhosplos    
   )
 
 selected_df_fluid <- vol_leak_index_dataset%>%dplyr::select(
@@ -391,7 +405,7 @@ selected_df_fluid <- vol_leak_index_dataset%>%dplyr::select(
 
 *TODO: Improve hospital mortality extraction, don't impute*
 
-# Exclusion Criteria 3
+# Exclusion Criteria 2
 
 
 *Please note there are several exclusion criteria and the order in which they are applied is really important.*
@@ -450,7 +464,7 @@ print('cutoff points')
 unique(cut2(selected_df$leaking_index, g=4))
 ```
 
-# Exclusion criteria 4
+# Exclusion criteria 3
 
 Not used
 ```{r eval=FALSE, include=FALSE}
@@ -461,10 +475,43 @@ nrow(selected_df)
 
 # Table 1 
 
-*Stratified by q_leaking_index*
-
 ```{r}
-table1(~ age_fixed + hosp_mortality + gender + final_charlson_score + apache_iv  + delta_sofa + fluid_balance + mean_hct_24_36hrs + first_hct_6hrs| q_leaking_index, data=selected_df)
+vars_in_table1<-c('age_fixed', 'gender'  , 'final_charlson_score' , 'apache_iv'  , 'delta_sofa' ,'sofatotal_day1_cat', 'fluid_balance' , 'mean_hct_24_36hrs' , 'first_hct_6hrs', 'mech_vent','hosp_mortality_offset', 'actualicumortality' , 'unabridgedunitlos' , 'unabridgedhosplos',
+                  'leaking_index')
+
+table1_dataset<-selected_df[,vars_in_table1]
+
+cat_variables<-rep(NA, length(vars_in_table1))
+stratifyby<-"sofatotal_day1_cat"
+
+
+label(table1_dataset$age_fixed)<-'Age'
+
+# detects whether a variable is categorical or not
+cont<-1
+for (i in 1:length(vars_in_table1) ) {
+  if ( n_distinct(table1_dataset[vars_in_table1[i] ])<=10 ) {
+    print(i)
+    print(vars_in_table1[i])
+    print(names(table1_dataset[vars_in_table1[i]]))
+    cat_variables[cont]<-names(table1_dataset[vars_in_table1[i]])
+    cont<-cont+1
+  }
+}  
+
+cat_variables<-cat_variables[!is.na(cat_variables)]
+
+table1_base<-print(CreateTableOne(vars = vars_in_table1, strata = stratifyby, factorVars = cat_variables
+    ,data = table1_dataset, addOverall=T),varLabels = T)
+
+# run this in console for html output, the code below uses kableExtra::
+
+starification_cats<-n_distinct(table1_dataset[,stratifyby])
+
+table1_base %>%
+  kbl(caption = "Table 1 of base model" , align = "c") %>%
+  kable_classic_2(full_width = F, html_font = "Cambria")%>%
+  add_header_above(c(" "," ", 'SOFA day1 Category' = starification_cats," ", "" ))
 ```
 
 
