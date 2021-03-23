@@ -42,6 +42,7 @@ library(caret)
 center_scale <- function(x) {
     scale(x, scale = FALSE)
 }
+library(mgcViz)
 ```
 
 # Plotting relationships
@@ -84,6 +85,9 @@ ggplot(selected_df, aes(leaking_index, hosp_mortality) ) +
   stat_smooth(method = gam, formula = y ~ s(x)) +
   ggtitle("GAM Model for Leaking Index and Hospital Mortality") +
   labs(y="Hospital Mortality", x = "Leaking Index")
+
+b <- getViz(model)
+plot( sm(b, 1) )
 ```
 
 ### Odds ratio
@@ -132,6 +136,9 @@ ggplot(selected_df, aes(leaking_index, delta_sofa) ) +
   stat_smooth(method = gam, formula = y ~ s(x)) +
   ggtitle("GAM Model for Leaking Index and Delta_Sofa") +
   labs(y="Delta_Sofa", x = "Leaking Index")
+
+b <- getViz(model)
+plot( sm(b, 1) )
 ```
 # Cohort with Fluid Balance at 72hrs and alive past 72hrs
 ## GAM Analysis
@@ -140,8 +147,7 @@ ggplot(selected_df, aes(leaking_index, delta_sofa) ) +
 library(mgcv)
 # Build the model
 model <- gam(fluid_balance_72  ~
-                         + q_leaking_index
-                         + age_fixed + gender + fluid_balance + apache_iv + final_charlson_score
+                         s(leaking_index) + age_fixed + gender + fluid_balance
                          ,data=selected_df_fluid)
 # Make predictions
 predictions <- model %>% predict(selected_df_fluid)
@@ -155,7 +161,11 @@ ggplot(selected_df_fluid, aes(leaking_index, fluid_balance_72) ) +
   stat_smooth(method = gam, formula = y ~ s(x)) +
   ggtitle("GAM Model for Leaking Index and Fluid Balance") +
   labs(y="Fluid Balance 72hrs", x = "Leaking Index")
+
+b <- getViz(model)
+plot( sm(b, 1) )
 ```
+
 ### Old GAM Fluid Balance 72hrs
 ```{r}
 model_gam <- gam(fluid_balance_72  ~

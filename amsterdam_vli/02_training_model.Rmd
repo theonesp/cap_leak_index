@@ -18,6 +18,7 @@ knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, encoding = e
 ```{r}
 library(mgcv)
 library(ggplot2)
+library(mgcViz)
 ```
 
 ```{r}
@@ -52,15 +53,14 @@ ggplot(selected_df, aes(leaking_index, hosp_mortality) ) +
   stat_smooth(method = gam, formula = y ~ s(x)) +
   ggtitle("GAM Model for Leaking Index and Hospital Mortality") +
   labs(y="Hospital Mortality", x = "Leaking Index")
+
+b <- getViz(model)
+plot( sm(b, 1) )
 ```
 ```{r}
 # Build the model
 model <- gam(totalFluid_72 ~ 
-                 q_leaking_index
-                + age_fixed
-                + gender
-                +totalFluid
-                + charlson_score
+                s(leaking_index) + totalFluid
                 ,data=selected_df)
 # Make predictions
 predictions <- model %>% predict(selected_df)
@@ -76,7 +76,12 @@ ggplot(selected_df, aes(leaking_index, totalFluid_72) ) +
   stat_smooth(method = gam, formula = y ~ s(x)) +
   ggtitle("GAM Model for Leaking Index and Fluid Balance 72hrs") +
   labs(y="Fluid Balance 72hrs", x = "Leaking Index")
+
+b <- getViz(model)
+plot( sm(b, 1) )
 ```
+
+
 
 ## Odds Ratios
 ```{r}
@@ -106,6 +111,40 @@ OR_table
 # OR_table
 
 ```
+### Old GAM Fluid Balance 72hrs
+```{r}
+model_gam <- gam(totalFluid_72  ~
+                         + s(leaking_index)
+                         + age_fixed + gender + totalFluid
+                         ,data=selected_df)
+plotgam_model_gam<-mgcv::plot.gam(model_gam, n=200,select = 0)
+plotgam_model_gam_exp<-as.data.frame(
+  rbind(  
+    cbind(
+      plotgam_model_gam[[1]][["x"]] 
+      ,plotgam_model_gam[[1]][["fit"]] + coef(model_gam)[1]
+      ,plotgam_model_gam[[1]][["se"]] 
+      
+    )
+  
+  ))
+plotgam_model_gam_exp[,c(1:3)] <- apply(plotgam_model_gam_exp[,c(1:3)], 2, function(x) as.numeric(as.character(x)))
+colnames(plotgam_model_gam_exp)[1]<-'vli'
+colnames(plotgam_model_gam_exp)[2]<-'fit'
+colnames(plotgam_model_gam_exp)[3]<-'se.fit'
+plotgam_model_gam_exp$lci<- plotgam_model_gam_exp$fit - 2 * plotgam_model_gam_exp$se.fit
+plotgam_model_gam_exp$uci<- plotgam_model_gam_exp$fit + 2 * plotgam_model_gam_exp$se.fit
+ggplot(data=plotgam_model_gam_exp, aes(vli, fit,colour='#039be5'))+
+  geom_line()+
+  geom_ribbon(data=plotgam_model_gam_exp,aes(x=vli,ymin=lci,ymax=uci,fill='#039be5'),alpha=0.3,inherit.aes=FALSE)+
+  xlab('VLI')+
+  ylab('mortality')+
+  scale_color_manual(labels = c("Black", "White"), values = c("#1abc9c","#f1c40f"))+
+  scale_fill_manual(labels = c("Black", "White"), values = c("#1abc9c","#f1c40f"))+
+  labs(colour='Trend', fill='Trend') +
+  theme_minimal()+theme(legend.position = 'none')  
+```
+
 # Odd Ratio Plots
 
 ```{r}
@@ -140,6 +179,5 @@ p<-ggplot(df, aes(x = boxOdds
 p<-ggplotly(p)
 p<-ggplotly(p%>%layout(hovermode = 'compare'))
 p
-```
 ```
 

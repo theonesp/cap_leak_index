@@ -287,7 +287,7 @@ extreme_quants<-as.numeric(quantile(vol_leak_index_dataset$leaking_index, c(.025
 print('Number of patients with imputed data:')
 length(which(vol_leak_index_dataset$leaking_index< extreme_quants[1] | vol_leak_index_dataset$leaking_index> extreme_quants[2]))
 
-medLeak = median(vol_leak_index_dataset$leaking_index)
+medLeak = median(vol_leak_index_dataset$leaking_index, na.rm = T)
 vol_leak_index_dataset$leaking_index[which(vol_leak_index_dataset$leaking_index< extreme_quants[1] | vol_leak_index_dataset$leaking_index> extreme_quants[2])] = medLeak
 ```
 
