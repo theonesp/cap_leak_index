@@ -289,7 +289,7 @@ t5 AS (
     t4
   WHERE
     intake_first IS NOT NULL
-    AND chartoffset BETWEEN -6*60 AND 72*60
+    AND chartoffset BETWEEN 36*60 AND 84*60
   GROUP BY
     icustay_id,
     chartoffset

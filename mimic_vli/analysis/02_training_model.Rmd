@@ -17,6 +17,7 @@ knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, encoding = e
 
 ```{r}
 library(mgcv)
+library(mgcViz)
 library(ggplot2)
 library(oddsratio)
 ```
@@ -69,6 +70,9 @@ ggplot(selected_df, aes(leaking_index, hosp_mortality) ) +
   stat_smooth(method = gam, formula = y ~ s(x)) +
   ggtitle("GAM Model for Leaking Index and Hospital Mortality") +
   labs(y="Hospital Mortality", x = "Leaking Index")
+
+b <- getViz(model)
+plot( sm(b, 1) )
 ```
 ### Delta Sofa
 ```{r}
@@ -91,7 +95,11 @@ ggplot(selected_df, aes(leaking_index, delta_sofa) ) +
   stat_smooth(method = gam, formula = y ~ s(x)) +
   ggtitle("GAM Model for Leaking Index and Delta Sofa") +
   labs(y="Delta Sofa", x = "Leaking Index")
+
+b <- getViz(model)
+plot( sm(b, 1) )
 ```
+
 # Cohort with Fluid Balance at 72hrs and alive past 72hrs
 ## GAM Analysis
 ### Fluid Balance 72hrs
@@ -99,23 +107,60 @@ ggplot(selected_df, aes(leaking_index, delta_sofa) ) +
 ```{r}
 # Build the model
 model <- gam(fluid_balance_72  ~
-                         + q_leaking_index
-                         + age_fixed + gender + oasis + final_elixhauser_score + fluid_balance
+                         + s(leaking_index) + fluid_balance
+                         + age_fixed + gender
                          ,data=selected_df_fluid)
 # Make predictions
 predictions <- model %>% predict(selected_df_fluid)
 
 summary(model)
 # Model performance
-data.frame(
-  RMSE = RMSE(predictions, selected_df_fluid$fluid_balance_72),
-  R2 = R2(predictions, selected_df_fluid$fluid_balance_72)
-)
+# data.frame(
+#   RMSE = RMSE(predictions, selected_df_fluid$fluid_balance_72),
+#   R2 = R2(predictions, selected_df_fluid$fluid_balance_72)
+# )
 
 ggplot(selected_df_fluid, aes(leaking_index, fluid_balance_72) ) +
   stat_smooth(method = gam, formula = y ~ s(x)) + 
   ggtitle("GAM Model for Leaking Index and Fluid Balance 72hrs") +
   labs(y="Fluid Balance 72hrs", x = "Leaking Index")
+
+b <- getViz(model)
+plot( sm(b, 1) )
+```
+
+### Old GAM Fluid Balance 72hrs
+```{r}
+model_gam <- gam(fluid_balance_72  ~
+                         + s(leaking_index)
+                         + age_fixed + gender + final_elixhauser_score + oasis + fluid_balance
+                         ,data=selected_df_fluid)
+plotgam_model_gam<-mgcv::plot.gam(model_gam, n=200,select = 0)
+plotgam_model_gam_exp<-as.data.frame(
+  rbind(  
+    cbind(
+      plotgam_model_gam[[1]][["x"]] 
+      ,plotgam_model_gam[[1]][["fit"]] + coef(model_gam)[1]
+      ,plotgam_model_gam[[1]][["se"]] 
+      
+    )
+  
+  ))
+plotgam_model_gam_exp[,c(1:3)] <- apply(plotgam_model_gam_exp[,c(1:3)], 2, function(x) as.numeric(as.character(x)))
+colnames(plotgam_model_gam_exp)[1]<-'vli'
+colnames(plotgam_model_gam_exp)[2]<-'fit'
+colnames(plotgam_model_gam_exp)[3]<-'se.fit'
+plotgam_model_gam_exp$lci<- plotgam_model_gam_exp$fit - 2 * plotgam_model_gam_exp$se.fit
+plotgam_model_gam_exp$uci<- plotgam_model_gam_exp$fit + 2 * plotgam_model_gam_exp$se.fit
+ggplot(data=plotgam_model_gam_exp, aes(vli, fit,colour='#039be5'))+
+  geom_line()+
+  geom_ribbon(data=plotgam_model_gam_exp,aes(x=vli,ymin=lci,ymax=uci,fill='#039be5'),alpha=0.3,inherit.aes=FALSE)+
+  xlab('VLI')+
+  ylab('mortality')+
+  scale_color_manual(labels = c("Black", "White"), values = c("#1abc9c","#f1c40f"))+
+  scale_fill_manual(labels = c("Black", "White"), values = c("#1abc9c","#f1c40f"))+
+  labs(colour='Trend', fill='Trend') +
+  theme_minimal()+theme(legend.position = 'none')  
 ```
 
 ### Odds ratio
