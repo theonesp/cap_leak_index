@@ -115,8 +115,11 @@ intake72hrs <- run_query(getSQL("sql/intake_72hrs.sql"))
 output <- run_query(getSQL("sql/output.sql"))
 output72hrs <- run_query(getSQL("sql/output_72hrs.sql"))
 
-#demographic data separated due to error in processing "numeric" type
+#demographic data 
 demographic <- run_query(getSQL('sql/demographics.sql'))
+
+#mechanical ventilation
+vent <- run_query(getSQL('sql/vent.sql'))
 ```
 
 ```{r}
@@ -184,6 +187,7 @@ vol_leak_index_dataset<-Reduce(function(...) merge(..., all.x=TRUE), list(
   ,oasis_related
   ,elixhauser_score
   ,sofa_total_day1_to_day4
+  ,vent
 ))
 
 # Ensures fluid intake is greater than 0.
@@ -349,6 +353,7 @@ selected_df <- vol_leak_index_dataset%>%dplyr::select(
     , los_hospital
     , los_icu
     , icu_mortality
+    , mech_vent
 
   )
 
@@ -482,7 +487,7 @@ nrow(selected_df)
 *Stratified by q_leaking_index*
 
 ```{r}
-vars_in_table1<-c('age_fixed', 'gender'  , 'final_elixhauser_score' , 'oasis'  , 'delta_sofa' ,'sofatotal_day1_cat', 'fluid_balance' , 'mean_hct_24_36hrs' , 'first_hct_6hrs','hosp_mortality','leaking_index','los_hospital','los_icu','icu_mortality')
+vars_in_table1<-c('age_fixed', 'gender'  , 'final_elixhauser_score' , 'oasis'  , 'delta_sofa' ,'sofatotal_day1_cat', 'fluid_balance' , 'mean_hct_24_36hrs' , 'first_hct_6hrs','hosp_mortality','leaking_index','los_hospital','los_icu','icu_mortality','mech_vent')
 
 table1_dataset<-selected_df[,vars_in_table1]
 
