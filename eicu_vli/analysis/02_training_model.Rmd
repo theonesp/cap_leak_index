@@ -147,7 +147,7 @@ plot( sm(b, 1) )
 library(mgcv)
 # Build the model
 model <- gam(fluid_balance_72  ~
-                         s(leaking_index) + age_fixed + gender + fluid_balance
+                         q_leaking_index + age_fixed + gender + apache_iv + fluid_balance + final_charlson_score
                          ,data=selected_df_fluid)
 # Make predictions
 predictions <- model %>% predict(selected_df_fluid)
@@ -170,7 +170,7 @@ plot( sm(b, 1) )
 library(mgcv)
 # Build the model
 model <- gam(fluid_balance_72_bin  ~
-                         s(leaking_index) + age_fixed + gender + fluid_balance
+                         q_leaking_index + age_fixed + gender + apache_iv + fluid_balance + final_charlson_score
                          ,data=selected_df_fluid, family = binomial)
 # Make predictions
 predictions <- model %>% predict(selected_df_fluid)

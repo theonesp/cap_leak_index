@@ -172,6 +172,12 @@ vol_leak_index_dataset<-Reduce(function(...) merge(..., all.x=TRUE), list(
   ,charlson
 ))
 
+# We are adding mech vent status
+vol_leak_index_dataset<-vol_leak_index_dataset%>%
+  mutate(
+    mech_vent = ifelse(unabridgedactualventdays > 0, 1, 0)
+  )  
+vol_leak_index_dataset$mech_vent[is.na(vol_leak_index_dataset$mech_vent)] = 0
 # Removes Patients without intake data
 vol_leak_index_dataset<-sqldf('
 SELECT * FROM
@@ -279,6 +285,7 @@ selected_df <- vol_leak_index_dataset%>%mutate(
     ,mean_hct_24_36hrs
     , unabridgedunitlos
     , unabridgedhosplos
+    ,mech_vent
     , unitType
   )
 
@@ -338,7 +345,7 @@ Amsterdam DB Cohort Information:
 table1(~ gender + age_fixed + hosp_mortality + totalFluid + mean_hct_24_36hrs + first_hct_6hrs + charlson_score| q_leaking_index, data=selected_df)
 ```
 ```{r}
-vars_in_table1<-c('age_fixed', 'gender'  , 'charlson_score', 'totalFluid' , 'mean_hct_24_36hrs' , 'first_hct_6hrs', 'hosp_mortality','leaking_index', 'unabridgedunitlos', 'unabridgedhosplos', 'unitType')
+vars_in_table1<-c('age_fixed', 'gender'  , 'charlson_score', 'totalFluid' , 'mean_hct_24_36hrs' , 'first_hct_6hrs', 'hosp_mortality','leaking_index', 'unabridgedunitlos', 'unabridgedhosplos', 'mech_vent')
 
 table1_dataset<-selected_df[,vars_in_table1]
 

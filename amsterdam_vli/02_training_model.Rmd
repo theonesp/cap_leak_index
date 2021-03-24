@@ -61,6 +61,9 @@ plot( sm(b, 1) )
 # Build the model
 model <- gam(totalFluid_72 ~ 
                 q_leaking_index
+                + age_fixed
+                + gender
+                + charlson_score
                 ,data=selected_df_fluid)
 # Make predictions
 predictions <- model %>% predict(selected_df_fluid)
@@ -82,6 +85,9 @@ ggplot(selected_df_fluid, aes(leaking_index, totalFluid_72) ) +
 # Build the model
 model <- gam(totalFluid_72_bin ~ 
                 q_leaking_index
+                + age_fixed
+                + gender
+                + charlson_score
                 ,data=selected_df_fluid)
 # Make predictions
 predictions <- model %>% predict(selected_df_fluid)
