@@ -52,9 +52,7 @@ ggplot(selected_df, aes(leaking_index,hosp_mortality) ) +
   stat_smooth() +
   ggtitle("GAM Model for Leaking Index and Hospital Mortality") +
   labs(y="Hospital Mortality", x = "Leaking Index")
-```
 
-```{r}
 ggplot(selected_df, aes(leaking_index,delta_sofa) ) +
   stat_smooth() +
   ggtitle("GAM Model for Leaking Index and Hospital Mortality") +
@@ -147,7 +145,7 @@ plot( sm(b, 1) )
 library(mgcv)
 # Build the model
 model <- gam(fluid_balance_72  ~
-                         q_leaking_index + age_fixed + gender + apache_iv + fluid_balance + final_charlson_score
+                         q_leaking_index + age_fixed + gender + apache_iv + final_charlson_score
                          ,data=selected_df_fluid)
 # Make predictions
 predictions <- model %>% predict(selected_df_fluid)
@@ -170,7 +168,7 @@ plot( sm(b, 1) )
 library(mgcv)
 # Build the model
 model <- gam(fluid_balance_72_bin  ~
-                         q_leaking_index + age_fixed + gender + apache_iv + fluid_balance + final_charlson_score
+                         q_leaking_index + age_fixed + gender + apache_iv + final_charlson_score
                          ,data=selected_df_fluid, family = binomial)
 # Make predictions
 predictions <- model %>% predict(selected_df_fluid)
