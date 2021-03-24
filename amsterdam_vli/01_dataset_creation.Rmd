@@ -24,6 +24,7 @@ library(sqldf)
 library(dplyr)
 library(tableone)
 library(Hmisc)
+library(kableExtra)
 library(caret)
 library(plotly)
 library(table1)
@@ -198,7 +199,7 @@ nrow(vol_leak_index_dataset)
 ```{r}
 vol_leak_index_dataset<-vol_leak_index_dataset%>%
   mutate(
-    leaking_index=((mean_hct_24_36hrs - first_hct_6hrs) / totalFluid) * body_surface_area
+    leaking_index=((mean_hct_24_36hrs - first_hct_6hrs) / totalFluid) * body_surface_area * 1561
   )  
 ```
 
@@ -276,6 +277,9 @@ selected_df <- vol_leak_index_dataset%>%mutate(
     ,leaking_index
     ,first_hct_6hrs
     ,mean_hct_24_36hrs
+    , unabridgedunitlos
+    , unabridgedhosplos
+    , unitType
   )
 
 selected_df_fluid <- vol_leak_index_dataset%>%dplyr::select(
@@ -333,6 +337,44 @@ Amsterdam DB Cohort Information:
 
 table1(~ gender + age_fixed + hosp_mortality + totalFluid + mean_hct_24_36hrs + first_hct_6hrs + charlson_score| q_leaking_index, data=selected_df)
 ```
+```{r}
+vars_in_table1<-c('age_fixed', 'gender'  , 'charlson_score', 'totalFluid' , 'mean_hct_24_36hrs' , 'first_hct_6hrs', 'hosp_mortality','leaking_index', 'unabridgedunitlos', 'unabridgedhosplos', 'unitType')
+
+table1_dataset<-selected_df[,vars_in_table1]
+
+cat_variables<-rep(NA, length(vars_in_table1))
+stratifyby<-"hosp_mortality"
+
+
+label(table1_dataset$age_fixed)<-'Age'
+
+# detects whether a variable is categorical or not
+cont<-1
+for (i in 1:length(vars_in_table1) ) {
+  if ( n_distinct(table1_dataset[vars_in_table1[i] ])<=10 ) {
+    print(i)
+    print(vars_in_table1[i])
+    print(names(table1_dataset[vars_in_table1[i]]))
+    cat_variables[cont]<-names(table1_dataset[vars_in_table1[i]])
+    cont<-cont+1
+  }
+}  
+
+cat_variables<-cat_variables[!is.na(cat_variables)]
+
+table1_base<-print(CreateTableOne(vars = vars_in_table1, strata = stratifyby, factorVars = cat_variables
+    ,data = table1_dataset, addOverall=T),varLabels = T)
+
+# run this in console for html output, the code below uses kableExtra::
+
+starification_cats<-n_distinct(table1_dataset[,stratifyby])
+
+table1_base %>%
+  kbl(caption = "Table 1 of base model" , align = "c") %>%
+  kable_classic_2(full_width = F, html_font = "Cambria")%>%
+  add_header_above(c(" "," ", 'Hospital Mortality' = starification_cats," ", "" ))
+```
+
 
 # Train and test datasets creation
 

@@ -250,7 +250,7 @@ nrow(vol_leak_index_dataset)
 vol_leak_index_dataset<-vol_leak_index_dataset%>%
   mutate(
     # leaking_index=((mean_hct_24_36hrs/first_hct_6hrs)-1)*body_surface_area*1561
-    leaking_index=((mean_hct_24_36hrs - first_hct_6hrs) / fluid_balance) * body_surface_area
+    leaking_index=((mean_hct_24_36hrs - first_hct_6hrs) / fluid_balance) * body_surface_area * 1561
   )  
 
 # Removes leaking index greater than 0 (means that hematocrit increases over time with fluid). We are not doing this now.
@@ -375,10 +375,11 @@ selected_df <- vol_leak_index_dataset%>%dplyr::select(
     # ,fluid_balance_72
     ,mean_hct_24_36hrs
     ,first_hct_6hrs
-    ,mech_vent
+    # ,mech_vent
     , actualicumortality
     , unabridgedunitlos
-    , unabridgedhosplos    
+    , unabridgedhosplos
+    ,unitType
   )
 
 selected_df_fluid <- vol_leak_index_dataset%>%dplyr::select(
@@ -476,13 +477,12 @@ nrow(selected_df)
 # Table 1 
 
 ```{r}
-vars_in_table1<-c('age_fixed', 'gender'  , 'final_charlson_score' , 'apache_iv'  , 'delta_sofa' ,'sofatotal_day1_cat', 'fluid_balance' , 'mean_hct_24_36hrs' , 'first_hct_6hrs', 'mech_vent','hosp_mortality_offset', 'actualicumortality' , 'unabridgedunitlos' , 'unabridgedhosplos',
-                  'leaking_index')
+vars_in_table1<-c('age_fixed', 'gender'  , 'final_charlson_score' , 'apache_iv'  , 'delta_sofa' ,'sofatotal_day1_cat', 'fluid_balance' , 'mean_hct_24_36hrs' , 'first_hct_6hrs', 'actualicumortality', 'hosp_mortality', 'unabridgedunitlos' , 'unabridgedhosplos','leaking_index')
 
 table1_dataset<-selected_df[,vars_in_table1]
 
 cat_variables<-rep(NA, length(vars_in_table1))
-stratifyby<-"sofatotal_day1_cat"
+stratifyby<-"hosp_mortality"
 
 
 label(table1_dataset$age_fixed)<-'Age'
@@ -511,7 +511,7 @@ starification_cats<-n_distinct(table1_dataset[,stratifyby])
 table1_base %>%
   kbl(caption = "Table 1 of base model" , align = "c") %>%
   kable_classic_2(full_width = F, html_font = "Cambria")%>%
-  add_header_above(c(" "," ", 'SOFA day1 Category' = starification_cats," ", "" ))
+  add_header_above(c(" "," ", 'Hospital Mortality' = starification_cats," ", "" ))
 ```
 ```{r}
 eICUTable1 <- table1(~ age_fixed + hosp_mortality + gender + final_charlson_score + apache_iv  + delta_sofa + fluid_balance + mean_hct_24_36hrs + first_hct_6hrs | q_leaking_index, data=selected_df)
