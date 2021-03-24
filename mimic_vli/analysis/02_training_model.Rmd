@@ -104,7 +104,7 @@ plot( sm(b, 1) )
 ```{r}
 # Build the model
 model <- gam(fluid_balance_72  ~
-                         + q_leaking_index
+                         s(leaking_index)
                          + age_fixed + gender
                          ,data=selected_df_fluid)
 # Make predictions

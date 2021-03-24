@@ -235,8 +235,9 @@ vol_leak_index_dataset<-vol_leak_index_dataset%>%
     fluid_balance=(intakes_total-outputs_total),
     fluid_balance_72 = (intakes_total72 - outputs_total72)
   )  
-hist(vol_leak_index_dataset['fluid_balance'])
-hist(vol_leak_index_dataset['fluid_balance_72'])
+
+hist(vol_leak_index_dataset$fluid_balance, breaks = 500, xlim = c(-10000, 10000))
+hist(vol_leak_index_dataset$fluid_balance_72, breaks = 100, xlim = c(-10000, 10000))
 
 # Ensures fluid balance is greater than 0.
 vol_leak_index_dataset<-sqldf('
@@ -466,13 +467,14 @@ print('cutoff points')
 unique(cut2(selected_df$leaking_index, g=4))
 ```
 
-# Exclusion criteria 3
+## Summary of dataset
+```{r}
+view(dfSummary(selected_df))
+```
 
-Not used
-```{r eval=FALSE, include=FALSE}
-# selected_df<-selected_df%>%filter(q_leaking_index %in% c('4','1'))
-print('Number of patients after excluding VLI Q2 and VLI Q3:')
-nrow(selected_df)
+## Final Histogram of Fluid Balance
+```{r}
+hist(selected_df$fluid_balance, breaks = 1000, xlim = c(0, 10000))
 ```
 
 # Table 1 
@@ -504,6 +506,12 @@ table1_base %>%
   kbl(caption = "Table 1 of base model" , align = "c") %>%
   kable_classic_2(full_width = F, html_font = "Cambria")%>%
   add_header_above(c(" "," ", 'SOFA day1 Category' = starification_cats," ", "" ))
+```
+
+# Old Table (Kept for Stratification on Leaking Index)
+```{r}
+eICUTable1 <- table1(~ age_fixed + hosp_mortality + gender + final_charlson_score + apache_iv  + delta_sofa + fluid_balance + mean_hct_24_36hrs + first_hct_6hrs | q_leaking_index, data=selected_df)
+eICUTable1
 ```
 
 # Export dataset

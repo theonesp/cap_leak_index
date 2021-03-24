@@ -187,7 +187,7 @@ WHERE intakes IS NOT null')
 print('patients with fluid data')
 nrow(vol_leak_index_dataset)
 
-# Ensures fluid intake is greater than 0.
+# Ensures fluid balance is positive.
 vol_leak_index_dataset<-sqldf('
 SELECT * FROM
 vol_leak_index_dataset
@@ -344,6 +344,16 @@ Amsterdam DB Cohort Information:
 
 table1(~ gender + age_fixed + hosp_mortality + totalFluid + mean_hct_24_36hrs + first_hct_6hrs + charlson_score| q_leaking_index, data=selected_df)
 ```
+## Summary of dataset
+```{r}
+view(dfSummary(selected_df))
+```
+
+## Final Histogram of Fluid Balance
+```{r}
+hist(selected_df$totalFluid, breaks = 100, xlim = c(0, 10000))
+```
+
 ```{r}
 vars_in_table1<-c('age_fixed', 'gender'  , 'charlson_score', 'totalFluid' , 'mean_hct_24_36hrs' , 'first_hct_6hrs', 'hosp_mortality','leaking_index', 'unabridgedunitlos', 'unabridgedhosplos', 'mech_vent')
 

@@ -120,6 +120,9 @@ demographic <- run_query(getSQL('sql/demographics.sql'))
 
 #mechanical ventilation
 vent <- run_query(getSQL('sql/vent.sql'))
+
+#rrt patients
+rrt <- run_query(getSQL("sql/rrt.sql"))
 ```
 
 ```{r}
@@ -190,7 +193,7 @@ vol_leak_index_dataset<-Reduce(function(...) merge(..., all.x=TRUE), list(
   ,vent
 ))
 
-# Ensures fluid intake is greater than 0.
+# Ensures fluid intake is there
 vol_leak_index_dataset<-sqldf('
 SELECT * FROM
 vol_leak_index_dataset
@@ -216,6 +219,9 @@ vol_leak_index_dataset<-vol_leak_index_dataset%>%
     fluid_balance=(intakes_total-outputs_total),
     fluid_balance_72=(intakes_total_72-outputs_total_72)
   )  
+
+hist(vol_leak_index_dataset$fluid_balance, breaks = 100, xlim = c(-10000, 10000))
+hist(vol_leak_index_dataset$fluid_balance_72, breaks = 100, xlim = c(-10000, 10000))
 
 # Ensures fluid balance is greater than 0.
 vol_leak_index_dataset<-sqldf('
@@ -472,12 +478,14 @@ selected_df<-selected_df%>%mutate(
 selected_df$highest_q_leaking_index<-as.factor(selected_df$highest_q_leaking_index)
 ```
 
-# Exclusion criteria 3
-
+## Summary of Dataset
 ```{r}
-#selected_df<-selected_df%>%filter(q_leaking_index %in% c('4','1'))
-print('Number of patients after excluding VLI Q2 and VLI Q3:')
-nrow(selected_df)
+view(dfSummary(selected_df))
+```
+
+## Final Fluid Balance
+```{r}
+hist(selected_df$fluid_balance, breaks = 100, xlim = c(0, 20000))
 ```
 
 # Table 1 
@@ -520,6 +528,12 @@ table1_base %>%
   kbl(caption = "Table 1 of base model" , align = "c") %>%
   kable_classic_2(full_width = F, html_font = "Cambria")%>%
   add_header_above(c(" "," ", 'Hospital Mortality' = starification_cats," ", "" ))
+```
+
+## Old Table 1
+```{r}
+mimicTable1 <- table1(~ age_fixed + hosp_mortality + gender + final_elixhauser_score + oasis  + delta_sofa + fluid_balance + mean_hct_24_36hrs + first_hct_6hrs | q_leaking_index, data=selected_df)
+mimicTable1
 ```
 
 # Export dataset
