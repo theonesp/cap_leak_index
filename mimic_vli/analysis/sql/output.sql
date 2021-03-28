@@ -59,7 +59,7 @@ chartoffset,
 amount
 from outputfirst
 WHERE
-chartoffset BETWEEN -6*60 AND 36*60
+chartoffset BETWEEN -6*60 AND 24*60
 )
 SELECT 
 icustay_id,

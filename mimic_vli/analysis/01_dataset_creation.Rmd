@@ -126,9 +126,10 @@ rrt <- run_query(getSQL("sql/rrt.sql"))
 ```
 
 ```{r}
+intake <- run_query(getSQL("sql/intake.sql"))
+output <- run_query(getSQL("sql/output.sql"))
 intake72hrs <- run_query(getSQL("sql/intake_72hrs.sql"))
 output72hrs <- run_query(getSQL("sql/output_72hrs.sql"))
-rrt <- run_query(getSQL("sql/rrt.sql"))
 ```
 
 # Exclusion criteria 1
@@ -339,28 +340,6 @@ vol_leak_index_dataset<-vol_leak_index_dataset%>%
  - We are just selecting the variables we need for the model or for the exclusion criteria.
 
 ```{r}
-selected_df <- vol_leak_index_dataset%>%dplyr::select(
-      icustay_id
-    , hosp_mortality
-    , hosp_mortality_offset
-    , age_fixed
-    , gender
-    , final_elixhauser_score
-    , oasis
-    , leaking_index
-    , delta_sofa
-    , sofatotal_day1
-    , sofatotal_day1_cat
-    , fluid_balance
-    , mean_hct_24_36hrs
-    , first_hct_6hrs
-    , los_hospital
-    , los_icu
-    , icu_mortality
-    , mech_vent
-
-  )
-
 selected_df_fluid <- vol_leak_index_dataset%>%dplyr::select(
      icustay_id
     ,hosp_mortality
@@ -371,116 +350,101 @@ selected_df_fluid <- vol_leak_index_dataset%>%dplyr::select(
     ,oasis
     ,leaking_index
     ,delta_sofa
+    , sofatotal_day1
+    , sofatotal_day1_cat
     ,fluid_balance
     ,fluid_balance_72
     ,mean_hct_24_36hrs
     ,first_hct_6hrs
+    , los_hospital
+    , los_icu
+    , icu_mortality
+    , mech_vent
   )
+
+selected_df_fluid<-selected_df_fluid%>%mutate(fluid_balance_72_bin = ifelse(fluid_balance_72 > 0, 1, 0))
+
+print('Number of patients in our dataset so far:')
+a<-nrow(selected_df_fluid)
+a
+
+selected_df_fluid<-selected_df_fluid%>%filter(!is.na(hosp_mortality))
+print('Number of patients excluded due to missing hosp_mortality:')
+b<-nrow(selected_df_fluid)
+a-b
+
+selected_df_fluid<-selected_df_fluid%>%filter(!is.na(age_fixed))
+print('Number of patients excluded due to missing age:')
+c<-nrow(selected_df_fluid)
+b-c
+
+selected_df_fluid<-selected_df_fluid%>%filter(!is.na(gender))
+print('Number of patients excluded due to missing gender:')
+d<-nrow(selected_df_fluid)
+c-d
+
+selected_df_fluid<-selected_df_fluid%>%filter(!is.na(final_elixhauser_score))
+print('Number of patients excluded due to missing final_elixhauser_score:')
+e<-nrow(selected_df_fluid)
+d-e
+
+selected_df_fluid<-selected_df_fluid%>%filter(!is.na(oasis))
+print('Number of patients excluded due to missing oasis:')
+f<-nrow(selected_df_fluid)
+e-f
+
+selected_df_fluid<-selected_df_fluid%>%filter(!is.na(leaking_index))
+print('Number of patients excluded due to missing leaking_index:')
+g<-nrow(selected_df_fluid)
+f-g
+
+selected_df_fluid<-selected_df_fluid%>%filter(!is.na(delta_sofa))
+print('Number of patients excluded due to missing delta_sofa:')
+h<-nrow(selected_df_fluid)
+g-h
+
+selected_df_fluid<-selected_df_fluid%>%filter(!is.na(fluid_balance_72))
+print('Number of patients excluded due to missing 72hr fluid balance:')
+i<-nrow(selected_df_fluid)
+h-i
+
+('Final number of patients')
+i
 
 selected_df_fluid<-selected_df_fluid[complete.cases(selected_df_fluid),]
 print('Number of patients after removing incomplete data:')
 nrow(selected_df_fluid)
 
 # Removing Patients who died before 72 hours
-selected_df_fluid<-selected_df_fluid%>%filter(hosp_mortality_offset>72*60 | hosp_mortality_offset==0)
+# selected_df_fluid<-selected_df_fluid%>%filter(hosp_mortality_offset>72*60 | hosp_mortality_offset==0)
 print('Number of patients after excluding patients with hosp_mort_offset <72hrs:')
 nrow(selected_df_fluid)
 
-selected_df_fluid<-selected_df_fluid%>%mutate(fluid_balance_72_bin = ifelse(fluid_balance_72 > 0, 1, 0))
+# selected_df_fluid<-selected_df_fluid%>%mutate(fluid_balance_72_bin = ifelse(fluid_balance_72 > 0, 1, 0))
 
 # these variables are factors
 selected_df$gender<-as.factor(selected_df$gender)
 
 ```
 
-# Data Imputation
 
-## Mortality imputation
-
-We are not imputing mortality
-
-# Exclusion Criteria 2
-
-
-*Please note there are several exclusion criteria and the order in which they are applied is really important.*
-
- - We are removing patients not in VLI Q2 or VLI Q3.
- - We are removing cases with missing data.
-
-```{r}
-print('Number of patients in our dataset so far:')
-a<-nrow(selected_df)
-a
-
-selected_df<-selected_df%>%filter(!is.na(hosp_mortality))
-print('Number of patients excluded due to missing hosp_mortality:')
-b<-nrow(selected_df)
-a-b
-
-selected_df<-selected_df%>%filter(!is.na(age_fixed))
-print('Number of patients excluded due to missing age:')
-c<-nrow(selected_df)
-b-c
-
-selected_df<-selected_df%>%filter(!is.na(gender))
-print('Number of patients excluded due to missing gender:')
-d<-nrow(selected_df)
-c-d
-
-selected_df<-selected_df%>%filter(!is.na(final_elixhauser_score))
-print('Number of patients excluded due to missing final_elixhauser_score:')
-e<-nrow(selected_df)
-d-e
-
-selected_df<-selected_df%>%filter(!is.na(oasis))
-print('Number of patients excluded due to missing oasis:')
-f<-nrow(selected_df)
-e-f
-
-selected_df<-selected_df%>%filter(!is.na(leaking_index))
-print('Number of patients excluded due to missing leaking_index:')
-g<-nrow(selected_df)
-f-g
-
-selected_df<-selected_df%>%filter(!is.na(delta_sofa))
-print('Number of patients excluded due to missing delta_sofa:')
-h<-nrow(selected_df)
-g-h
-
-('Final number of patients')
-h
-```
 
 # New Variables Creation
 
 ## Leaking Index Quartile
 
 ```{r}
-selected_df<-selected_df%>%
-  mutate(
-     q_leaking_index=as.factor(as.numeric(cut2(leaking_index, g=4)))
-)
 selected_df_fluid<-selected_df_fluid%>%
   mutate(
      q_leaking_index=as.factor(as.numeric(cut2(leaking_index, g=4)))
 )
 print('cutoff points')
 unique(cut2(selected_df$leaking_index, g=4))
-```
-
-## Highest_q_leaking_index
-
-```{r}
-selected_df<-selected_df%>%mutate(
-  highest_q_leaking_index=if_else(q_leaking_index %in% c('4'),1,0 )
-)
-
-selected_df$highest_q_leaking_index<-as.factor(selected_df$highest_q_leaking_index)
-```
+````
 
 ## Summary of Dataset
 ```{r}
-view(dfSummary(selected_df))
+view(dfSummary(selected_df_fluid))
 ```
 
 ## Final Fluid Balance
@@ -495,7 +459,7 @@ hist(selected_df$fluid_balance, breaks = 100, xlim = c(0, 20000))
 ```{r}
 vars_in_table1<-c('age_fixed', 'gender'  , 'final_elixhauser_score' , 'oasis'  , 'delta_sofa' ,'sofatotal_day1_cat', 'fluid_balance' , 'mean_hct_24_36hrs' , 'first_hct_6hrs','hosp_mortality','leaking_index','los_hospital','los_icu','icu_mortality','mech_vent')
 
-table1_dataset<-selected_df[,vars_in_table1]
+table1_dataset<-selected_df_fluid[,vars_in_table1]
 
 cat_variables<-rep(NA, length(vars_in_table1))
 stratifyby<-"hosp_mortality"
@@ -532,20 +496,12 @@ table1_base %>%
 
 ## Old Table 1
 ```{r}
-mimicTable1 <- table1(~ age_fixed + hosp_mortality + gender + final_elixhauser_score + oasis  + delta_sofa + fluid_balance + mean_hct_24_36hrs + first_hct_6hrs | q_leaking_index, data=selected_df)
+mimicTable1 <- table1(~ age_fixed + hosp_mortality + gender + final_elixhauser_score + oasis  + delta_sofa + fluid_balance + fluid_balance_72 + mean_hct_24_36hrs + first_hct_6hrs | q_leaking_index, data=selected_df_fluid)
 mimicTable1
 ```
 
 # Export dataset
 
 ```{r}
-write.csv(selected_df,'selected_df.csv')
-```
-
-# 72hr Fluid Regression Analysis
-
-```{r}
-plot (selected_df$leaking_index, selected_df$fluid_balance_72, xlab = 'leaking_index', ylab = 'fluid balance at 72hrs', main = 'Leaking Index as a predictor of Fluid Balance at 72 hrs')
-linearMod <- lm(fluid_balance_72 ~ leaking_index, data=selected_df)
-summary(linearMod)
+write.csv(selected_df_fluid,'selected_df_fluid.csv')
 ```

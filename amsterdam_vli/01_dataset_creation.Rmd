@@ -266,29 +266,6 @@ vol_leak_index_dataset$q_leaking_index = as.factor(ntile(vol_leak_index_dataset$
 ## Selecting/Imputing/removing data
 
 ```{r}
-selected_df <- vol_leak_index_dataset%>%mutate(
-  highest_q_leaking_index=if_else(
-    q_leaking_index %in% c('3','4'),1,0
-  ))%>%dplyr::select(
-    admissionid
-    ,hosp_mortality
-    ,age_fixed
-    ,gender
-    ,charlson_score
-    # ,apachescore
-    # ,delta_sofa
-    # ,highest_q_leaking_index
-    ,totalFluid
-    ,q_leaking_index
-    ,leaking_index
-    ,first_hct_6hrs
-    ,mean_hct_24_36hrs
-    , unabridgedunitlos
-    , unabridgedhosplos
-    ,mech_vent
-    , unitType
-  )
-
 selected_df_fluid <- vol_leak_index_dataset%>%dplyr::select(
      admissionid
     ,hosp_mortality
@@ -305,20 +282,20 @@ selected_df_fluid <- vol_leak_index_dataset%>%dplyr::select(
     ,leaking_index
     ,first_hct_6hrs
     ,mean_hct_24_36hrs
+    , unabridgedunitlos
+    , unabridgedhosplos
+    ,mech_vent
+    , unitType
   )
-
-selected_df<-selected_df[complete.cases(selected_df),]
-print('Number of patients after removing incomplete data:')
-nrow(selected_df)
 
 selected_df_fluid<-selected_df_fluid[complete.cases(selected_df_fluid),]
 print('Number of patients after removing incomplete data:')
 nrow(selected_df_fluid)
 
 # Removing Patients who died before 72 hours
-selected_df_fluid<-selected_df_fluid%>%filter(hosp_mortality_offset>72 | hosp_mortality_offset==0)
-print('Number of patients after excluding patients with hosp_mort_offset <72hrs:')
-nrow(selected_df_fluid)
+# selected_df_fluid<-selected_df_fluid%>%filter(hosp_mortality_offset>72 | hosp_mortality_offset==0)
+# print('Number of patients after excluding patients with hosp_mort_offset <72hrs:')
+# nrow(selected_df_fluid)
 
 selected_df_fluid<-selected_df_fluid%>%mutate(totalFluid_72_bin = ifelse(totalFluid_72 > 0, 1, 0))
 
@@ -342,11 +319,11 @@ Amsterdam DB Cohort Information:
 ```{r}
 # table1(~ age_fixed + hosp_mortality + gender + charlson_score + apachescore + totalFluid + mean_hct_24_36hrs + first_hct_6hrs| q_leaking_index, data=selected_df)
 
-table1(~ gender + age_fixed + hosp_mortality + totalFluid + mean_hct_24_36hrs + first_hct_6hrs + charlson_score| q_leaking_index, data=selected_df)
+table1(~ gender + age_fixed + hosp_mortality + totalFluid + mean_hct_24_36hrs + first_hct_6hrs + charlson_score| q_leaking_index, data=selected_df_fluid)
 ```
 ## Summary of dataset
 ```{r}
-view(dfSummary(selected_df))
+view(dfSummary(selected_df_fluid))
 ```
 
 ## Final Histogram of Fluid Balance
@@ -357,7 +334,7 @@ hist(selected_df$totalFluid, breaks = 100, xlim = c(0, 10000))
 ```{r}
 vars_in_table1<-c('age_fixed', 'gender'  , 'charlson_score', 'totalFluid' , 'mean_hct_24_36hrs' , 'first_hct_6hrs', 'hosp_mortality','leaking_index', 'unabridgedunitlos', 'unabridgedhosplos', 'mech_vent')
 
-table1_dataset<-selected_df[,vars_in_table1]
+table1_dataset<-selected_df_fluid[,vars_in_table1]
 
 cat_variables<-rep(NA, length(vars_in_table1))
 stratifyby<-"hosp_mortality"
@@ -391,46 +368,5 @@ table1_base %>%
   kable_classic_2(full_width = F, html_font = "Cambria")%>%
   add_header_above(c(" "," ", 'Hospital Mortality' = starification_cats," ", "" ))
 ```
-
-
-# Train and test datasets creation
-
-## Spliting de-identified data into testing and training, balanced version.
-
-We want the data to be sampled randomly but always the same way and we want to be sure that train and test must be balanced.
-
-```{r}
-# Creating id for partition 
-selected_df['id']<- seq.int(nrow(selected_df))
-## set the seed to make our partition reproducible
-set.seed(123)
-# createDataPartition: "the random sampling is done within the levels of y when y is a factor in an attempt to balance the class distributions within the splits."
-## 75% of the sample size
-train_idx <- createDataPartition(as.factor(selected_df$hosp_mortality), times = 1, p = 0.75, list=F)
-
-train <- selected_df[train_idx, ]
-test <- selected_df[-train_idx, ]
-
-#Checking outcome is actually balanced
-round(prop.table(table(train$hosp_mortality)),2)
-round(prop.table(table(test$hosp_mortality)),2)
-```
-
-## Separating datasets into outcome and exposures
-
-```{r}
-# train dataset
-train_X<-train[, names(train)!= "hosp_mortality"]
-train_Y<-train$hosp_mortality
-  
-# test dataset
-test_X<-test[, names(test)!= "hosp_mortality"]
-test_Y<-test$hosp_mortality 
-```
-
-
-
-
-
 
 

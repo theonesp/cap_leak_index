@@ -138,11 +138,8 @@ temp <- run_query((getSQL('sql/temp.sql')))
 ```
 
 ```{r}
-# Separate fluid intake calls ("full" fluid means all fluid for a patient, not just
-# crystalloids). We are not using the full fluid intakes. We are only interested in crystalloiods.
 intake <- run_query(getSQL("sql/intake.sql"))
-intake_full <-run_query(getSQL("sql/intake_full.sql"))
-first_rrt <-run_query(getSQL('sql/aki/first_rrt.sql'))
+intake72hrs <- run_query(getSQL("sql/intake72hrs.sql"))
 ```
 
 
@@ -360,29 +357,6 @@ vol_leak_index_dataset<-vol_leak_index_dataset%>%
  - We are just selecting the variables we need for the model or for the exclusion criteria.
 
 ```{r}
-selected_df <- vol_leak_index_dataset%>%dplyr::select(
-     patientunitstayid
-    ,hosp_mortality
-    ,hosp_mortality_offset
-    ,age_fixed
-    ,gender
-    ,final_charlson_score
-    ,apache_iv
-    ,leaking_index
-    ,sofatotal_day1
-    ,sofatotal_day1_cat
-    ,delta_sofa
-    ,fluid_balance
-    # ,fluid_balance_72
-    ,mean_hct_24_36hrs
-    ,first_hct_6hrs
-    ,mech_vent
-    , actualicumortality
-    , unabridgedunitlos
-    , unabridgedhosplos
-    , unitType
-  )
-
 selected_df_fluid <- vol_leak_index_dataset%>%dplyr::select(
      patientunitstayid
     ,hosp_mortality
@@ -397,6 +371,13 @@ selected_df_fluid <- vol_leak_index_dataset%>%dplyr::select(
     ,fluid_balance_72
     ,mean_hct_24_36hrs
     ,first_hct_6hrs
+    ,mech_vent
+    , actualicumortality
+    , unabridgedunitlos
+    , unabridgedhosplos
+    , unitType
+    ,sofatotal_day1
+    ,sofatotal_day1_cat
   )
 # these variables are factors
 selected_df_fluid<-selected_df_fluid%>%mutate(fluid_balance_72_bin = ifelse(fluid_balance_72 > 0, 1, 0))
@@ -419,13 +400,6 @@ selected_df_fluid<-selected_df_fluid%>%mutate(fluid_balance_72_bin = ifelse(flui
 
 
 ```{r}
-print('Number of patients in our dataset so far:')
-nrow(selected_df)
-
-selected_df<-selected_df[complete.cases(selected_df),]
-print('Number of patients after excluding patients with missing data:')
-nrow(selected_df)
-
 #  we don’t want to remove patients that died before 72hrs for the mortality/delta_sofa analysis. This removes a significant number of patients who passed away from our analysis and we don’t see as strong of a signal.
 
 
@@ -433,9 +407,9 @@ selected_df_fluid<-selected_df_fluid[complete.cases(selected_df_fluid),]
 print('Number of patients after excluding patients with missing data:')
 nrow(selected_df_fluid)
 
-selected_df_fluid<-selected_df_fluid%>%filter(hosp_mortality_offset>72*60 | hosp_mortality_offset==0)
-print('Number of patients after excluding patients with hosp_mort_offset <72hrs:')
-nrow(selected_df_fluid)
+# selected_df_fluid<-selected_df_fluid%>%filter(hosp_mortality_offset>72*60 | hosp_mortality_offset==0)
+# print('Number of patients after excluding patients with hosp_mort_offset <72hrs:')
+# nrow(selected_df_fluid)
 ```
 
 # New Variables Creation
@@ -443,46 +417,27 @@ nrow(selected_df_fluid)
 ## Leaking Index Quartile
 
 ```{r}
-selected_df<-selected_df%>%
-  mutate(
-     q_leaking_index=as.factor(as.numeric(cut2(leaking_index, g=4)))
-)
-
 selected_df_fluid<-selected_df_fluid%>%
   mutate(
      q_leaking_index=as.factor(as.numeric(cut2(leaking_index, g=4)))
 )
 ```
 
-## Highest_q_leaking_index
-
-```{r}
-selected_df<-selected_df%>%mutate(
-  highest_q_leaking_index=if_else(q_leaking_index %in% c('4'),1,0 )
-)
-
-selected_df$highest_q_leaking_index<-as.factor(selected_df$highest_q_leaking_index)
-
-print('cutoff points')
-unique(cut2(selected_df$leaking_index, g=4))
-```
-
 ## Summary of dataset
 ```{r}
-view(dfSummary(selected_df))
+view(dfSummary(selected_df_fluid))
 ```
 
 ## Final Histogram of Fluid Balance
 ```{r}
-hist(selected_df$fluid_balance, breaks = 1000, xlim = c(0, 10000))
+hist(selected_df_fluid$fluid_balance, breaks = 1000, xlim = c(0, 10000))
 ```
 
 # Table 1 
 
 ```{r}
-vars_in_table1<-c('age_fixed', 'gender'  , 'final_charlson_score' , 'apache_iv'  , 'delta_sofa' ,'sofatotal_day1_cat', 'fluid_balance' , 'mean_hct_24_36hrs' , 'first_hct_6hrs', 'mech_vent','hosp_mortality_offset', 'hosp_mortality', 'actualicumortality' , 'unabridgedunitlos' , 'unabridgedhosplos',
-                  'leaking_index')
-table1_dataset<-selected_df[,vars_in_table1]
+vars_in_table1<-c('age_fixed', 'gender'  , 'final_charlson_score' , 'apache_iv'  , 'delta_sofa' ,'sofatotal_day1_cat', 'fluid_balance' , 'mean_hct_24_36hrs' , 'first_hct_6hrs', 'mech_vent','hosp_mortality_offset', 'hosp_mortality', 'actualicumortality' , 'unabridgedunitlos' , 'unabridgedhosplos','leaking_index')
+table1_dataset<-selected_df_fluid[,vars_in_table1]
 cat_variables<-rep(NA, length(vars_in_table1))
 stratifyby<-"hosp_mortality"
 label(table1_dataset$age_fixed)<-'Age'
@@ -510,33 +465,12 @@ table1_base %>%
 
 # Old Table (Kept for Stratification on Leaking Index)
 ```{r}
-eICUTable1 <- table1(~ age_fixed + hosp_mortality + gender + final_charlson_score + apache_iv  + delta_sofa + fluid_balance + mean_hct_24_36hrs + first_hct_6hrs | q_leaking_index, data=selected_df)
+eICUTable1 <- table1(~ age_fixed + hosp_mortality + gender + final_charlson_score + apache_iv  + delta_sofa + fluid_balance_72 + fluid_balance + mean_hct_24_36hrs + first_hct_6hrs | q_leaking_index, data=selected_df_fluid)
 eICUTable1
 ```
 
 # Export dataset
 
 ```{r}
-write.csv(selected_df,'selected_df.csv')
-```
-
-# Fluid Balance Regression Analysis
-
-```{r}
-plot (vol_leak_index_dataset$fluid_balance, vol_leak_index_dataset$hosp_mortality, xlim = c(0, 25000))
-linearMod <- lm(hosp_mortality ~ fluid_balance, data=vol_leak_index_dataset)
-summary(linearMod)
-```
-# 72hr Fluid Regression Analysis
-```{r}
-plot (vol_leak_index_dataset$leaking_index, vol_leak_index_dataset$fluid_balance_72, xlab = 'leaking_index', ylab = 'fluid balance at 72hrs', main = 'Leaking Index as a predictor of Fluid Balance at 72 hrs')
-linearMod <- lm(fluid_balance_72 ~ leaking_index, data=vol_leak_index_dataset)
-summary(linearMod)
-```
-
-# 72hr Fluid Regression Based on Quartiles
-```{r}
-plot (selected_df$q_leaking_index, selected_df$fluid_balance_72, xlab = 'leaking_index', ylab = 'fluid balance at 72hrs', main = 'Leaking Index as a predictor of Fluid Balance at 72 hrs')
-linearMod <- lm(fluid_balance_72 ~ q_leaking_index + age_fixed + gender + fluid_balance + apache_iv + final_charlson_score, data=selected_df)
-summary(linearMod)
+write.csv(selected_df_fluid,'selected_df_fluid.csv')
 ```

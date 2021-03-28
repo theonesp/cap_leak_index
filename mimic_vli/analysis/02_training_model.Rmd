@@ -22,19 +22,7 @@ library(ggplot2)
 library(oddsratio)
 ```
 
-# Plotting relationship
-
-```{r}
-ggplot(selected_df, aes(leaking_index,hosp_mortality) ) +
-  stat_smooth()
-
-ggplot(selected_df, aes(leaking_index,delta_sofa) ) +
-  stat_smooth()
-```
-
-# Overall cohort
-
-## GAM analysis
+# GAM analysis Fluid Balance
 
 GAM is a powerful and yet simple technique. Hence, the purpose of this post is to convince more data scientists to use GAM. Of course, GAM is no silver bullet, but it is a technique you should add to your arsenal. Here are three key reasons:
 
@@ -46,66 +34,11 @@ In general, GAM has the interpretability advantages of GLMs where the contributi
 
 Ref.:https://multithreaded.stitchfix.com/blog/2015/07/30/gam/
 
-### Mortality
-```{r}
-# Build the model
-model <- gam(hosp_mortality  ~
-                         + s(leaking_index)
-                         + age_fixed + gender + oasis + final_elixhauser_score
-                         ,data=selected_df)
-# Make predictions
-predictions <- model %>% predict(selected_df)
-
-summary(model)
-# Model performance
-data.frame(
-  RMSE = RMSE(predictions, selected_df$hosp_mortality),
-  R2 = R2(predictions, selected_df$hosp_mortality)
-)
-
-ggplot(selected_df, aes(leaking_index, hosp_mortality) ) +
-  stat_smooth(method = gam, formula = y ~ s(x)) +
-  ggtitle("GAM Model for Leaking Index and Hospital Mortality") +
-  labs(y="Hospital Mortality", x = "Leaking Index")
-
-b <- getViz(model)
-plot( sm(b, 1) )
-```
-### Delta Sofa
-```{r}
-# Build the model
-model <- gam(delta_sofa  ~
-                         + s(leaking_index)
-                         + age_fixed + gender + oasis + final_elixhauser_score
-                         ,data=selected_df)
-# Make predictions
-predictions <- model %>% predict(selected_df)
-
-summary(model)
-# Model performance
-data.frame(
-  RMSE = RMSE(predictions, selected_df$delta_sofa),
-  R2 = R2(predictions, selected_df$delta_sofa)
-)
-
-ggplot(selected_df, aes(leaking_index, delta_sofa) ) +
-  stat_smooth(method = gam, formula = y ~ s(x)) +
-  ggtitle("GAM Model for Leaking Index and Delta Sofa") +
-  labs(y="Delta Sofa", x = "Leaking Index")
-
-b <- getViz(model)
-plot( sm(b, 1) )
-```
-
-# Cohort with Fluid Balance at 72hrs and alive past 72hrs
-## GAM Analysis
-### Fluid Balance 72hrs
-
 ```{r}
 # Build the model
 model <- gam(fluid_balance_72  ~
                          s(leaking_index)
-                         + age_fixed + gender
+                         + age_fixed + gender + fluid_balance
                          ,data=selected_df_fluid)
 # Make predictions
 predictions <- model %>% predict(selected_df_fluid)
@@ -149,33 +82,6 @@ ggplot(selected_df_fluid, aes(leaking_index, fluid_balance_72_bin) ) +
 
 b <- getViz(model)
 plot( sm(b, 1) )
-```
-
-### Odds ratio
-
-```{r}
-# Quartiles
-model <- gam(hosp_mortality  ~
-                         + q_leaking_index
-                         + age_fixed + gender + oasis + final_elixhauser_score,
-                          family = binomial
-                         ,data=selected_df)
-
-OR_table<-as.data.frame(round(exp(cbind(OR=coef(model), confint.default(model))),2))
-options(scipen=999) # disable scientific notation
-OR_table
-
-# Continuous Variable
-model <- gam(hosp_mortality  ~
-                         + leaking_index
-                         + age_fixed + gender + oasis + final_elixhauser_score,
-                          family = binomial
-                         ,data=selected_df)
-
-OR_table<-as.data.frame(round(exp(cbind(OR=coef(model), confint.default(model))),2))
-options(scipen=999) # disable scientific notation
-OR_table
-
 ```
 
 
