@@ -432,6 +432,10 @@ view(dfSummary(selected_df_fluid))
 ```{r}
 hist(selected_df_fluid$fluid_balance, breaks = 1000, xlim = c(0, 10000))
 ```
+```{r}
+hist(selected_df_fluid$fluid_balance_72, breaks = 500, xlim = c(0, 10000))
+```
+
 
 # Table 1 
 
