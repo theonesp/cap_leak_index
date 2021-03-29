@@ -293,7 +293,7 @@ print('Number of patients after removing incomplete data:')
 nrow(selected_df_fluid)
 
 # Removing Patients who died before 72 hours
-# selected_df_fluid<-selected_df_fluid%>%filter(hosp_mortality_offset>72 | hosp_mortality_offset==0)
+# selected_df_fluid<-selected_df_fluid%>%filter(hosp_mortality_offset>48 | hosp_mortality_offset==0)
 # print('Number of patients after excluding patients with hosp_mort_offset <72hrs:')
 # nrow(selected_df_fluid)
 
@@ -319,7 +319,7 @@ Amsterdam DB Cohort Information:
 ```{r}
 # table1(~ age_fixed + hosp_mortality + gender + charlson_score + apachescore + totalFluid + mean_hct_24_36hrs + first_hct_6hrs| q_leaking_index, data=selected_df)
 
-table1(~ gender + age_fixed + hosp_mortality + totalFluid + mean_hct_24_36hrs + first_hct_6hrs + charlson_score| q_leaking_index, data=selected_df_fluid)
+table1(~ gender + age_fixed + hosp_mortality + totalFluid + totalFluid_72 + mean_hct_24_36hrs + first_hct_6hrs + charlson_score| q_leaking_index, data=selected_df_fluid)
 ```
 ## Summary of dataset
 ```{r}

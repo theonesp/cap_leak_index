@@ -58,7 +58,7 @@ SELECT
         FROM daily d
         LEFT JOIN numitems n
         ON d.admissionid = n.admissionid
-        AND measuredat BETWEEN 1 AND 3 --first 24 hours
+        AND measuredat BETWEEN 1 AND 2 --first 24 hours
         GROUP BY d.admissionid, d.days
     ) fluidout_daily
     ON fluidin_daily.admissionid=fluidout_daily.admissionid

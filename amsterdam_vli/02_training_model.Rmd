@@ -59,6 +59,7 @@ ggplot(selected_df_fluid, aes(leaking_index, totalFluid_72) ) +
 # Build the model
 model <- gam(totalFluid_72_bin ~ 
                 s(leaking_index)
+                +totalFluid
                 + age_fixed
                 + gender
                 + charlson_score
