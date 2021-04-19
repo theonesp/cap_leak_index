@@ -44,7 +44,7 @@ This chunks also creates the run_query and get_sql function.
 
 ```{r setup, include=FALSE}
 # Updated for our year
-project_id <- "hst-953-2019"
+project_id <- "hst-953-2018"
 options(httr_oauth_cache=FALSE)
 # Function that takes in a sql command and runs it on bigquery
 run_query <- function(query){
@@ -123,15 +123,20 @@ vent <- run_query(getSQL('sql/vent.sql'))
 
 #rrt patients
 rrt <- run_query(getSQL("sql/rrt.sql"))
-```
 
-```{r}
+#intake 
 intake <- run_query(getSQL("sql/intake.sql"))
-output <- run_query(getSQL("sql/output.sql"))
-intake72hrs <- run_query(getSQL("sql/intake_72hrs.sql"))
-output72hrs <- run_query(getSQL("sql/output_72hrs.sql"))
-```
+intake_mv <- run_query(getSQL("sql/intake_precise/real_time_intake_mv.sql"))
 
+
+intake72hrs <- run_query(getSQL("sql/intake_72hrs.sql"))
+intake72hrs_mv <- run_query(getSQL("sql/intake_precise/real_time_intake_mv_72.sql"))
+
+# output
+output <- run_query(getSQL("sql/output.sql"))
+output72hrs <- run_query(getSQL("sql/output_72hrs.sql"))
+
+```
 # Exclusion criteria 1
 
 Patients with sepsis (not bleeding) 
@@ -184,10 +189,12 @@ nrow(selected_cohort)
 vol_leak_index_dataset<-Reduce(function(...) merge(..., all.x=TRUE), list(
    selected_cohort
   ,hct
-  ,intake
   ,output
-  ,intake72hrs
   ,output72hrs
+  ,intake
+  ,intake_mv
+  ,intake72hrs
+  ,intake72hrs_mv
   ,oasis_related
   ,elixhauser_score
   ,sofa_total_day1_to_day4
@@ -198,7 +205,7 @@ vol_leak_index_dataset<-Reduce(function(...) merge(..., all.x=TRUE), list(
 vol_leak_index_dataset<-sqldf('
 SELECT * FROM
 vol_leak_index_dataset
-WHERE intakes_total > 0 ')
+WHERE intakes_total+intake_mv > 0 ')
 
 print('patients with fluid intake greater than 0')
 nrow(vol_leak_index_dataset)
@@ -217,12 +224,12 @@ vol_leak_index_dataset$outputs_total_72[is.na(vol_leak_index_dataset$outputs_tot
 # Calculates Fluid Balance
 vol_leak_index_dataset<-vol_leak_index_dataset%>%
   mutate(
-    fluid_balance=(intakes_total-outputs_total),
-    fluid_balance_72=(intakes_total_72-outputs_total_72)
+    fluid_balance=(intakes_total+intake_mv-outputs_total),
+    fluid_balance_72=(intakes_total_72+intake_72_mv-outputs_total_72)
   )  
 
 hist(vol_leak_index_dataset$fluid_balance, breaks = 100, xlim = c(-10000, 10000))
-hist(vol_leak_index_dataset$fluid_balance_72, breaks = 100, xlim = c(-10000, 10000))
+hist(vol_leak_index_dataset$fluid_balance_72)
 
 # Ensures fluid balance is greater than 0.
 vol_leak_index_dataset<-sqldf('
@@ -341,21 +348,21 @@ vol_leak_index_dataset<-vol_leak_index_dataset%>%
 
 ```{r}
 selected_df_fluid <- vol_leak_index_dataset%>%dplyr::select(
-     icustay_id
-    ,hosp_mortality
-    ,hosp_mortality_offset
-    ,age_fixed
-    ,gender
-    ,final_elixhauser_score
-    ,oasis
-    ,leaking_index
-    ,delta_sofa
+      icustay_id
+    , hosp_mortality
+    , hosp_mortality_offset
+    , age_fixed
+    , gender
+    , final_elixhauser_score
+    , oasis
+    , leaking_index
+    , delta_sofa
     , sofatotal_day1
     , sofatotal_day1_cat
-    ,fluid_balance
-    ,fluid_balance_72
-    ,mean_hct_24_36hrs
-    ,first_hct_6hrs
+    , fluid_balance
+    , fluid_balance_72
+    , mean_hct_24_36hrs
+    , first_hct_6hrs
     , los_hospital
     , los_icu
     , icu_mortality
@@ -440,7 +447,7 @@ selected_df_fluid<-selected_df_fluid%>%
 )
 print('cutoff points')
 unique(cut2(selected_df$leaking_index, g=4))
-````
+```
 
 ## Summary of Dataset
 ```{r}
@@ -492,12 +499,6 @@ table1_base %>%
   kbl(caption = "Table 1 of base model" , align = "c") %>%
   kable_classic_2(full_width = F, html_font = "Cambria")%>%
   add_header_above(c(" "," ", 'Hospital Mortality' = starification_cats," ", "" ))
-```
-
-## Old Table 1
-```{r}
-mimicTable1 <- table1(~ age_fixed + hosp_mortality + gender + final_elixhauser_score + oasis  + delta_sofa + fluid_balance + fluid_balance_72 + mean_hct_24_36hrs + first_hct_6hrs | q_leaking_index, data=selected_df_fluid)
-mimicTable1
 ```
 
 # Export dataset
