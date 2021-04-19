@@ -127,7 +127,7 @@ SELECT
 FROM
   t1
 WHERE
-  chartoffset BETWEEN -6*60 AND 36*60 -- only 1st day intake
+  chartoffset BETWEEN 24*60 AND 84*60
 ORDER BY
   icustay_id,
   starttime,
