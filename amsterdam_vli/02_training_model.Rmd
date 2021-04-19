@@ -22,7 +22,7 @@ library(mgcViz)
 ```
 
 ```{r}
-ggplot(selected_df, aes(leaking_index,hosp_mortality) ) +
+ggplot(selected_df_fluid, aes(leaking_index,hosp_mortality) ) +
   stat_smooth()
 
 ggplot(selected_df_fluid, aes(leaking_index,totalFluid_72) ) +
@@ -34,7 +34,7 @@ ggplot(selected_df_fluid, aes(leaking_index,totalFluid_72) ) +
 ```{r}
 # Build the model
 model <- gam(totalFluid_72 ~ 
-                s(leaking_index)
+                q_leaking_index
                 + age_fixed
                 + gender
                 + charlson_score

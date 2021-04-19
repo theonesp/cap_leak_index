@@ -293,9 +293,9 @@ print('Number of patients after removing incomplete data:')
 nrow(selected_df_fluid)
 
 # Removing Patients who died before 72 hours
-# selected_df_fluid<-selected_df_fluid%>%filter(hosp_mortality_offset>48 | hosp_mortality_offset==0)
-# print('Number of patients after excluding patients with hosp_mort_offset <72hrs:')
-# nrow(selected_df_fluid)
+selected_df_fluid<-selected_df_fluid%>%filter(hosp_mortality_offset>48 | hosp_mortality_offset==0)
+print('Number of patients after excluding patients with hosp_mort_offset <72hrs:')
+nrow(selected_df_fluid)
 
 selected_df_fluid<-selected_df_fluid%>%mutate(totalFluid_72_bin = ifelse(totalFluid_72 > 0, 1, 0))
 
@@ -328,8 +328,12 @@ view(dfSummary(selected_df_fluid))
 
 ## Final Histogram of Fluid Balance
 ```{r}
-hist(selected_df$totalFluid, breaks = 100, xlim = c(0, 10000))
+hist(selected_df_fluid$totalFluid, breaks = 50, xlim = c(0, 10000))
 ```
+```{r}
+hist(selected_df_fluid$totalFluid_72, breaks = 50)
+```
+
 
 ```{r}
 vars_in_table1<-c('age_fixed', 'gender'  , 'charlson_score', 'totalFluid' , 'mean_hct_24_36hrs' , 'first_hct_6hrs', 'hosp_mortality','leaking_index', 'unabridgedunitlos', 'unabridgedhosplos', 'mech_vent')
