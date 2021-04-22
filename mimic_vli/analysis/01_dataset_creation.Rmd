@@ -44,7 +44,7 @@ This chunks also creates the run_query and get_sql function.
 
 ```{r setup, include=FALSE}
 # Updated for our year
-project_id <- "hst-953-2018"
+project_id <- "hst-953-2019"
 options(httr_oauth_cache=FALSE)
 # Function that takes in a sql command and runs it on bigquery
 run_query <- function(query){
@@ -105,11 +105,6 @@ patient_inexcluded_icd9 <- run_query(getSQL('sql/patient_inexcluded_icd9.sql'))
 
 # Sepsis patients according to angus criteria
 sepsis <- run_query(getSQL('sql/sepsis.sql'))
-
-# intake data
-intake <- run_query(getSQL("sql/intake.sql"))
-intake_full <- run_query(getSQL("sql/intake_full.sql"))
-intake72hrs <- run_query(getSQL("sql/intake_72hrs.sql"))
 
 # output data
 output <- run_query(getSQL("sql/output.sql"))
@@ -205,7 +200,7 @@ vol_leak_index_dataset<-Reduce(function(...) merge(..., all.x=TRUE), list(
 vol_leak_index_dataset<-sqldf('
 SELECT * FROM
 vol_leak_index_dataset
-WHERE intakes_total+intake_mv > 0 ')
+WHERE intakes_total > 0 ')
 
 print('patients with fluid intake greater than 0')
 nrow(vol_leak_index_dataset)
@@ -218,24 +213,27 @@ nrow(vol_leak_index_dataset)
 *PLEASE NOTE THE ORDER OF VARIABLES CREATION IS REALLY IMPORTANT SINCE THEY ARE NEEDED FOR EXCLUSION CRITERIA*
 
 ```{r}
+
 vol_leak_index_dataset$outputs_total[is.na(vol_leak_index_dataset$outputs_total)] = 0
 vol_leak_index_dataset$outputs_total_72[is.na(vol_leak_index_dataset$outputs_total_72)] = 0
+vol_leak_index_dataset$intake_mv[is.na(vol_leak_index_dataset$intake_mv)] = 0
+vol_leak_index_dataset$intake_72_mv[is.na(vol_leak_index_dataset$intake_72_mv)] = 0
 
 # Calculates Fluid Balance
 vol_leak_index_dataset<-vol_leak_index_dataset%>%
   mutate(
-    fluid_balance=(intakes_total+intake_mv-outputs_total),
-    fluid_balance_72=(intakes_total_72+intake_72_mv-outputs_total_72)
+    fluid_balance=(intakes_total -abs(outputs_total)),
+    fluid_balance_72=(intakes_total_72-abs(outputs_total_72))
   )  
 
 hist(vol_leak_index_dataset$fluid_balance, breaks = 100, xlim = c(-10000, 10000))
-hist(vol_leak_index_dataset$fluid_balance_72)
+hist(vol_leak_index_dataset$fluid_balance_72, breaks = 100, xlim = c(-10000, 10000))
 
 # Ensures fluid balance is greater than 0.
 vol_leak_index_dataset<-sqldf('
 SELECT * FROM
 vol_leak_index_dataset
-WHERE fluid_balance > 0 ')
+WHERE fluid_balance > 0')
 
 print('patients with fluid balance greater than 0')
 nrow(vol_leak_index_dataset)
@@ -245,7 +243,7 @@ vol_leak_index_dataset<-vol_leak_index_dataset%>%
   mutate(
     # old definition (NYU Datathon) leaking_index=((mean_hct_24_36hrs/first_hct_6hrs)-1)*body_surface_area*1561
     leaking_index=((mean_hct_24_36hrs - first_hct_6hrs) / fluid_balance) * body_surface_area * 1561
-  ) 
+  )
 
 # Removes leaking index greater than 0 (means that hematocrit increases over time with fluid). We are not doing this because an increase in hematocrit is clinically possible
 # vol_leak_index_dataset<-sqldf('
@@ -275,7 +273,7 @@ cat(summary(vol_leak_index_dataset['leaking_index']),'\n',sep = '|')
 
 ```{r eval=FALSE, include=FALSE}
 # We are imputing anything outside the 95% interval
-extreme_quants<-as.numeric(quantile(vol_leak_index_dataset$leaking_index, c(.025, .975),na.rm = T))
+extreme_quants<-as.numeric(quantile(vol_leak_index_dataset$leaking_index, c(.1, .9),na.rm = T))
 
 print('Number of patients with imputed data:')
 length(which(vol_leak_index_dataset$leaking_index< extreme_quants[1] | vol_leak_index_dataset$leaking_index> extreme_quants[2]))
@@ -423,14 +421,14 @@ print('Number of patients after removing incomplete data:')
 nrow(selected_df_fluid)
 
 # Removing Patients who died before 72 hours
-# selected_df_fluid<-selected_df_fluid%>%filter(hosp_mortality_offset>72*60 | hosp_mortality_offset==0)
+selected_df_fluid<-selected_df_fluid%>%filter(hosp_mortality_offset>72*60 | hosp_mortality_offset==0)
 print('Number of patients after excluding patients with hosp_mort_offset <72hrs:')
 nrow(selected_df_fluid)
 
 # selected_df_fluid<-selected_df_fluid%>%mutate(fluid_balance_72_bin = ifelse(fluid_balance_72 > 0, 1, 0))
 
 # these variables are factors
-selected_df$gender<-as.factor(selected_df$gender)
+selected_df_fluid$gender<-as.factor(selected_df_fluid$gender)
 
 ```
 
@@ -446,7 +444,7 @@ selected_df_fluid<-selected_df_fluid%>%
      q_leaking_index=as.factor(as.numeric(cut2(leaking_index, g=4)))
 )
 print('cutoff points')
-unique(cut2(selected_df$leaking_index, g=4))
+unique(cut2(selected_df_fluid$leaking_index, g=4))
 ```
 
 ## Summary of Dataset
@@ -456,7 +454,10 @@ view(dfSummary(selected_df_fluid))
 
 ## Final Fluid Balance
 ```{r}
-hist(selected_df$fluid_balance, breaks = 100, xlim = c(0, 20000))
+hist(selected_df_fluid$fluid_balance, breaks = 50, xlim = c(0, 20000))
+```
+```{r}
+hist(selected_df_fluid$fluid_balance_72, breaks = 20, xlim = c(-20000, 20000))
 ```
 
 # Table 1 

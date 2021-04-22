@@ -127,7 +127,7 @@ SELECT
 FROM
   t1
 WHERE
-  chartoffset BETWEEN 24*60 AND 84*60 -- 72hrs + safety window intake
+  chartoffset BETWEEN 36*60 AND 84*60 -- 72hrs + safety window intake
 ORDER BY
   icustay_id,
   starttime,

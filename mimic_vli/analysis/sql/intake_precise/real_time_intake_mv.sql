@@ -127,7 +127,7 @@ SELECT
 FROM
   t1
 WHERE
-  chartoffset BETWEEN 24*60 AND 84*60
+  chartoffset BETWEEN -6*60 AND 36*60
 ORDER BY
   icustay_id,
   starttime,
