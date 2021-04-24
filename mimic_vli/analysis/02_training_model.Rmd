@@ -54,9 +54,26 @@ ggplot(selected_df_fluid, aes(leaking_index, fluid_balance_72 ) ) +
   stat_smooth(method = gam, formula = y ~ s(x)) + 
   ggtitle("GAM Model for Leaking Index and Fluid Balance 72hrs") +
   labs(y="Fluid Balance 72hrs", x = "Leaking Index")
-
-b <- getViz(model)
-plot( sm(b, 1) )
 ```
+```{r}
+# Build the model
+model <- gam(hosp_mortality  ~
+                          s(leaking_index)
+                         + age_fixed + gender
+                         ,data=selected_df_fluid)
+# Make predictions
+predictions <- model %>% predict(selected_df_fluid)
 
+summary(model)
+# Model performance
+data.frame(
+  RMSE = RMSE(predictions, selected_df_fluid$hosp_mortality),
+  R2 = R2(predictions, selected_df_fluid$hosp_mortality)
+)
+
+ggplot(selected_df_fluid, aes(leaking_index, hosp_mortality ) ) +
+  stat_smooth(method = gam, formula = y ~ s(x)) + 
+  ggtitle("GAM Model for Leaking Index and Hospital Mortality") +
+  labs(y="Hospital Mortality", x = "Leaking Index")
+```
 
