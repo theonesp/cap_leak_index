@@ -215,7 +215,7 @@ vol_leak_index_dataset<-vol_leak_index_dataset%>%
 
 # We are removing VLI outliers
 # We are imputing anything outside the 95% interval
-extreme_quants<-as.numeric(quantile(vol_leak_index_dataset$leaking_index, c(.025, .975),na.rm = T))
+extreme_quants<-as.numeric(quantile(vol_leak_index_dataset$leaking_index, c(.05, .975),na.rm = T))
 
 print('Number of patients with imputed data:')
 length(which(vol_leak_index_dataset$leaking_index< extreme_quants[1] | vol_leak_index_dataset$leaking_index> extreme_quants[2]))
@@ -293,9 +293,9 @@ print('Number of patients after removing incomplete data:')
 nrow(selected_df_fluid)
 
 # Removing Patients who died before 72 hours
-selected_df_fluid<-selected_df_fluid%>%filter(hosp_mortality_offset>48 | hosp_mortality_offset==0)
-print('Number of patients after excluding patients with hosp_mort_offset <72hrs:')
-nrow(selected_df_fluid)
+# selected_df_fluid<-selected_df_fluid%>%filter(hosp_mortality_offset>72 | hosp_mortality_offset==0)
+# print('Number of patients after excluding patients with hosp_mort_offset <72hrs:')
+# nrow(selected_df_fluid)
 
 selected_df_fluid<-selected_df_fluid%>%mutate(totalFluid_72_bin = ifelse(totalFluid_72 > 0, 1, 0))
 
