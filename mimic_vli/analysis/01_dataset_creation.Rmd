@@ -225,8 +225,12 @@ vol_leak_index_dataset<-vol_leak_index_dataset%>%
 hist(vol_leak_index_dataset$fluid_balance, breaks = 50, xlim = c(-10000, 10000))
 hist(vol_leak_index_dataset$fluid_balance_72, breaks = 50, xlim = c(-10000, 10000))
 
+<<<<<<< HEAD
 # Ensures fluid balance is greater than 0.
 ## patients with neg fluid balance are not that sick so we remove them. 
+=======
+# Ensures fluid balance is greater than 0
+>>>>>>> d46755e57a26cb0dadf04c037e080bd1bca80cc3
 vol_leak_index_dataset<-sqldf('
 SELECT * FROM
 vol_leak_index_dataset
@@ -270,7 +274,7 @@ cat(summary(vol_leak_index_dataset['leaking_index']),'\n',sep = '|')
 
 ```{r eval=FALSE, include=FALSE}
 # We are imputing anything outside the 95% interval
-extreme_quants<-as.numeric(quantile(vol_leak_index_dataset$leaking_index, c(.1, .9),na.rm = T))
+extreme_quants<-as.numeric(quantile(vol_leak_index_dataset$leaking_index, c(.025, .975),na.rm = T))
 
 print('Number of patients with imputed data:')
 length(which(vol_leak_index_dataset$leaking_index< extreme_quants[1] | vol_leak_index_dataset$leaking_index> extreme_quants[2]))
@@ -355,7 +359,7 @@ selected_df_fluid <- vol_leak_index_dataset%>%dplyr::select(
     , sofatotal_day1
     , sofatotal_day1_cat
     , fluid_balance
-    , fluid_balance_72
+    # , fluid_balance_72
     , mean_hct_24_36hrs
     , first_hct_6hrs
     , los_hospital
@@ -363,8 +367,6 @@ selected_df_fluid <- vol_leak_index_dataset%>%dplyr::select(
     , icu_mortality
     , mech_vent
   )
-
-selected_df_fluid<-selected_df_fluid%>%mutate(fluid_balance_72_bin = ifelse(fluid_balance_72 > 0, 1, 0))
 
 print('Number of patients in our dataset so far:')
 a<-nrow(selected_df_fluid)
@@ -405,10 +407,10 @@ print('Number of patients excluded due to missing delta_sofa:')
 h<-nrow(selected_df_fluid)
 g-h
 
-selected_df_fluid<-selected_df_fluid%>%filter(!is.na(fluid_balance_72))
-print('Number of patients excluded due to missing 72hr fluid balance:')
-i<-nrow(selected_df_fluid)
-h-i
+# selected_df_fluid<-selected_df_fluid%>%filter(!is.na(fluid_balance_72))
+# print('Number of patients excluded due to missing 72hr fluid balance:')
+# i<-nrow(selected_df_fluid)
+# h-i
 
 ('Final number of patients')
 i
@@ -418,9 +420,9 @@ print('Number of patients after removing incomplete data:')
 nrow(selected_df_fluid)
 
 # Removing Patients who died before 72 hours
-selected_df_fluid<-selected_df_fluid%>%filter(hosp_mortality_offset>72*60 | hosp_mortality_offset==0)
-print('Number of patients after excluding patients with hosp_mort_offset <72hrs:')
-nrow(selected_df_fluid)
+# selected_df_fluid<-selected_df_fluid%>%filter(hosp_mortality_offset>72*60 | hosp_mortality_offset==0)
+# print('Number of patients after excluding patients with hosp_mort_offset <72hrs:')
+# nrow(selected_df_fluid)
 
 # selected_df_fluid<-selected_df_fluid%>%mutate(fluid_balance_72_bin = ifelse(fluid_balance_72 > 0, 1, 0))
 
