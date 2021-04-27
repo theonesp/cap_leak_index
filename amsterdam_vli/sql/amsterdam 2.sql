@@ -200,7 +200,7 @@ WITH adm as (
     FROM daily d
     LEFT JOIN `physionet-data.amsterdamdb.numericitems` n
     ON d.admissionid = n.admissionid
-    AND measuredat/86400000 BETWEEN 0 AND 1 --first 24 hours
+    AND measuredat/86400000 BETWEEN 1 AND 1.5 --first 24 hours
     WHERE item = 'A_Apache_Score'
     GROUP BY d.admissionid, d.days
 )
