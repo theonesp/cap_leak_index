@@ -1,16 +1,5 @@
--- there are two types of intake extaction: plain intake and real time
---
--- # About real time intake extraction:
--- This query extracts Real-time input from metavision MIMICIII on the first 24 hrs of admission
--- Records with no rate = STAT
--- Records with rate = INFUSION
--- fluids corrected for tonicity
--- This code is based on the notebook by Komorowski available at https://github.com/matthieukomorowski/AI_Clinician/blob/0438a66de7c5270e84a7fa51d78f56cd934ad240/AIClinician_Data_extract_MIMIC3_140219.ipynb
--- total equiv volume is in ML
--- rate units is mL/hour
-
 WITH
-  metavision_intake_one AS (
+  t1 AS (
   SELECT
     mv.icustay_id,
     mv.starttime AS charttime
@@ -28,24 +17,18 @@ WITH
     `physionet-data.mimiciii_clinical.inputevents_mv` mv
   WHERE
     mv.itemid IN (
-   -- we are comenting the items appearing in intake_real_time_mv
-      /*
       -- 225943 Solution
       225158,
       -- NaCl 0.9%
-      225828,*/
-      
+      225828,
       -- LR
       225944,
       -- Sterile Water
-      225797
-      
-      /*
+      225797,
       -- Free Water
       225159,
       -- NaCl 0.45%
-      225161, 
-      -- NaCl 3% (Hypertonic Saline)
+      -- 225161, -- NaCl 3% (Hypertonic Saline)
       225823,
       -- D5 1/2NS
       225825,
@@ -55,7 +38,6 @@ WITH
       225941,
       -- D5 1/4NS
       226089 -- Piggyback
-      */
       )
     AND mv.statusdescription != 'Rewritten' AND
     -- in MetaVision, these ITEMIDs appear with a null rate IFF endtime=starttime + 1 minute
@@ -70,114 +52,7 @@ WITH
         AND mv.amountuom = 'L')
       OR (mv.rate IS NULL
         AND mv.amountuom = 'ml') ) ),
-    
-  final_metavision_intake AS(
-  SELECT
-    icustay_id,
-    charttime,
-    SUM(amount) AS intake_first,
-    DATETIME_DIFF(charttime, INTIME, MINUTE) AS chartoffset
-  FROM
-    metavision_intake_one
-  LEFT JOIN
-    `physionet-data.mimiciii_clinical.icustays`
-  USING
-    (icustay_id)
-    -- just because the rate was high enough, does *not* mean the final amount was
-  WHERE
-  icustay_id IS NOT NULL
-  GROUP BY
-    metavision_intake_one.icustay_id,
-    metavision_intake_one.charttime,
-    intime),
-metavision_realtime_one AS (
-  SELECT
-    icustay_id,
-    DATETIME_DIFF(starttime, INTIME, MINUTE) AS starttime,
-    DATETIME_DIFF(endtime, INTIME, MINUTE) AS endtime,
-    itemid,
-    amount,
-    rate,
-    CASE
-      WHEN itemid IN (30176, 30315) THEN amount *0.25
-      WHEN itemid IN (30161) THEN amount *0.3
-      WHEN itemid IN (30020, 30015, 225823, 30321, 30186, 30211, 30353, 42742, 42244, 225159) THEN amount*0.5 --
-      WHEN itemid IN (227531) THEN amount *2.75
-      WHEN itemid IN (30143, 225161) THEN amount*3
-      WHEN itemid IN (30009, 220862) THEN amount *5
-      WHEN itemid IN (30030, 220995, 227533) THEN amount *6.66
-      WHEN itemid IN (228341) THEN amount *8
-    ELSE
-    amount
-  END
-    AS tev, -- total equivalent volume
-    DATETIME_DIFF(starttime, INTIME, MINUTE) AS chartoffset
-  FROM
-    `physionet-data.mimiciii_clinical.inputevents_mv` inputevents_mv
-  LEFT JOIN
-    `physionet-data.mimiciii_clinical.icustays`
-  USING
-    (icustay_id)  
-    -- only real time items !!
-  WHERE
-    icustay_id IS NOT NULL
-    AND amount IS NOT NULL
-    AND itemid IN (225158,225943,226089,225168,225828,225823,220862,220970,220864,225159,220995,225170,225825,227533,225161,227531,225171,225827,225941,225823,225825,225941,225825,228341,225827,30018,30021,30015,30296,30020,30066,30001,30030,30060,30005,30321,30006,30061,30009,30179,30190,30143,30160,30008,30168,30186,30211,30353,30159,30007,30185,30063,30094,30352,30014,30011,30210,46493,45399,46516,40850,30176,30161,30381,30315,42742,30180,46087,41491,30004,42698,42244)
-    ), 
-real_time_derived_infusion AS(      
-SELECT
-  icustay_id,
-  starttime,
-  endtime,
-  endtime - starttime AS infusion_duration_hrs,
-  itemid,
-  ROUND(CAST(amount AS numeric),3) AS amount,
-  ROUND(CAST(rate AS numeric),3) AS rate,
-  ROUND(CAST(tev AS numeric),3) AS tev, -- total equiv volume
-  ROUND(CASE WHEN rate IS NOT NULL THEN (rate/1000)*((endtime-starttime)/60) 
-       ELSE NULL
-  END,2) AS intake_ltrs_per_hr
-FROM
-  metavision_realtime_one
-WHERE
-  chartoffset BETWEEN -6*60 AND 36*60
-ORDER BY
-  icustay_id,
-  starttime,
-  itemid
-  ), final_metavision_realtime AS (
- SELECT
- icustay_id 
- ,SUM(CASE WHEN rate IS NULL THEN tev
-           ELSE rate*((endtime-starttime)/60) 
- END) AS intake_real_time_mv
- FROM real_time_derived_infusion
- WHERE intake_ltrs_per_hr <= 10 --extreme INTAKE = outliers = to be deleted (>10 litres of intake per 4h!!
- GROUP BY icustay_id
- ORDER BY icustay_id
-)
-
-
-
-
-  metavision_two_ways AS(
- SELECT
-
-FROM
- `physionet-data.mimiciii_clinical.icustays`
- LEFT JOIN
- final_metavision_intake
-USING
-  (icustay_id)
- LEFT JOIN
- final_metavision_intake
-USING
-  (icustay_id)  
-    )
-
-
-
-  carevue_one AS (
+  t2 AS (
   SELECT
     cv.icustay_id,
     cv.charttime
@@ -358,17 +233,55 @@ USING
       )
     AND cv.amountuom = 'ml' ),
     
-
+t3 AS(
+  SELECT
+    *
+  FROM
+    t1
+    -- just because the rate was high enough, does *not* mean the final amount was
+  WHERE
+    icustay_id IS NOT NULL
+  UNION DISTINCT
+  SELECT
+    *
+  FROM
+    t2
+  WHERE
+    icustay_id IS NOT NULL
+  ORDER BY
+    icustay_id),
+    
+  t4 AS(
+  SELECT
+    icustay_id,
+    charttime,
+    SUM(amount) AS intake_first,
+    DATETIME_DIFF(charttime,
+      INTIME,
+      MINUTE) AS chartoffset
+  FROM
+    t3
+  LEFT JOIN
+    `physionet-data.mimiciii_clinical.icustays`
+  USING
+    (icustay_id)
+    -- just because the rate was high enough, does *not* mean the final amount was
+  WHERE
+  icustay_id IS NOT NULL
+  GROUP BY
+    t3.icustay_id,
+    t3.charttime,
+    intime),
     
 t5 AS (
   SELECT
     icustay_id,
-    SUM (intake_first) AS intakes,
+    sum (intake_first) AS intakes,
   FROM
     t4
   WHERE
     intake_first IS NOT NULL
-    AND chartoffset BETWEEN -6*60 AND 36*60
+    AND chartoffset BETWEEN 36*60 AND 84*60
   GROUP BY
     icustay_id,
     chartoffset
@@ -377,7 +290,7 @@ t5 AS (
     
 SELECT
   icustay_id,
-  SUM (intakes) AS intakes_total
+  sum (intakes) AS intakes_total_72
 FROM
   t5
 GROUP BY
