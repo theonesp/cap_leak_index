@@ -276,7 +276,7 @@ selected_df_fluid <- vol_leak_index_dataset%>%dplyr::select(
     # ,delta_sofa
     ,hosp_mortality_offset
     ,totalFluid
-    ,totalFluid_72
+    # ,totalFluid_72
     # ,highest_q_leaking_index
     ,q_leaking_index
     ,leaking_index
@@ -300,17 +300,6 @@ nrow(selected_df_fluid)
 # selected_df$highest_q_leaking_index<-as.factor(selected_df$highest_q_leaking_index)
 
 ```
-
-Amsterdam DB Cohort Information:
-
-- Total patients in Amsterdam UMC DB: 23172
-- After excluding patients without diagnosis of sepsis (n=9936): 13236
-- After excluding patients with diagnosis of bleeding (n=4992): 8244
-- After excluding patients who received blood/colloids (n=1757): 6487
-- After excluding patients with missing CLI variables (n=4341): 2146
-- After excluding patients with missing delta SOFA (n=1728): 418
-(not using Apache because only 4869 patients in the entire dataset have apache)
-
 
 # Table 1
 

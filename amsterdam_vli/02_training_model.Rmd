@@ -59,7 +59,6 @@ ggplot(selected_df_fluid, aes(leaking_index, totalFluid_72) ) +
 # Build the model
 model <- gam(hosp_mortality ~ 
                 q_leaking_index
-                +totalFluid
                 + age_fixed
                 + gender
                 + charlson_score
