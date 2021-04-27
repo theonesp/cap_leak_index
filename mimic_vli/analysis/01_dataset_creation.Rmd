@@ -121,11 +121,11 @@ rrt <- run_query(getSQL("sql/rrt.sql"))
 
 #intake 
 intake <- run_query(getSQL("sql/intake.sql"))
-intake72hrs <- run_query(getSQL("sql/intake_72hrs.sql"))
+intake72hrs <- run_query(getSQL("sql/intake72hrs.sql"))
 
 # output
 output <- run_query(getSQL("sql/output.sql"))
-output72hrs <- run_query(getSQL("sql/output_72hrs.sql"))
+output72hrs <- run_query(getSQL("sql/output72hrs.sql"))
 
 ```
 
