@@ -44,7 +44,7 @@ This chunks also creates the run_query and get_sql function.
 
 ```{r setup, include=FALSE}
 # Updated for our year
-project_id <- "hst-953-2019"
+project_id <- "hst-953-2018"
 options(httr_oauth_cache=FALSE)
 # Function that takes in a sql command and runs it on bigquery
 run_query <- function(query){
@@ -120,18 +120,15 @@ vent <- run_query(getSQL('sql/vent.sql'))
 rrt <- run_query(getSQL("sql/rrt.sql"))
 
 #intake 
-intake <- run_query(getSQL("sql/intake.sql"))
-intake_mv <- run_query(getSQL("sql/intake_precise/real_time_intake_mv.sql"))
-
-
-intake72hrs <- run_query(getSQL("sql/intake_72hrs.sql"))
-intake72hrs_mv <- run_query(getSQL("sql/intake_precise/real_time_intake_mv_72.sql"))
+intake <- run_query(getSQL("sql/intake_new.sql"))
+intake72hrs <- run_query(getSQL("sql/intake_72hrs_new.sql"))
 
 # output
 output <- run_query(getSQL("sql/output.sql"))
 output72hrs <- run_query(getSQL("sql/output_72hrs.sql"))
 
 ```
+
 # Exclusion criteria 1
 
 Patients with sepsis (not bleeding) 
@@ -187,9 +184,7 @@ vol_leak_index_dataset<-Reduce(function(...) merge(..., all.x=TRUE), list(
   ,output
   ,output72hrs
   ,intake
-  ,intake_mv
   ,intake72hrs
-  ,intake72hrs_mv
   ,oasis_related
   ,elixhauser_score
   ,sofa_total_day1_to_day4
@@ -216,20 +211,22 @@ nrow(vol_leak_index_dataset)
 
 vol_leak_index_dataset$outputs_total[is.na(vol_leak_index_dataset$outputs_total)] = 0
 vol_leak_index_dataset$outputs_total_72[is.na(vol_leak_index_dataset$outputs_total_72)] = 0
-vol_leak_index_dataset$intake_mv[is.na(vol_leak_index_dataset$intake_mv)] = 0
-vol_leak_index_dataset$intake_72_mv[is.na(vol_leak_index_dataset$intake_72_mv)] = 0
+
 
 # Calculates Fluid Balance
 vol_leak_index_dataset<-vol_leak_index_dataset%>%
   mutate(
+    # TODO WE CAN CHOOSE BETWEEN INTAKES_TOTAL, MV OR CV, MV PRODUCES A CLEANER HISTOGRAM
+    # there are only around 15 patients with neg output
     fluid_balance=(intakes_total -abs(outputs_total)),
     fluid_balance_72=(intakes_total_72-abs(outputs_total_72))
   )  
 
-hist(vol_leak_index_dataset$fluid_balance, breaks = 100, xlim = c(-10000, 10000))
-hist(vol_leak_index_dataset$fluid_balance_72, breaks = 100, xlim = c(-10000, 10000))
+hist(vol_leak_index_dataset$fluid_balance, breaks = 50, xlim = c(-10000, 10000))
+hist(vol_leak_index_dataset$fluid_balance_72, breaks = 50, xlim = c(-10000, 10000))
 
 # Ensures fluid balance is greater than 0.
+## patients with neg fluid balance are not that sick so we remove them. 
 vol_leak_index_dataset<-sqldf('
 SELECT * FROM
 vol_leak_index_dataset
