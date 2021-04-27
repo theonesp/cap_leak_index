@@ -44,7 +44,7 @@ This chunks also creates the run_query and get_sql function.
 
 ```{r setup, include=FALSE}
 # Updated for our year
-project_id <- "hst-953-2018"
+project_id <- "hst-953-2019"
 options(httr_oauth_cache=FALSE)
 # Function that takes in a sql command and runs it on bigquery
 run_query <- function(query){
@@ -120,8 +120,8 @@ vent <- run_query(getSQL('sql/vent.sql'))
 rrt <- run_query(getSQL("sql/rrt.sql"))
 
 #intake 
-intake <- run_query(getSQL("sql/intake_new.sql"))
-intake72hrs <- run_query(getSQL("sql/intake_72hrs_new.sql"))
+intake <- run_query(getSQL("sql/intake.sql"))
+intake72hrs <- run_query(getSQL("sql/intake_72hrs.sql"))
 
 # output
 output <- run_query(getSQL("sql/output.sql"))
@@ -225,12 +225,9 @@ vol_leak_index_dataset<-vol_leak_index_dataset%>%
 hist(vol_leak_index_dataset$fluid_balance, breaks = 50, xlim = c(-10000, 10000))
 hist(vol_leak_index_dataset$fluid_balance_72, breaks = 50, xlim = c(-10000, 10000))
 
-<<<<<<< HEAD
 # Ensures fluid balance is greater than 0.
 ## patients with neg fluid balance are not that sick so we remove them. 
-=======
 # Ensures fluid balance is greater than 0
->>>>>>> d46755e57a26cb0dadf04c037e080bd1bca80cc3
 vol_leak_index_dataset<-sqldf('
 SELECT * FROM
 vol_leak_index_dataset
@@ -274,7 +271,7 @@ cat(summary(vol_leak_index_dataset['leaking_index']),'\n',sep = '|')
 
 ```{r eval=FALSE, include=FALSE}
 # We are imputing anything outside the 95% interval
-extreme_quants<-as.numeric(quantile(vol_leak_index_dataset$leaking_index, c(.025, .975),na.rm = T))
+extreme_quants<-as.numeric(quantile(vol_leak_index_dataset$leaking_index, c(.1, .975),na.rm = T))
 
 print('Number of patients with imputed data:')
 length(which(vol_leak_index_dataset$leaking_index< extreme_quants[1] | vol_leak_index_dataset$leaking_index> extreme_quants[2]))
@@ -359,7 +356,7 @@ selected_df_fluid <- vol_leak_index_dataset%>%dplyr::select(
     , sofatotal_day1
     , sofatotal_day1_cat
     , fluid_balance
-    # , fluid_balance_72
+    , fluid_balance_72
     , mean_hct_24_36hrs
     , first_hct_6hrs
     , los_hospital
@@ -455,6 +452,7 @@ view(dfSummary(selected_df_fluid))
 ```{r}
 hist(selected_df_fluid$fluid_balance, breaks = 50, xlim = c(0, 20000))
 ```
+
 ```{r}
 hist(selected_df_fluid$fluid_balance_72, breaks = 20, xlim = c(-20000, 20000))
 ```
