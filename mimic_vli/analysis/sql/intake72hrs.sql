@@ -36,19 +36,18 @@ WITH
     `physionet-data.mimiciii_clinical.inputevents_mv` mv
   WHERE
     mv.itemid IN (
-   -- we are comenting the items appearing in intake_real_time_mv
-      -- 225943 Solution
-      -- 225158, -- NaCl 0.9%
-      -- 225828, -- LR
+      225943, -- Solution
+      225158, -- NaCl 0.9%
+      225828, -- LR
       225944,-- Sterile Water
-      225797 -- Free Water
-      -- 225159, NaCl 0.45%
-      -- 225161, -- NaCl 3% (Hypertonic Saline)
-      -- 225823, -- D5 1/2NS
-      -- 225825, -- D5NS
-      -- 225827, -- D5LR
-      -- 225941, -- D5 1/4NS
-      -- 226089 -- Piggyback
+      225797, -- Free Water
+      225159,-- NaCl 0.45%
+      225161, -- NaCl 3% (Hypertonic Saline)
+      225823, -- D5 1/2NS
+      225825, -- D5NS
+      225827, -- D5LR
+      225941, -- D5 1/4NS
+      226089 -- Piggyback
       )
     AND mv.statusdescription != 'Rewritten' AND
     -- in MetaVision, these ITEMIDs appear with a null rate IFF endtime=starttime + 1 minute
@@ -97,9 +96,15 @@ metavision_realtime_one AS (
     CASE
       WHEN itemid IN (30176, 30315) THEN amount *0.25
       WHEN itemid IN (30161) THEN amount *0.3
-      WHEN itemid IN (30020, 30015, 225823, 30321, 30186, 30211, 30353, 42742, 42244, 225159) THEN amount*0.5 --
+      WHEN itemid IN (30020, 30015
+      --, 225823
+      , 30321, 30186, 30211, 30353, 42742, 42244
+      --, 225159
+      ) THEN amount*0.5 --
       WHEN itemid IN (227531) THEN amount *2.75
-      WHEN itemid IN (30143, 225161) THEN amount*3
+      WHEN itemid IN (30143
+      --, 225161
+      ) THEN amount*3
       WHEN itemid IN (30009, 220862) THEN amount *5
       WHEN itemid IN (30030, 220995, 227533) THEN amount *6.66
       WHEN itemid IN (228341) THEN amount *8
@@ -118,7 +123,19 @@ metavision_realtime_one AS (
   WHERE
     icustay_id IS NOT NULL
     AND amount IS NOT NULL
-    AND itemid IN (225158,225943,226089,225168,225828,225823,220862,220970,220864,225159,220995,225170,225825,227533,225161,227531,225171,225827,225941,225823,225825,225941,225825,228341,225827,30018,30021,30015,30296,30020,30066,30001,30030,30060,30005,30321,30006,30061,30009,30179,30190,30143,30160,30008,30168,30186,30211,30353,30159,30007,30185,30063,30094,30352,30014,30011,30210,46493,45399,46516,40850,30176,30161,30381,30315,42742,30180,46087,41491,30004,42698,42244)
+    AND itemid IN (
+    -- we are comenting the items appearing in metavision_intake_one
+    --225158
+    --,225943
+    --,226089
+       225168
+    --,225828
+    ,225823,220862,220970,220864,225159,220995,225170,
+    --225825,
+    227533,225161,227531,225171
+    --,225827
+    --,225941
+    ,225823,225825,225941,225825,228341,225827,30018,30021,30015,30296,30020,30066,30001,30030,30060,30005,30321,30006,30061,30009,30179,30190,30143,30160,30008,30168,30186,30211,30353,30159,30007,30185,30063,30094,30352,30014,30011,30210,46493,45399,46516,40850,30176,30161,30381,30315,42742,30180,46087,41491,30004,42698,42244)
     ), 
 real_time_derived_infusion AS(      
 SELECT
@@ -160,8 +177,9 @@ ORDER BY
  metavision_two_ways AS(
  SELECT
  icustays.icustay_id,
+  -- we are prioritizing intake first data over real time data
 /* null + a = null so coalesce does the trick */
- ROUND(SUM (COALESCE(intake_first,0) )+ SUM (COALESCE(intake_real_time_mv,0) ),2) AS intake_mv 
+ ROUND(COALESCE (SUM (COALESCE(intake_first,0) ), SUM (COALESCE(intake_real_time_mv,0) ),2)) AS intake_mv 
 FROM
  `physionet-data.mimiciii_clinical.icustays` icustays
 LEFT JOIN
@@ -193,10 +211,10 @@ GROUP BY
     (icustay_id)  
   WHERE
     cv.itemid IN
-    ( -- we are comenting the items appearing IN intake_real_time_cv
-      --30015 -- "D5/.45NS" -- mixed colloids and crystalloids 
+    (
+      30015, -- "D5/.45NS" -- mixed colloids and crystalloids 
       30018, -- .9% Normal Saline
-      --30020 -- .45% Normal Saline 
+      30020, -- .45% Normal Saline 
       30021, -- Lactated Ringers
       30058, -- Free Water Bolus
       30060, -- D5NS
@@ -291,9 +309,14 @@ careveu_realtime_one AS(
     itemid,
     amount,
     CASE
+     -- we are comenting the items appearing IN careveu_intake_final
       WHEN itemid IN (30176, 30315) THEN amount *0.25
       WHEN itemid IN (30161) THEN amount *0.3
-      WHEN itemid IN (30020, 30321, 30015, 225823, 30186, 30211, 30353, 42742, 42244, 225159, 225159, 225159) THEN amount *0.5
+      WHEN itemid IN (
+      --30020
+          30321
+      --, 30015
+      , 225823, 30186, 30211, 30353, 42742, 42244, 225159, 225159, 225159) THEN amount *0.5
       WHEN itemid IN (227531) THEN amount *2.75
       WHEN itemid IN (30143, 225161) THEN amount *3
       WHEN itemid IN (30009, 220862) THEN amount *5
@@ -400,8 +423,9 @@ FROM
 careveu_two_ways AS(
  SELECT
  icustays.icustay_id,
+ -- we are prioritizing intake first data over real time data
 /* null + a = null so coalesce does the trick */
- ROUND(SUM (COALESCE(intake_first_cv,0) )+ SUM (COALESCE(tev,0) ),2) AS intake_cv
+ ROUND(COALESCE(SUM (COALESCE(intake_first_cv,0) ), SUM(COALESCE(tev,0) ),2)) AS intake_cv
 FROM
  `physionet-data.mimiciii_clinical.icustays` icustays
 LEFT JOIN
