@@ -178,8 +178,15 @@ ORDER BY
  SELECT
  icustays.icustay_id,
   -- we are prioritizing intake first data over real time data
+  -- in the end we decided to get rid of real time data
 /* null + a = null so coalesce does the trick */
- ROUND(COALESCE (SUM (COALESCE(intake_first,0) ), SUM (COALESCE(intake_real_time_mv,0) ),2)) AS intake_mv 
+ ROUND(
+ --COALESCE (
+ SUM(COALESCE(intake_first,0))
+ --, SUM (COALESCE(intake_real_time_mv,0) )
+ ,2)
+ --)
+ AS intake_mv 
 FROM
  `physionet-data.mimiciii_clinical.icustays` icustays
 LEFT JOIN
@@ -424,8 +431,15 @@ careveu_two_ways AS(
  SELECT
  icustays.icustay_id,
  -- we are prioritizing intake first data over real time data
+ -- in the end we decided to get rid of real time data
 /* null + a = null so coalesce does the trick */
- ROUND(COALESCE(SUM (COALESCE(intake_first_cv,0) ), SUM(COALESCE(tev,0) ),2)) AS intake_cv
+ ROUND(
+ --COALESCE(
+   SUM(COALESCE(intake_first_cv,0))
+ --, SUM(COALESCE(tev,0))
+ ,2)
+ --) 
+ AS intake_cv
 FROM
  `physionet-data.mimiciii_clinical.icustays` icustays
 LEFT JOIN
@@ -446,9 +460,9 @@ GROUP BY
 SELECT 
     icustay_id,
     -- we prefer mv data whenever it is available
-    intake_mv AS intake_mv_72,
-    intake_cv AS intake_cv_72,
-    COALESCE (intake_mv, intake_cv)AS intakes_total_72
+    intake_mv,
+    intake_cv,
+    COALESCE (intake_mv, intake_cv)AS intakes_total
 FROM
  `physionet-data.mimiciii_clinical.icustays` icustays
 LEFT JOIN
