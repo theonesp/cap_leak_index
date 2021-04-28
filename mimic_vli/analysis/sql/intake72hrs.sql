@@ -460,9 +460,9 @@ GROUP BY
 SELECT 
     icustay_id,
     -- we prefer mv data whenever it is available
-    intake_mv,
-    intake_cv,
-    COALESCE (intake_mv, intake_cv)AS intakes_total
+    intake_mv AS intake_mv_72,
+    intake_cv AS intake_cv_72,
+    COALESCE (intake_mv, intake_cv)AS intakes_total_72
 FROM
  `physionet-data.mimiciii_clinical.icustays` icustays
 LEFT JOIN
