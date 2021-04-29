@@ -205,7 +205,7 @@ nrow(vol_leak_index_dataset)
 ```{r}
 vol_leak_index_dataset<-vol_leak_index_dataset%>%
   mutate(
-    leaking_index=((mean_hct_24_36hrs - first_hct_6hrs) / totalFluid) * body_surface_area * 1561
+    leaking_index=((mean_hct_24_36hrs - first_hct_6hrs) * (100/3) / totalFluid) * body_surface_area * 1561
   )  
 ```
 
@@ -215,7 +215,7 @@ vol_leak_index_dataset<-vol_leak_index_dataset%>%
 
 # We are removing VLI outliers
 # We are imputing anything outside the 95% interval
-extreme_quants<-as.numeric(quantile(vol_leak_index_dataset$leaking_index, c(.05, .975),na.rm = T))
+extreme_quants<-as.numeric(quantile(vol_leak_index_dataset$leaking_index, c(.05, .95),na.rm = T))
 
 print('Number of patients with imputed data:')
 length(which(vol_leak_index_dataset$leaking_index< extreme_quants[1] | vol_leak_index_dataset$leaking_index> extreme_quants[2]))
@@ -276,7 +276,7 @@ selected_df_fluid <- vol_leak_index_dataset%>%dplyr::select(
     # ,delta_sofa
     ,hosp_mortality_offset
     ,totalFluid
-    # ,totalFluid_72
+    ,totalFluid_72
     # ,highest_q_leaking_index
     ,q_leaking_index
     ,leaking_index

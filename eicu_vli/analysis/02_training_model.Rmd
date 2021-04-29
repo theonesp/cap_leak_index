@@ -42,7 +42,6 @@ library(caret)
 center_scale <- function(x) {
     scale(x, scale = FALSE)
 }
-library(mgcViz)
 ```
 
 # GAM analysis Fluid Balance
@@ -50,7 +49,7 @@ library(mgcViz)
 ```{r}
 # Build the model
 model <- gam(fluid_balance_72  ~
-                         s(leaking_index) + fluid_balance + age_fixed + gender + apache_iv + final_charlson_score
+                         leaking_index + age_fixed + gender + apache_iv + final_charlson_score
                          ,data=selected_df_fluid) 
 # Make predictions
 predictions <- model %>% predict(selected_df_fluid)
@@ -69,7 +68,7 @@ ggplot(selected_df_fluid, aes(leaking_index, fluid_balance_72) ) +
 ```{r}
 # Build the model
 model <- gam(hosp_mortality  ~
-                         q_leaking_index + fluid_balance + age_fixed + gender + apache_iv + final_charlson_score,data=selected_df_fluid, family = binomial)
+                         q_leaking_index + fluid_balance  + apache_iv + final_charlson_score,data=selected_df_fluid, family = binomial)
 # Make predictions
 predictions <- model %>% predict(selected_df_fluid)
 # Model performance

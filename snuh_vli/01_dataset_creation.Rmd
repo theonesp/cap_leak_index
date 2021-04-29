@@ -23,34 +23,34 @@ options(scipen=999)
 
 ```{r}
 # Sepsis patients without hemodialysis and bleeding
-sepsis <- read.csv(file = 'sepsis_list.csv')
+sepsis <- read.csv(file = 'hid_info_death.csv')
 sepsis <- sepsis[!duplicated(sepsis$hid), ]
 print('Septic patients:')
 nrow(sepsis)
 
 # Merge Sepsis and Demographic Data
-demographic <- read.csv (file = "age_sex_weight_height.csv")
+demographic <- read.csv (file = "septic_hid_info.csv")
 
-demographic<-sqldf('
-SELECT hid, sex, birthday, dt, 
-max (weight) as weight
-FROM
-demographic
-group by hid
-')
+demographic<-demographic[!(abs(demographic$height)==1 | abs(demographic$weight) == 1), ]
+
 
 selected_cohort<-inner_join(demographic,sepsis)
 print('Sepsis Patients with Demographic Data')
 nrow(selected_cohort)
 
 selected_cohort$birthday = as.Date(selected_cohort$birthday, format = "%Y-%m-%d")
-selected_cohort$dt = as.Date(selected_cohort$dt, format = "%Y-%m-%d")
-selected_cohort$age = as.numeric((selected_cohort$dt - selected_cohort$birthday) / 365)
+selected_cohort$icuin = as.Date(selected_cohort$icuin, format = "%Y-%m-%d")
+selected_cohort$icuout = as.Date(selected_cohort$icuout, format = "%Y-%m-%d")
+selected_cohort$death_date = as.Date(selected_cohort$death_date, format = "%Y-%m-%d")
+selected_cohort$age = as.numeric((selected_cohort$icuin - selected_cohort$birthday) / 365)
+selected_cohort$hosp_mortality = ifelse((selected_cohort$icuout - selected_cohort$icuin) >= (selected_cohort$death_date - selected_cohort$icuin), 1, 0)
+selected_cohort$hosp_mortality[is.na(selected_cohort$hosp_mortality)] = 0
+selected_cohort$body_surface_area = sqrt((selected_cohort$height*selected_cohort$weight) / 3600)
 ```
 
 ```{r}
 # Input and Output
-io_data <- read.csv(file = 'io_data.csv')
+io_data <- read.csv(file = 'septic_io_result.csv')
 colnames(io_data)[5] <- "io_balance"
 
 io_data24<-sqldf('
@@ -80,7 +80,7 @@ WHERE row_number = 2 or row_number = 3
 group by hid
 ')
 
-hb_data <- read.csv(file = 'hb_data.csv')
+hb_data <- read.csv(file = 'septic_hb_list.csv')
 
 hb_data1 <-sqldf('
 WITH added_row_number AS (
@@ -127,7 +127,7 @@ vol_leak_index_dataset<-Reduce(function(...) merge(..., all.x=TRUE), list(
 vol_leak_index_dataset<-vol_leak_index_dataset%>%
   mutate(
     # old definition (NYU Datathon) leaking_index=((mean_hct_24_36hrs/first_hct_6hrs)-1)*body_surface_area*1561
-    leaking_index=((value) / fluid_balance) * weight
+    leaking_index=((value) / fluid_balance) * body_surface_area * 1561
   )
 ```
 
@@ -137,7 +137,7 @@ hist(vol_leak_index_dataset$leaking_index)
 
 ```{r eval=FALSE, include=FALSE}
 # We are imputing anything outside the 95% interval
-extreme_quants<-as.numeric(quantile(vol_leak_index_dataset$leaking_index, c(.025, .975),na.rm = T))
+extreme_quants<-as.numeric(quantile(vol_leak_index_dataset$leaking_index, c(.05, .95),na.rm = T))
 
 print('Number of patients with imputed data:')
 length(which(vol_leak_index_dataset$leaking_index< extreme_quants[1] | vol_leak_index_dataset$leaking_index> extreme_quants[2]))
@@ -154,7 +154,7 @@ hist(vol_leak_index_dataset$leaking_index)
 ```{r}
 selected_df_fluid <- vol_leak_index_dataset%>%dplyr::select(
       hid
-    , death
+    , hosp_mortality
     , age
     , sex
     , weight
@@ -183,7 +183,7 @@ hist(selected_df_fluid$fluid_balance)
 hist(selected_df_fluid$fluid_balance_72)
 ```
 ```{r}
-table1(~ sex + age + fluid_balance + fluid_balance_72 + value + leaking_index + death, data=selected_df_fluid)
+table1(~ sex + age + fluid_balance + fluid_balance_72 + value + leaking_index | hosp_mortality, data=selected_df_fluid)
 ```
 
 

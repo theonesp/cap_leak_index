@@ -18,7 +18,6 @@ knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, encoding = e
 ```{r}
 library(mgcv)
 library(ggplot2)
-library(mgcViz)
 ```
 
 ```{r}
@@ -34,7 +33,7 @@ ggplot(selected_df_fluid, aes(leaking_index,totalFluid_72) ) +
 ```{r}
 # Build the model
 model <- gam(totalFluid_72 ~ 
-                leaking_index
+                q_leaking_index
                 + age_fixed
                 + gender
                 + charlson_score

@@ -405,9 +405,9 @@ selected_df_fluid<-selected_df_fluid[complete.cases(selected_df_fluid),]
 print('Number of patients after excluding patients with missing data:')
 nrow(selected_df_fluid)
 
-# selected_df_fluid<-selected_df_fluid%>%filter(hosp_mortality_offset>72*60 | hosp_mortality_offset==0)
-# print('Number of patients after excluding patients with hosp_mort_offset <72hrs:')
-# nrow(selected_df_fluid)
+selected_df_fluid<-selected_df_fluid%>%filter(hosp_mortality_offset>72*60 | hosp_mortality_offset==0)
+print('Number of patients after excluding patients with hosp_mort_offset <72hrs:')
+nrow(selected_df_fluid)
 ```
 
 # New Variables Creation
