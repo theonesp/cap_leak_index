@@ -170,10 +170,10 @@ nrow(selected_df_fluid)
 
 selected_df_fluid<-selected_df_fluid%>%
   mutate(
-     q_leaking_index=as.factor(as.numeric(cut2(leaking_index, g=2)))
+     q_leaking_index=as.factor(as.numeric(cut2(leaking_index, g=4)))
 )
 print('cutoff points')
-unique(cut2(selected_df_fluid$leaking_index, g=2))
+unique(cut2(selected_df_fluid$leaking_index, g=4))
 ```
 
 ```{r}

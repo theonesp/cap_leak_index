@@ -44,7 +44,7 @@ This chunks also creates the run_query and get_sql function.
 
 ```{r setup, include=FALSE}
 # Updated for our year
-project_id <- "hst-953-2018"
+project_id <- "hst-953-2019"
 options(httr_oauth_cache=FALSE)
 # Function that takes in a sql command and runs it on bigquery
 run_query <- function(query){
@@ -131,6 +131,7 @@ output <- run_query(getSQL("sql/output.sql"))
 output72hrs <- run_query(getSQL("sql/output72hrs.sql"))
 
 ```
+
 
 # Exclusion criteria 1
 

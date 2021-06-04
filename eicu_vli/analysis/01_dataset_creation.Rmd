@@ -462,7 +462,7 @@ starification_cats<-n_distinct(table1_dataset[,stratifyby])
 table1_base %>%
   kbl(caption = "Table 1 of base model" , align = "c") %>%
   kable_classic_2(full_width = F, html_font = "Cambria")%>%
-  add_header_above(c(" "," ", 'SOFA day1 Category' = starification_cats," ", "" ))
+  add_header_above(c(" "," ", 'Hospital Mortality' = starification_cats," ", "" ))
 ```
 
 # Old Table (Kept for Stratification on Leaking Index)

@@ -462,7 +462,7 @@ hist(selected_df_fluid$fluid_balance_72, breaks = 20, xlim = c(-20000, 20000))
 *Stratified by q_leaking_index*
 
 ```{r}
-vars_in_table1<-c('age_fixed', 'gender'  , 'final_elixhauser_score' , 'oasis'  , 'delta_sofa' ,'sofatotal_day1_cat', 'fluid_balance' , 'mean_hct_24_36hrs' , 'first_hct_6hrs','hosp_mortality','leaking_index','los_hospital','los_icu','icu_mortality','mech_vent')
+vars_in_table1<-c('age_fixed', 'gender'  , 'final_elixhauser_score' , 'oasis'  , 'delta_sofa' ,'sofatotal_day1_cat', 'fluid_balance' ,'fluid_balance_72', 'mean_hct_24_36hrs' , 'first_hct_6hrs','hosp_mortality','leaking_index','los_hospital','los_icu','icu_mortality','mech_vent')
 
 table1_dataset<-selected_df_fluid[,vars_in_table1]
 

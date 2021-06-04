@@ -68,7 +68,7 @@ ggplot(selected_df_fluid, aes(leaking_index, fluid_balance_72) ) +
 ```{r}
 # Build the model
 model <- gam(hosp_mortality  ~
-                         q_leaking_index + fluid_balance  + apache_iv + final_charlson_score,data=selected_df_fluid, family = binomial)
+                         leaking_index  + apache_iv + final_charlson_score,data=selected_df_fluid, family = binomial)
 # Make predictions
 predictions <- model %>% predict(selected_df_fluid)
 # Model performance
