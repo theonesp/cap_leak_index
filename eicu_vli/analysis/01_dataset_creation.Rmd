@@ -41,7 +41,7 @@ This chunks also creates the run_query and get_sql function.
 
 ```{r setup, include=FALSE}
 # Updated for our year
-project_id <- "hst-953-2019"
+project_id <- "hst-953-2018"
 options(httr_oauth_cache=FALSE)
 # Function that takes in a sql command and runs it on bigquery
 run_query <- function(query){
@@ -136,12 +136,6 @@ vent <- run_query((getSQL('sql/vent.sql')))
 #temperature
 temp <- run_query((getSQL('sql/temp.sql')))
 ```
-
-```{r}
-intake <- run_query(getSQL("sql/intake.sql"))
-intake72hrs <- run_query(getSQL("sql/intake72hrs.sql"))
-```
-
 
 # Exclusion criteria 1
 
@@ -437,7 +431,6 @@ hist(selected_df_fluid$fluid_balance, breaks = 1000, xlim = c(0, 10000))
 hist(selected_df_fluid$fluid_balance_72, breaks = 100, xlim = c(-10000, 10000))
 ```
 
-
 # Table 1 
 
 ```{r}
@@ -467,14 +460,6 @@ table1_base %>%
   kable_classic_2(full_width = F, html_font = "Cambria")%>%
   add_header_above(c(" "," ", 'Hospital Mortality' = starification_cats," ", "" ))
 ```
-
-# Old Table (Kept for Stratification on Leaking Index)
-```{r}
-eICUTable1 <- table1(~ age_fixed + hosp_mortality + gender + final_charlson_score + apache_iv  + delta_sofa + fluid_balance_72 + fluid_balance + mean_hct_24_36hrs + first_hct_6hrs | q_leaking_index, data=selected_df_fluid)
-eICUTable1
-```
-
-# Export dataset
 
 ```{r}
 write.csv(selected_df_fluid,'selected_df_fluid_4855.csv')
