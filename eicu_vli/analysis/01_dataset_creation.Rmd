@@ -183,6 +183,9 @@ WHERE
 IO_exclusion.patientunitstayid IS NULL
 ')
 
+print('Patients without excess expulsion of fluids:')
+nrow(selected_cohort)
+
 selected_cohort<-sqldf('
 SELECT * FROM 
 selected_cohort
@@ -194,7 +197,7 @@ WHERE
 first_rrt.patientunitstayid IS NULL
 ')
 
-print('Patients without rrt or expulsion of fluids:')
+print('Patients without rrt:')
 nrow(selected_cohort)
 
 # We are using a left join to join them
@@ -282,7 +285,7 @@ Imputing values outside 95% interval with median
 
 ```{r eval=FALSE, include=FALSE}
 
-extreme_quants<-as.numeric(quantile(vol_leak_index_dataset$leaking_index, c(.025, .975),na.rm = T))
+extreme_quants<-as.numeric(quantile(vol_leak_index_dataset$leaking_index, c(.05, .95),na.rm = T))
 
 print('Number of patients with imputed data:')
 length(which(vol_leak_index_dataset$leaking_index< extreme_quants[1] | vol_leak_index_dataset$leaking_index> extreme_quants[2]))
@@ -368,7 +371,7 @@ selected_df_fluid <- vol_leak_index_dataset%>%dplyr::select(
     ,leaking_index
     ,delta_sofa
     ,fluid_balance
-    ,fluid_balance_72
+    # ,fluid_balance_72
     ,mean_hct_24_36hrs
     ,first_hct_6hrs
     ,mech_vent
@@ -405,9 +408,9 @@ selected_df_fluid<-selected_df_fluid[complete.cases(selected_df_fluid),]
 print('Number of patients after excluding patients with missing data:')
 nrow(selected_df_fluid)
 
-selected_df_fluid<-selected_df_fluid%>%filter(hosp_mortality_offset>72*60 | hosp_mortality_offset==0)
-print('Number of patients after excluding patients with hosp_mort_offset <72hrs:')
-nrow(selected_df_fluid)
+# selected_df_fluid<-selected_df_fluid%>%filter(hosp_mortality_offset>72*60 | hosp_mortality_offset==0)
+# print('Number of patients after excluding patients with hosp_mort_offset <72hrs:')
+# nrow(selected_df_fluid)
 ```
 
 # New Variables Creation
@@ -474,5 +477,5 @@ eICUTable1
 # Export dataset
 
 ```{r}
-write.csv(selected_df_fluid,'selected_df_fluid.csv')
+write.csv(selected_df_fluid,'selected_df_fluid_4855.csv')
 ```

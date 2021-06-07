@@ -30,7 +30,7 @@ WITH
   USING
     (hadm_id)
   WHERE
-    DATETIME_DIFF(charttime, INTIME,  MINUTE) BETWEEN 18*60 AND 318*60 AND hematocrit IS NOT NULL
+    DATETIME_DIFF(charttime, INTIME,  MINUTE) BETWEEN 18*60 AND 36*60 AND hematocrit IS NOT NULL
   GROUP BY
     icustay_id )
 SELECT

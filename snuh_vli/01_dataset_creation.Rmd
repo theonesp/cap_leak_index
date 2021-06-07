@@ -186,4 +186,3 @@ hist(selected_df_fluid$fluid_balance_72)
 table1(~ sex + age + fluid_balance + fluid_balance_72 + value + leaking_index | hosp_mortality, data=selected_df_fluid)
 ```
 
-

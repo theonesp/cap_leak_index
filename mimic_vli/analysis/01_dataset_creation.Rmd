@@ -88,7 +88,7 @@ Loads all queries from the sql files in the extraction folder and runs them into
 hct <- run_query(getSQL("sql/hct.sql" ))
 # removes missing values
 
-# patients excluded due to output amount
+# patients excluded due to intake/output amount
 IO_exclusion <- run_query(getSQL('sql/IO_exclusion.sql'))
 
 # comorbidities
@@ -138,9 +138,6 @@ Patients with sepsis (not bleeding)
 
 print('Septic patients:')
 nrow(sepsis)
-
-print('Patients bleeding')
-nrow(patient_inexcluded_icd9)
 
 patient_included_vector <- sepsis[sepsis$icustay_id %!in% patient_inexcluded_icd9$icustay_id  ,]
 patient_included <- data.frame(icustay_id=integer(length(patient_included_vector))) 
@@ -417,9 +414,9 @@ print('Number of patients after removing incomplete data:')
 nrow(selected_df_fluid)
 
 # Removing Patients who died before 72 hours
-# selected_df_fluid<-selected_df_fluid%>%filter(hosp_mortality_offset>72*60 | hosp_mortality_offset==0)
-# print('Number of patients after excluding patients with hosp_mort_offset <72hrs:')
-# nrow(selected_df_fluid)
+selected_df_fluid<-selected_df_fluid%>%filter(hosp_mortality_offset>72*60 | hosp_mortality_offset==0)
+print('Number of patients after excluding patients with hosp_mort_offset <72hrs:')
+nrow(selected_df_fluid)
 
 # selected_df_fluid<-selected_df_fluid%>%mutate(fluid_balance_72_bin = ifelse(fluid_balance_72 > 0, 1, 0))
 
@@ -502,5 +499,5 @@ table1_base %>%
 # Export dataset
 
 ```{r}
-write.csv(selected_df_fluid,'selected_df_fluid.csv')
+write.csv(selected_df_fluid,'selected_df_fluid_2558.csv')
 ```

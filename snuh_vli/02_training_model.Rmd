@@ -12,7 +12,7 @@ library(oddsratio)
 ```{r}
 # Build the model
 model <- gam(fluid_balance_72  ~
-                          leaking_index
+                          q_leaking_index
                          + age + sex
                          ,data=selected_df_fluid)
 # Make predictions

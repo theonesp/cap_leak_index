@@ -18,7 +18,7 @@ first_hct_6hrs_pivoted_lab AS (
 mean_hct_24_36hrs_pivoted_lab AS (
   SELECT
   patientunitstayid,
-  ROUND( AVG (CASE WHEN chartoffset BETWEEN 18*60 AND 318*60 AND hematocrit IS NOT NULL THEN hematocrit END ),2) AS mean_hct_24_36hrs
+  ROUND( AVG (CASE WHEN chartoffset BETWEEN 18*60 AND 36*60 AND hematocrit IS NOT NULL THEN hematocrit END ),2) AS mean_hct_24_36hrs
   FROM
   `physionet-data.eicu_crd_derived.pivoted_lab`
   GROUP BY
@@ -33,7 +33,7 @@ FROM `physionet-data.eicu_crd.lab` WHERE labname ='Hct' AND  labresultoffset BET
 mean_hct_24_36hrs_lab AS (
 SELECT
   patientunitstayid,
-  ROUND( AVG (CASE WHEN labresultoffset BETWEEN 18*60 AND 318*60 AND labname ='Hct' THEN labresult END),2) AS mean_hct_24_36hrs
+  ROUND( AVG (CASE WHEN labresultoffset BETWEEN 18*60 AND 36*60 AND labname ='Hct' THEN labresult END),2) AS mean_hct_24_36hrs
 FROM
   `physionet-data.eicu_crd.lab`
 GROUP BY

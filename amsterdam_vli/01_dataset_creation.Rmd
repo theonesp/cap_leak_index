@@ -107,7 +107,7 @@ sepsis <- run_query(getSQL('sql/sepsis.sql'))
 # List of patients that are bleeding we want to exclude.
 patient_inexcluded_icd9 <- run_query(getSQL('sql/patient_inexcluded_icd9.sql'))
 
-#exclude patients who have recieved blood (I don't think we are doing this in eicu or mimic)
+#exclude patients who have recieved blood
 blood_infus <- run_query(getSQL('sql/blood_infus.sql'))
 
 #72hr Fluid Data
@@ -127,14 +127,11 @@ Patients with sepsis (not bleeding)
 print('Septic patients:')
 nrow(sepsis)
 
-print('Patients bleeding')
-nrow(patient_inexcluded_icd9)
-
-patient_included_vector <- sepsis[sepsis$admissionid %!in% patient_inexcluded_icd9$admissionid  ,]
+patient_included_vector <- sepsis[sepsis$admissionid %!in% patient_inexcluded_icd9$admissionid & sepsis$admissionid %!in% blood_infus$admissionid ,]
 patient_included <- data.frame(patientunitstayid=integer(length(patient_included_vector))) 
 patient_included$patientunitstayid<-patient_included_vector
 
-print('Septic patients that are not bleeding')
+print('Septic patients that are not bleeding or recieving blood')
 nrow(patient_included)
 
 ```
@@ -276,7 +273,7 @@ selected_df_fluid <- vol_leak_index_dataset%>%dplyr::select(
     # ,delta_sofa
     ,hosp_mortality_offset
     ,totalFluid
-    ,totalFluid_72
+    # ,totalFluid_72
     # ,highest_q_leaking_index
     ,q_leaking_index
     ,leaking_index
@@ -358,6 +355,10 @@ table1_base %>%
   kbl(caption = "Table 1 of base model" , align = "c") %>%
   kable_classic_2(full_width = F, html_font = "Cambria")%>%
   add_header_above(c(" "," ", 'Hospital Mortality' = starification_cats," ", "" ))
+```
+
+```{r}
+write.csv(selected_df_fluid,'selected_df_fluid_1015.csv')
 ```
 
 
