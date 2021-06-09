@@ -67,16 +67,16 @@ ggplot(selected_df_fluid, aes(leaking_index, fluid_balance_72) ) +
 ```{r}
 # Build the model
 model <- gam(hosp_mortality  ~
-                         q_leaking_index  + apache_iv + final_charlson_score,data=selected_df_fluid, family = binomial)
+                         leaking_index + apache_iv + final_charlson_score,data=selected_df_mortality, family = binomial)
 # Make predictions
-predictions <- model %>% predict(selected_df_fluid)
+predictions <- model %>% predict(selected_df_mortality)
 # Model performance
 data.frame(
-  RMSE = RMSE(predictions, selected_df_fluid$hosp_mortality),
-  R2 = R2(predictions, selected_df_fluid$hosp_mortality)
+  RMSE = RMSE(predictions, selected_df_mortality$hosp_mortality),
+  R2 = R2(predictions, selected_df_mortality$hosp_mortality)
 )
 summary(model)
-ggplot(selected_df_fluid, aes(leaking_index, hosp_mortality) ) +
+ggplot(selected_df_mortality, aes(leaking_index, hosp_mortality) ) +
   stat_smooth(method = gam, formula = y ~ s(x)) + 
   labs(y="In-Hospital Mortality", x = "VLI")
 ```

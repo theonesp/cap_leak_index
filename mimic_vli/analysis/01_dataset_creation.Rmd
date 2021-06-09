@@ -44,7 +44,7 @@ This chunks also creates the run_query and get_sql function.
 
 ```{r setup, include=FALSE}
 # Updated for our year
-project_id <- "hst-953-2018"
+project_id <- "hst-953-2019"
 options(httr_oauth_cache=FALSE)
 # Function that takes in a sql command and runs it on bigquery
 run_query <- function(query){
@@ -268,7 +268,7 @@ cat(summary(vol_leak_index_dataset['leaking_index']),'\n',sep = '|')
 
 ```{r eval=FALSE, include=FALSE}
 # We are imputing anything outside the 95% interval
-extreme_quants<-as.numeric(quantile(vol_leak_index_dataset$leaking_index, c(.1, .9),na.rm = T))
+extreme_quants<-as.numeric(quantile(vol_leak_index_dataset$leaking_index, c(.05, .95),na.rm = T))
 
 print('Number of patients with imputed data:')
 length(which(vol_leak_index_dataset$leaking_index< extreme_quants[1] | vol_leak_index_dataset$leaking_index> extreme_quants[2]))
@@ -362,55 +362,29 @@ selected_df_fluid <- vol_leak_index_dataset%>%dplyr::select(
     , mech_vent
   )
 
-print('Number of patients in our dataset so far:')
-a<-nrow(selected_df_fluid)
-a
-
-selected_df_fluid<-selected_df_fluid%>%filter(!is.na(hosp_mortality))
-print('Number of patients excluded due to missing hosp_mortality:')
-b<-nrow(selected_df_fluid)
-a-b
-
-selected_df_fluid<-selected_df_fluid%>%filter(!is.na(age_fixed))
-print('Number of patients excluded due to missing age:')
-c<-nrow(selected_df_fluid)
-b-c
-
-selected_df_fluid<-selected_df_fluid%>%filter(!is.na(gender))
-print('Number of patients excluded due to missing gender:')
-d<-nrow(selected_df_fluid)
-c-d
-
-selected_df_fluid<-selected_df_fluid%>%filter(!is.na(final_elixhauser_score))
-print('Number of patients excluded due to missing final_elixhauser_score:')
-e<-nrow(selected_df_fluid)
-d-e
-
-selected_df_fluid<-selected_df_fluid%>%filter(!is.na(oasis))
-print('Number of patients excluded due to missing oasis:')
-f<-nrow(selected_df_fluid)
-e-f
-
-selected_df_fluid<-selected_df_fluid%>%filter(!is.na(leaking_index))
-print('Number of patients excluded due to missing leaking_index:')
-g<-nrow(selected_df_fluid)
-f-g
-
-selected_df_fluid<-selected_df_fluid%>%filter(!is.na(delta_sofa))
-print('Number of patients excluded due to missing delta_sofa:')
-h<-nrow(selected_df_fluid)
-g-h
-
-# selected_df_fluid<-selected_df_fluid%>%filter(!is.na(fluid_balance_72))
-# print('Number of patients excluded due to missing 72hr fluid balance:')
-# i<-nrow(selected_df_fluid)
-# h-i
-
-('Final number of patients')
-i
+selected_df_mortality <- vol_leak_index_dataset%>%dplyr::select(
+      icustay_id
+    , hosp_mortality
+    , hosp_mortality_offset
+    , age_fixed
+    , gender
+    , final_elixhauser_score
+    , oasis
+    , leaking_index
+    , delta_sofa
+    , sofatotal_day1
+    , sofatotal_day1_cat
+    , fluid_balance
+    , mean_hct_24_36hrs
+    , first_hct_6hrs
+    , los_hospital
+    , los_icu
+    , icu_mortality
+    , mech_vent
+  )
 
 selected_df_fluid<-selected_df_fluid[complete.cases(selected_df_fluid),]
-print('Number of patients after removing incomplete data:')
+print('Number of patients after removing incomplete data (fluid):')
 nrow(selected_df_fluid)
 
 # Removing Patients who died before 72 hours
@@ -418,10 +392,10 @@ selected_df_fluid<-selected_df_fluid%>%filter(hosp_mortality_offset>72*60 | hosp
 print('Number of patients after excluding patients with hosp_mort_offset <72hrs:')
 nrow(selected_df_fluid)
 
-# selected_df_fluid<-selected_df_fluid%>%mutate(fluid_balance_72_bin = ifelse(fluid_balance_72 > 0, 1, 0))
-
-# these variables are factors
-selected_df_fluid$gender<-as.factor(selected_df_fluid$gender)
+#  we don’t want to remove patients that died before 72hrs for the mortality analysis. This removes a significant number of patients who passed away from our analysis and we don’t see as strong of a signal
+selected_df_mortality<-selected_df_mortality[complete.cases(selected_df_mortality),]
+print('Number of patients after removing incomplete data (mortality):')
+nrow(selected_df_mortality)
 
 ```
 
@@ -436,8 +410,11 @@ selected_df_fluid<-selected_df_fluid%>%
   mutate(
      q_leaking_index=as.factor(as.numeric(cut2(leaking_index, g=4)))
 )
-print('cutoff points')
-unique(cut2(selected_df_fluid$leaking_index, g=4))
+
+selected_df_mortality<-selected_df_mortality%>%
+  mutate(
+     q_leaking_index=as.factor(as.numeric(cut2(leaking_index, g=4)))
+)
 ```
 
 ## Summary of Dataset
@@ -499,5 +476,6 @@ table1_base %>%
 # Export dataset
 
 ```{r}
-write.csv(selected_df_fluid,'selected_df_fluid_2558.csv')
+write.csv(selected_df_fluid,'selected_df_fluid.csv')
+write.csv(selected_df_mortality,'selected_df_mortality.csv')
 ```

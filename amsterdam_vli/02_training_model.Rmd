@@ -20,14 +20,6 @@ library(mgcv)
 library(ggplot2)
 ```
 
-```{r}
-ggplot(selected_df_fluid, aes(leaking_index,hosp_mortality) ) +
-  stat_smooth()
-
-ggplot(selected_df_fluid, aes(leaking_index,totalFluid_72) ) +
-  stat_smooth()
-```
-
 # GAM analysis Fluid Balance
 
 ```{r}
@@ -50,8 +42,7 @@ data.frame(
 
 ggplot(selected_df_fluid, aes(leaking_index, totalFluid_72) ) +
   stat_smooth(method = gam, formula = y ~ s(x)) +
-  ggtitle("GAM Model for Leaking Index and Fluid Balance 72hrs") +
-  labs(y="Fluid Balance 72hrs", x = "Leaking Index")
+  labs(y="Fluid Balance 36h-84h (ml)", x = "VLI")
 ```
 
 ```{r}
@@ -61,20 +52,51 @@ model <- gam(hosp_mortality ~
                 + age_fixed
                 + gender
                 + charlson_score
-                ,data=selected_df_fluid)
+                ,data=selected_df_mortality, family = binomial)
 # Make predictions
-predictions <- model %>% predict(selected_df_fluid)
+predictions <- model %>% predict(selected_df_mortality)
 
 summary(model)
 # Model performance
 data.frame(
-  RMSE = RMSE(predictions, selected_df_fluid$hosp_mortality),
-  R2 = R2(predictions, selected_df_fluid$hosp_mortality)
+  RMSE = RMSE(predictions, selected_df_mortality$hosp_mortality),
+  R2 = R2(predictions, selected_df_mortality$hosp_mortality)
 )
 
-ggplot(selected_df_fluid, aes(leaking_index, hosp_mortality) ) +
+ggplot(selected_df_mortality, aes(leaking_index, hosp_mortality) ) +
   stat_smooth(method = gam, formula = y ~ s(x)) +
-  ggtitle("GAM Model for Leaking Index and Hospital Mortality") +
-  labs(y="Hospital Mortality", x = "Leaking Index")
+  labs(y="In-Hospital Mortality", x = "VLI")
 ```
+```{r}
+OR_table<-as.data.frame(round(exp(cbind(OR=coef(model), confint.default(model))),2))
+options(scipen=999) # disable scientific notation
+OR_table
 
+#Generate plot of the odds ratio for quartiles of CLI measured against mortality
+labels<-c('VLI Q2', 'VLI Q3', 'VLI Q4')
+number_of_exposures<-length(labels)+1
+df <- data.frame(yAxis = 2:number_of_exposures,
+                 boxOdds = OR_table$OR[2:number_of_exposures] ,
+                 boxCILow = OR_table$`2.5 %`[2:number_of_exposures],  
+                 boxCIHigh = OR_table$`97.5 %`[2:number_of_exposures]
+)
+#df <- df[order(df$boxOdds),]
+p<-ggplot(df, aes(x = boxOdds
+                  , y = labels
+                  )) + 
+  geom_vline(aes(xintercept = 1), size = .1, linetype = "dashed") + 
+  geom_errorbarh(aes(xmax = boxCIHigh, xmin = boxCILow)
+                 , size = .5
+                 , height = .2
+                 , color = "gray50") +
+  geom_point(size = 2, color = "#2980b9") +
+  #coord_trans(x = scales:::exp_trans(1.01)) +
+  #scale_y_continuous(breaks = c(-1:1),labels = c(-1:1)) +
+  theme_bw()+
+  theme(panel.grid.minor = element_blank()) +
+  ylab("Exposure") +
+  xlab("Odds ratio")
+p<-ggplotly(p)
+p<-ggplotly(p%>%layout(hovermode = 'compare'))
+p
+```

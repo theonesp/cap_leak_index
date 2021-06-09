@@ -41,7 +41,7 @@ This chunks also creates the run_query and get_sql function.
 
 ```{r setup, include=FALSE}
 # Updated for our year
-project_id <- "hst-953-2018"
+project_id <- "hst-953-2019"
 options(httr_oauth_cache=FALSE)
 # Function that takes in a sql command and runs it on bigquery
 run_query <- function(query){
@@ -365,7 +365,29 @@ selected_df_fluid <- vol_leak_index_dataset%>%dplyr::select(
     ,leaking_index
     ,delta_sofa
     ,fluid_balance
-    # ,fluid_balance_72
+    ,fluid_balance_72
+    ,mean_hct_24_36hrs
+    ,first_hct_6hrs
+    ,mech_vent
+    , actualicumortality
+    , unabridgedunitlos
+    , unabridgedhosplos
+    , unitType
+    ,sofatotal_day1
+    ,sofatotal_day1_cat
+  )
+
+selected_df_mortality <- vol_leak_index_dataset%>%dplyr::select(
+     patientunitstayid
+    ,hosp_mortality
+    ,hosp_mortality_offset
+    ,age_fixed
+    ,gender
+    ,final_charlson_score
+    ,apache_iv
+    ,leaking_index
+    ,delta_sofa
+    ,fluid_balance
     ,mean_hct_24_36hrs
     ,first_hct_6hrs
     ,mech_vent
@@ -395,16 +417,18 @@ selected_df_fluid <- vol_leak_index_dataset%>%dplyr::select(
 
 
 ```{r}
-#  we don’t want to remove patients that died before 72hrs for the mortality/delta_sofa analysis. This removes a significant number of patients who passed away from our analysis and we don’t see as strong of a signal.
-
-
 selected_df_fluid<-selected_df_fluid[complete.cases(selected_df_fluid),]
-print('Number of patients after excluding patients with missing data:')
+print('Number of patients after excluding patients with missing data (fluid):')
 nrow(selected_df_fluid)
 
-# selected_df_fluid<-selected_df_fluid%>%filter(hosp_mortality_offset>72*60 | hosp_mortality_offset==0)
-# print('Number of patients after excluding patients with hosp_mort_offset <72hrs:')
-# nrow(selected_df_fluid)
+selected_df_fluid<-selected_df_fluid%>%filter(hosp_mortality_offset>72*60 | hosp_mortality_offset==0)
+print('Number of patients after excluding patients with hosp_mort_offset <72hrs:')
+nrow(selected_df_fluid)
+
+#  we don’t want to remove patients that died before 72hrs for the mortality analysis. This removes a significant number of patients who passed away from our analysis and we don’t see as strong of a signal.
+selected_df_mortality<-selected_df_mortality[complete.cases(selected_df_mortality),]
+print('Number of patients after excluding patients with missing data (mortality):')
+nrow(selected_df_mortality)
 ```
 
 # New Variables Creation
@@ -413,6 +437,11 @@ nrow(selected_df_fluid)
 
 ```{r}
 selected_df_fluid<-selected_df_fluid%>%
+  mutate(
+     q_leaking_index=as.factor(as.numeric(cut2(leaking_index, g=4)))
+)
+
+selected_df_mortality<-selected_df_mortality%>%
   mutate(
      q_leaking_index=as.factor(as.numeric(cut2(leaking_index, g=4)))
 )
@@ -462,5 +491,6 @@ table1_base %>%
 ```
 
 ```{r}
-write.csv(selected_df_fluid,'selected_df_fluid_4855.csv')
+write.csv(selected_df_fluid,'selected_df_fluid.csv')
+write.csv(selected_df_mortality,'selected_df_mortality.csv')
 ```

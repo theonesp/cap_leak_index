@@ -122,7 +122,7 @@ rrt <- run_query(getSQL('sql/RRT.sql'))
 Patients with sepsis (not bleeding)
 
 ```{r}
-# we want to include septic patients that are not bleeding.
+# we want to include septic patients that are not bleeding or recieving blood
 
 print('Septic patients:')
 nrow(sepsis)
@@ -181,9 +181,6 @@ SELECT * FROM
 vol_leak_index_dataset
 WHERE intakes IS NOT null')
 
-print('patients with fluid data')
-nrow(vol_leak_index_dataset)
-
 # Ensures fluid balance is positive.
 vol_leak_index_dataset<-sqldf('
 SELECT * FROM
@@ -200,6 +197,7 @@ nrow(vol_leak_index_dataset)
 ### Leaking Index
 
 ```{r}
+# 100/3 is for a unit conversion
 vol_leak_index_dataset<-vol_leak_index_dataset%>%
   mutate(
     leaking_index=((mean_hct_24_36hrs - first_hct_6hrs) * (100/3) / totalFluid) * body_surface_area * 1561
@@ -233,31 +231,8 @@ vol_leak_index_dataset$leaking_index[which(vol_leak_index_dataset$leaking_index<
 
 # Creating and Altering Variable
 ```{r}
-
-# amsterdam$age_fixed = as.factor(amsterdam$age_fixed)
-# amsterdam$gender[amsterdam$gender=='Male']<-1
-# amsterdam$gender[amsterdam$gender=='Female']<-2
 vol_leak_index_dataset$hosp_mortality = vol_leak_index_dataset$actualhospitalmortality * 1
 vol_leak_index_dataset$q_leaking_index = as.factor(ntile(vol_leak_index_dataset$leaking_index,4))
-
-# age_grouper = function(age) {
-#   if (age >=18 & age <=39) {
-#     group = '18-39'
-#   } else if (age >=40 & age <= 49) {
-#     group = '40-49'
-#   } else if (age >=50 & age <=59) {
-#     group = '50-59'
-#   } else if (age >= 60 & age <= 69) {
-#     group = '60-69'
-#   } else if (age >= 70 & age <= 79) {
-#     group = '70-79'
-#   } else if (age >= 80) {
-#     group = '80+'
-#   } else {
-#     group = NA
-#   }
-#   return(group)
-# }
 ```
 
 ## Selecting/Imputing/removing data
@@ -269,12 +244,33 @@ selected_df_fluid <- vol_leak_index_dataset%>%dplyr::select(
     ,age_fixed
     ,gender
     ,charlson_score
+    # the data availability for apache score and sofa is too low
     # ,apachescore
     # ,delta_sofa
     ,hosp_mortality_offset
     ,totalFluid
-    # ,totalFluid_72
-    # ,highest_q_leaking_index
+    ,totalFluid_72
+    ,q_leaking_index
+    ,leaking_index
+    ,first_hct_6hrs
+    ,mean_hct_24_36hrs
+    , unabridgedunitlos
+    , unabridgedhosplos
+    ,mech_vent
+    , unitType
+  )
+
+selected_df_mortality <- vol_leak_index_dataset%>%dplyr::select(
+     admissionid
+    ,hosp_mortality
+    ,age_fixed
+    ,gender
+    ,charlson_score
+    # the data availability for apache score and sofa is too low
+    # ,apachescore
+    # ,delta_sofa
+    ,hosp_mortality_offset
+    ,totalFluid
     ,q_leaking_index
     ,leaking_index
     ,first_hct_6hrs
@@ -286,24 +282,23 @@ selected_df_fluid <- vol_leak_index_dataset%>%dplyr::select(
   )
 
 selected_df_fluid<-selected_df_fluid[complete.cases(selected_df_fluid),]
-print('Number of patients after removing incomplete data:')
+print('Number of patients after removing incomplete data (fluid):')
 nrow(selected_df_fluid)
 
 # Removing Patients who died before 72 hours
-# selected_df_fluid<-selected_df_fluid%>%filter(hosp_mortality_offset>72 | hosp_mortality_offset==0)
-# print('Number of patients after excluding patients with hosp_mort_offset <72hrs:')
-# nrow(selected_df_fluid)
+selected_df_fluid<-selected_df_fluid%>%filter(hosp_mortality_offset>72 | hosp_mortality_offset==0)
+print('Number of patients after excluding patients with hosp_mort_offset <72hrs:')
+nrow(selected_df_fluid)
 
-# selected_df$highest_q_leaking_index<-as.factor(selected_df$highest_q_leaking_index)
-
+selected_df_mortality<-selected_df_mortality[complete.cases(selected_df_mortality),]
+print('Number of patients after removing incomplete data (mortality):')
+nrow(selected_df_mortality)
 ```
 
 # Table 1
 
 ```{r}
-# table1(~ age_fixed + hosp_mortality + gender + charlson_score + apachescore + totalFluid + mean_hct_24_36hrs + first_hct_6hrs| q_leaking_index, data=selected_df)
-
-table1(~ gender + age_fixed + hosp_mortality + totalFluid + mean_hct_24_36hrs + first_hct_6hrs + charlson_score| q_leaking_index, data=selected_df_fluid)
+table1(~ gender + age_fixed + hosp_mortality + totalFluid + mean_hct_24_36hrs + first_hct_6hrs + charlson_score| q_leaking_index, data=selected_df_mortality)
 ```
 ## Summary of dataset
 ```{r}
@@ -358,7 +353,8 @@ table1_base %>%
 ```
 
 ```{r}
-write.csv(selected_df_fluid,'selected_df_fluid_1015.csv')
+write.csv(selected_df_fluid,'selected_df_fluid.csv')
+write.csv(selected_df_mortality,'selected_df_mortality.csv')
 ```
 
 
