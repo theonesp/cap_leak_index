@@ -49,11 +49,24 @@ selected_cohort$hosp_mortality_offset[is.na(selected_cohort$hosp_mortality_offse
 selected_cohort$hosp_mortality[is.na(selected_cohort$hosp_mortality)] = 0
 selected_cohort$body_surface_area = sqrt((selected_cohort$height*selected_cohort$weight) / 3600)
 
+apache_ii <- read.csv(file = 'smr_apache_deidentified.csv')
+apache_ii <- apache_ii %>%
+  rename(
+    dt_apache = dt
+    )
+selected_cohort <- merge(selected_cohort,apache_ii,by="hid")
+selected_cohort$dt_apache <- as.Date(selected_cohort$dt_apache, format = "%Y-%m-%d")
+selected_cohort<-selected_cohort[(selected_cohort$icuout - selected_cohort$icuin) >= (selected_cohort$dt_apache - selected_cohort$icuin) & (selected_cohort$dt_apache - selected_cohort$icuin) >= 0, ]
+selected_cohort<-selected_cohort[selected_cohort$icuin == selected_cohort$dt_apache, ]
+
 hb_data <- read.csv(file = 'septic_hb_list.csv')
 hb_data <- merge(selected_cohort,hb_data,by="hid")
 hb_data$dt <- as.Date(hb_data$dt, format = "%Y-%m-%d")
 hb_data<-hb_data[(hb_data$icuout - hb_data$icuin) >= (hb_data$dt - hb_data$icuin) & (hb_data$dt - hb_data$icuin) >= 0, ]
+hb_data$difference <- hb_data$dt - hb_data$icuin
 hb_data <- hb_data[order(hb_data$dt),]
+hb_data1temp <- hb_data[hb_data$difference == 0, ]
+hb_data2temp <- hb_data[hb_data$difference == 1, ]
 
 io_data <- read.csv(file = 'septic_io_result.csv')
 colnames(io_data)[5] <- "io_balance"
@@ -63,6 +76,7 @@ io_data$date <- as.Date(io_data$date, format = "%Y-%m-%d")
 io_data<-io_data[(io_data$icuout - io_data$icuin) >= (io_data$date - io_data$icuin) & (io_data$date - io_data$icuin) >= 0, ]
 io_data <- io_data[order(io_data$date),]
 ```
+
 
 ```{r}
 io_data24<-sqldf('
@@ -97,32 +111,26 @@ WITH added_row_number AS (
   SELECT
     *,
     ROW_NUMBER() OVER(PARTITION BY hid) AS row_number
-  FROM hb_data
+  FROM hb_data1temp
 )
 SELECT
-  hid, value, row_number
+  hid, value as value_1, row_number
 FROM added_row_number
 WHERE row_number == 1
 order by hid
 ')
 
 hb_data2 <-sqldf('
-WITH added_row_number AS (
-  SELECT
-    *,
-    ROW_NUMBER() OVER(PARTITION BY hid) AS row_number
-  FROM hb_data
-)
 SELECT
-  hid, value, row_number
-FROM added_row_number
-WHERE row_number == 2
+  hid, avg(value) as value_2
+FROM hb_data2temp
+group by hid
 order by hid
 ')
 
 value = merge(hb_data1, hb_data2, by = 'hid')
 hb_diff = value
-hb_diff$value = hb_diff$value.y- hb_diff$value.x
+hb_diff$value = hb_diff$value_2- hb_diff$value_1
 hb_diff = na.omit(hb_diff)
 
 # We are using a left join to join them
@@ -172,9 +180,10 @@ selected_df_fluid <- vol_leak_index_dataset%>%dplyr::select(
     , fluid_balance
     , fluid_balance_72
     ,value
-    ,value.x
-    ,value.y
+    ,value_1
+    ,value_2
     ,leaking_index
+    ,apache2
   )
 
 selected_df_mortality <- vol_leak_index_dataset%>%dplyr::select(
@@ -186,9 +195,10 @@ selected_df_mortality <- vol_leak_index_dataset%>%dplyr::select(
     , weight
     , fluid_balance
     ,value
-    ,value.x
-    ,value.y
+    ,value_1
+    ,value_2
     ,leaking_index
+    ,apache2
   )
 
 selected_df_fluid<-selected_df_fluid[complete.cases(selected_df_fluid),]
@@ -213,6 +223,9 @@ selected_df_mortality<-selected_df_mortality%>%
   mutate(
      q_leaking_index=as.factor(as.numeric(cut2(leaking_index, g=4)))
 )
+
+table(cut2(selected_df_fluid$leaking_index, g=4))
+table(cut2(selected_df_mortality$leaking_index, g=4))
 ```
 
 ```{r}
@@ -223,10 +236,19 @@ hist(selected_df_fluid$fluid_balance)
 hist(selected_df_fluid$fluid_balance_72)
 ```
 ```{r}
-table1(~ sex + age + hosp_mortality + value.x + value.y +fluid_balance + value + leaking_index | q_leaking_index, data=selected_df_mortality)
+table1(~ sex + age + hosp_mortality + value_1 + value_2 +fluid_balance + value + leaking_index + apache2 | q_leaking_index, data=selected_df_mortality)
 ```
 
 ```{r}
 write.csv(selected_df_fluid,'selected_df_fluid.csv')
 write.csv(selected_df_mortality,'selected_df_mortality.csv')
 ```
+
+#General Characteristics of SNUH dataset
+```{r}
+general <- read.csv (file = "genchar.csv")
+median_age <- median(general$age, na.rm = TRUE)
+mean_sex <- mean(general$male, na.rm = TRUE)
+mean_mortality <- mean(selected_df_mortality$hosp_mortality, na.rm = TRUE)
+```
+

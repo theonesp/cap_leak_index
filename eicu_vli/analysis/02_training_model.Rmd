@@ -49,7 +49,7 @@ center_scale <- function(x) {
 ```{r}
 # Build the model
 model <- gam(fluid_balance_72  ~
-                         leaking_index + age_fixed + gender + apache_iv + final_charlson_score
+                         q_leaking_index + age_fixed + gender + apache_iv + final_charlson_score
                          ,data=selected_df_fluid) 
 # Make predictions
 predictions <- model %>% predict(selected_df_fluid)
@@ -67,7 +67,7 @@ ggplot(selected_df_fluid, aes(leaking_index, fluid_balance_72) ) +
 ```{r}
 # Build the model
 model <- gam(hosp_mortality  ~
-                         leaking_index + apache_iv + final_charlson_score,data=selected_df_mortality, family = binomial)
+                         q_leaking_index + age_fixed + gender + apache_iv + final_charlson_score,data=selected_df_mortality, family = binomial)
 # Make predictions
 predictions <- model %>% predict(selected_df_mortality)
 # Model performance

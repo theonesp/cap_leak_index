@@ -445,6 +445,9 @@ selected_df_mortality<-selected_df_mortality%>%
   mutate(
      q_leaking_index=as.factor(as.numeric(cut2(leaking_index, g=4)))
 )
+
+table(cut2(selected_df_fluid$leaking_index, g=4))
+table(cut2(selected_df_mortality$leaking_index, g=4))
 ```
 
 ## Summary of dataset

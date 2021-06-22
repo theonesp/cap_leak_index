@@ -88,7 +88,7 @@ getSQL <- function(filepath){
 Loads all queries from the sql files in the extraction folder and runs them into RBigQuery to extract the data.
 
 ```{r}
-amsterdam = run_query(getSQL("sql/amsterdam 2.sql" ))
+amsterdam = run_query(getSQL("sql/amsterdam_hct.sql" ))
 ```
 
 ```{r}
@@ -180,6 +180,8 @@ vol_leak_index_dataset<-sqldf('
 SELECT * FROM
 vol_leak_index_dataset
 WHERE intakes IS NOT null')
+print('missing fluid data')
+nrow(vol_leak_index_dataset)
 
 # Ensures fluid balance is positive.
 vol_leak_index_dataset<-sqldf('
@@ -209,7 +211,7 @@ vol_leak_index_dataset<-vol_leak_index_dataset%>%
 ```{r eval=FALSE, include=FALSE}
 
 # We are removing VLI outliers
-# We are imputing anything outside the 95% interval
+# We are imputing anything outside the 90% interval
 extreme_quants<-as.numeric(quantile(vol_leak_index_dataset$leaking_index, c(.05, .95),na.rm = T))
 
 print('Number of patients with imputed data:')
@@ -293,6 +295,9 @@ nrow(selected_df_fluid)
 selected_df_mortality<-selected_df_mortality[complete.cases(selected_df_mortality),]
 print('Number of patients after removing incomplete data (mortality):')
 nrow(selected_df_mortality)
+
+table(cut2(selected_df_fluid$leaking_index, g=4))
+table(cut2(selected_df_mortality$leaking_index, g=4))
 ```
 
 # Table 1

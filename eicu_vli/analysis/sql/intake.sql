@@ -7,7 +7,7 @@ With
   FROM
     `physionet-data.eicu_crd.intakeoutput`
   WHERE
-    intakeoutputoffset BETWEEN -6*60 AND 36*60
+    intakeoutputoffset BETWEEN -6*60 AND 24*60
     AND LOWER (cellpath) LIKE '%intake%'
     AND cellvaluenumeric IS NOT NULL
     AND ( LOWER (cellpath) LIKE '%crystalloids%'
@@ -25,7 +25,7 @@ With
     FROM
     `physionet-data.eicu_crd.intakeoutput`
     WHERE
-    intakeoutputoffset BETWEEN -6*60 AND 36*60
+    intakeoutputoffset BETWEEN -6*60 AND 24*60
     AND cellvaluenumeric IS NOT NULL
     AND LOWER (cellpath) LIKE '%output%'
     GROUP BY
