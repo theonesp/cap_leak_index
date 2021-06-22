@@ -1,0 +1,78 @@
+---
+title: "Tables"
+author: "Miguel ?ngel Armengol de la Hoz"
+output:
+  html_document:
+    toc: true
+    theme: united
+---
+
+
+```{r setup, include=FALSE}
+#load the data
+#load("C:/BIG FILES/Phenotyping/HemodynamicProjectsDatasetFeb18.RData")
+```
+
+
+```{r}
+library(tableone)
+library(magrittr)
+library(officer)
+library(xlsx)
+library(table1)
+library(kableExtra)
+library(dplyr)
+```
+
+# Table 1 
+
+```{r}
+vars_in_table1<-c("age_fixed", "gender", "weight", "height", "BMI", "unitType", "body_surface_area", "apachescore", "unabridgedunitlos", "unabridgedhosplos", "unabridgedactualventdays", "first_hct_6hrs", "mean_hct_24_36hrs", "delta_sofa", "hosp_mortality", "intakes_total","intakes_total72")
+table1_dataset<-selected_df_fluid[,vars_in_table1]
+cat_variables<-rep(NA, length(vars_in_table1))
+#stratifyby<-"hosp_mortality"
+label(table1_dataset$age_fixed)<-'Age'
+label(table1_dataset$gender)<-'Gender'
+label(table1_dataset$weight)<-'Weight'
+label(table1_dataset$height)<-'Height'
+label(table1_dataset$BMI)<-'BMI'
+label(table1_dataset$unitType)<-'ICU Type'
+label(table1_dataset$body_surface_area)<-'BSA'
+label(table1_dataset$apachescore)<-'Apache Score'
+label(table1_dataset$unabridgedunitlos)<-'ICU LOS'
+label(table1_dataset$unabridgedhosplos)<-'Hospital LOS'
+label(table1_dataset$unabridgedactualventdays)<-'Ventilation Days'
+label(table1_dataset$first_hct_6hrs)<-'First Hematocrit 6 hrs.'
+label(table1_dataset$mean_hct_24_36hrs)<-'First Hematocrit 24-36 hrs.'
+label(table1_dataset$delta_sofa)<-'Δ Sofa'
+label(table1_dataset$hosp_mortality)<-'Hospital Mortality'
+label(table1_dataset$intakes_total)<-'Total Intake 24 hrs.'
+label(table1_dataset$intakes_total72)<-'Total Intake 72 hrs.'
+
+# detects whether a variable is categorical or not
+cont<-1
+for (i in 1:length(vars_in_table1) ) {
+  if ( n_distinct(table1_dataset[vars_in_table1[i] ])<=10 ) {
+    print(i)
+    print(vars_in_table1[i])
+    print(names(table1_dataset[vars_in_table1[i]]))
+    cat_variables[cont]<-names(table1_dataset[vars_in_table1[i]])
+    cont<-cont+1
+  }
+}  
+cat_variables<-cat_variables[!is.na(cat_variables)]
+table1_base<-print(CreateTableOne(vars = vars_in_table1
+                                  #, strata = stratifyby
+                                  , factorVars = cat_variables
+                                  
+    ,data = table1_dataset, addOverall=T),varLabels = T
+    ,nonnormal = c('fluid_balance_72', 'leaking_index','final_charlson_score'))
+# run this in console for html output, the code below uses kableExtra::
+starification_cats<-n_distinct(table1_dataset[,stratifyby])
+table1_base %>%
+  kbl(caption = "Table 1" , align = "c") %>%
+  kable_classic_2(full_width = F, html_font = "Cambria")%>%
+  add_header_above(c("eICU" = 2 ))
+```
+
+
