@@ -44,7 +44,7 @@ This chunks also creates the run_query and get_sql function.
 
 ```{r setup, include=FALSE}
 # Updated for our year
-project_id <- "hst-953-2019"
+project_id <- "hst-953-2018"
 options(httr_oauth_cache=FALSE)
 # Function that takes in a sql command and runs it on bigquery
 run_query <- function(query){
@@ -105,10 +105,6 @@ patient_inexcluded_icd9 <- run_query(getSQL('sql/patient_inexcluded_icd9.sql'))
 
 # Sepsis patients according to angus criteria
 sepsis <- run_query(getSQL('sql/sepsis.sql'))
-
-# output data
-output <- run_query(getSQL("sql/output.sql"))
-output72hrs <- run_query(getSQL("sql/output72hrs.sql"))
 
 #demographic data 
 demographic <- run_query(getSQL('sql/demographics.sql'))
@@ -344,6 +340,10 @@ selected_df_fluid <- vol_leak_index_dataset%>%dplyr::select(
     , hosp_mortality_offset
     , age_fixed
     , gender
+    , weight
+    , height
+    , BMI
+    , body_surface_area
     , final_elixhauser_score
     , oasis
     , leaking_index
@@ -358,6 +358,12 @@ selected_df_fluid <- vol_leak_index_dataset%>%dplyr::select(
     , los_icu
     , icu_mortality
     , mech_vent
+    , intakes_total
+    , intakes_total_72
+    , los_hospital
+    , los_icu
+    , unitType
+    , unabridgedactualventdays
   )
 
 selected_df_mortality <- vol_leak_index_dataset%>%dplyr::select(
@@ -366,6 +372,10 @@ selected_df_mortality <- vol_leak_index_dataset%>%dplyr::select(
     , hosp_mortality_offset
     , age_fixed
     , gender
+    , weight
+    , height
+    , BMI
+    , body_surface_area
     , final_elixhauser_score
     , oasis
     , leaking_index
@@ -378,7 +388,12 @@ selected_df_mortality <- vol_leak_index_dataset%>%dplyr::select(
     , los_hospital
     , los_icu
     , icu_mortality
-    , mech_vent
+    , intakes_total
+    , intakes_total_72
+    , los_hospital
+    , los_icu
+    , unitType
+    , unabridgedactualventdays
   )
 
 selected_df_fluid<-selected_df_fluid[complete.cases(selected_df_fluid),]
@@ -429,48 +444,6 @@ hist(selected_df_fluid$fluid_balance, breaks = 50, xlim = c(0, 20000))
 
 ```{r}
 hist(selected_df_fluid$fluid_balance_72, breaks = 20, xlim = c(-20000, 20000))
-```
-
-# Table 1 
-
-*Stratified by q_leaking_index*
-
-```{r}
-vars_in_table1<-c('age_fixed', 'gender'  , 'final_elixhauser_score' , 'oasis'  , 'delta_sofa' ,'sofatotal_day1_cat', 'fluid_balance' ,'fluid_balance_72', 'mean_hct_24_36hrs' , 'first_hct_6hrs','hosp_mortality','leaking_index','los_hospital','los_icu','icu_mortality','mech_vent')
-
-table1_dataset<-selected_df_fluid[,vars_in_table1]
-
-cat_variables<-rep(NA, length(vars_in_table1))
-stratifyby<-"hosp_mortality"
-
-
-label(table1_dataset$age_fixed)<-'Age'
-
-# detects whether a variable is categorical or not
-cont<-1
-for (i in 1:length(vars_in_table1) ) {
-  if ( n_distinct(table1_dataset[vars_in_table1[i] ])<=10 ) {
-    print(i)
-    print(vars_in_table1[i])
-    print(names(table1_dataset[vars_in_table1[i]]))
-    cat_variables[cont]<-names(table1_dataset[vars_in_table1[i]])
-    cont<-cont+1
-  }
-}  
-
-cat_variables<-cat_variables[!is.na(cat_variables)]
-
-table1_base<-print(CreateTableOne(vars = vars_in_table1, strata = stratifyby, factorVars = cat_variables
-    ,data = table1_dataset, addOverall=T),varLabels = T)
-
-# run this in console for html output, the code below uses kableExtra::
-
-starification_cats<-n_distinct(table1_dataset[,stratifyby])
-
-table1_base %>%
-  kbl(caption = "Table 1 of base model" , align = "c") %>%
-  kable_classic_2(full_width = F, html_font = "Cambria")%>%
-  add_header_above(c(" "," ", 'Hospital Mortality' = starification_cats," ", "" ))
 ```
 
 # Export dataset

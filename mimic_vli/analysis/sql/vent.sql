@@ -108,8 +108,11 @@ and max(mechvent) = 1
 SELECT 
  icustay_id
 ,MAX(CASE WHEN mech_vent_true = 1 THEN 1 ELSE 0 END) AS mech_vent
+,SUM(duration_hours/24) AS unabridgedactualventdays -- transforming from hours to days
 FROM `physionet-data.mimiciii_clinical.icustays` icustays 
 LEFT JOIN final_vent
   USING (icustay_id)
+LEFT JOIN  `physionet-data.mimiciii_derived.ventdurations`
+    USING (icustay_id)
 GROUP BY icustay_id
 ORDER BY icustay_id
