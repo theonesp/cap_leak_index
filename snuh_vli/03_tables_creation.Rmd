@@ -23,30 +23,30 @@ library(kableExtra)
 library(dplyr)
 ```
 
-# Table 1 selected_df_fluid
+# Table 1 SNUH_72hrFluid_Mortality
 
 ```{r}
 
-label(selected_df_fluid$age_fixed)<-'Age'
-label(selected_df_fluid$gender)<-'Gender'
-label(selected_df_fluid$weight)<-'Weight'
-label(selected_df_fluid$height)<-'Height'
-label(selected_df_fluid$BMI)<-'BMI'
-label(selected_df_fluid$unitType)<-'ICU Type'
-label(selected_df_fluid$body_surface_area)<-'BSA'
-label(selected_df_fluid$oasis)<-'Oasis Score'
-label(selected_df_fluid$los_icu)<-'ICU LOS'
-label(selected_df_fluid$los_hospital)<-'Hospital LOS'
-label(selected_df_fluid$unabridgedactualventdays)<-'Ventilation Days'
-label(selected_df_fluid$first_hct_6hrs)<-'First Hematocrit 6 hrs.'
-label(selected_df_fluid$mean_hct_24_36hrs)<-'First Hematocrit 24-36 hrs.'
-label(selected_df_fluid$delta_sofa)<-'Δ Sofa'
-label(selected_df_fluid$hosp_mortality)<-'Hospital Mortality'
-label(selected_df_fluid$intakes_total)<-'Total Intake 24 hrs.'
-label(selected_df_fluid$intakes_total_72)<-'Total Intake 72 hrs.'
+label(SNUH_72hrFluid_Mortality$age)<-'Age'
+label(SNUH_72hrFluid_Mortality$sex)<-'Gender'
+label(SNUH_72hrFluid_Mortality$weight)<-'Weight'
+# label(SNUH_72hrFluid_Mortality$height)<-'Height'
+# label(SNUH_72hrFluid_Mortality$BMI)<-'BMI'
+# label(SNUH_72hrFluid_Mortality$unitType)<-'ICU Type'
+# label(SNUH_72hrFluid_Mortality$body_surface_area)<-'BSA'
+# label(SNUH_72hrFluid_Mortality$oasis)<-'Oasis Score'
+# label(SNUH_72hrFluid_Mortality$los_icu)<-'ICU LOS'
+# label(SNUH_72hrFluid_Mortality$los_hospital)<-'Hospital LOS'
+# label(SNUH_72hrFluid_Mortality$unabridgedactualventdays)<-'Ventilation Days'
+label(SNUH_72hrFluid_Mortality$first_hct_6hrs)<-'First Hematocrit 6 hrs.'
+label(SNUH_72hrFluid_Mortality$mean_hct_24_36hrs)<-'First Hematocrit 24-36 hrs.'
+# label(SNUH_72hrFluid_Mortality$delta_sofa)<-'Δ Sofa'
+label(SNUH_72hrFluid_Mortality$hosp_mortality)<-'Hospital Mortality'
+# label(SNUH_72hrFluid_Mortality$intakes_total)<-'Total Intake 24 hrs.'
+# label(SNUH_72hrFluid_Mortality$intakes_total_72)<-'Total Intake 72 hrs.'
 
 vars_in_table1<-c("age_fixed", "gender", "weight", "height", "BMI", "unitType", "body_surface_area", "oasis", "los_icu", "los_hospital", "unabridgedactualventdays", "first_hct_6hrs", "mean_hct_24_36hrs", "delta_sofa", "hosp_mortality", "intakes_total","intakes_total_72")
-table1_dataset<-selected_df_fluid[,vars_in_table1]
+table1_dataset<-SNUH_72hrFluid_Mortality[,vars_in_table1]
 cat_variables<-rep(NA, length(vars_in_table1))
 #stratifyby<-"hosp_mortality"
 
@@ -71,7 +71,7 @@ table1_base<-print(CreateTableOne(vars = vars_in_table1
 # run this in console for html output, the code below uses kableExtra::
 starification_cats<-n_distinct(table1_dataset[,stratifyby])
 table1_base %>%
-  kbl(caption = "Table 1 selected_df_fluid" , align = "c") %>%
+  kbl(caption = "Table 1 SNUH_72hrFluid_Mortality" , align = "c") %>%
   kable_classic_2(full_width = F, html_font = "Cambria")%>%
   add_header_above(c("MIMIC III" = 2 ))
 ```

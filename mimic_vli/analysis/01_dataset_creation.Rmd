@@ -342,6 +342,10 @@ selected_df_fluid <- vol_leak_index_dataset%>%dplyr::select(
     , hosp_mortality_offset
     , age_fixed
     , gender
+    , weight
+    , height
+    , BMI
+    , body_surface_area
     , final_elixhauser_score
     , oasis
     , leaking_index
@@ -356,6 +360,12 @@ selected_df_fluid <- vol_leak_index_dataset%>%dplyr::select(
     , los_icu
     , icu_mortality
     , mech_vent
+    , intakes_total
+    , intakes_total_72
+    , los_hospital
+    , los_icu
+    , unitType
+    , unabridgedactualventdays
   )
 
 selected_df_mortality <- vol_leak_index_dataset%>%dplyr::select(
@@ -364,6 +374,10 @@ selected_df_mortality <- vol_leak_index_dataset%>%dplyr::select(
     , hosp_mortality_offset
     , age_fixed
     , gender
+    , weight
+    , height
+    , BMI
+    , body_surface_area
     , final_elixhauser_score
     , oasis
     , leaking_index
@@ -376,7 +390,12 @@ selected_df_mortality <- vol_leak_index_dataset%>%dplyr::select(
     , los_hospital
     , los_icu
     , icu_mortality
-    , mech_vent
+    , intakes_total
+    , intakes_total_72
+    , los_hospital
+    , los_icu
+    , unitType
+    , unabridgedactualventdays
   )
 
 selected_df_fluid<-selected_df_fluid[complete.cases(selected_df_fluid),]
