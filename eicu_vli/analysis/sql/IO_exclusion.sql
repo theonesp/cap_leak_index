@@ -13,7 +13,7 @@ WITH
   FROM
     `physionet-data.eicu_crd.intakeoutput`
   WHERE
-    intakeoutputentryoffset BETWEEN -6*60 AND 36*60 AND LOWER(cellpath) LIKE '%blood%' ),
+    intakeoutputentryoffset BETWEEN -6*60 AND 36*60 AND (LOWER(cellpath) LIKE '%blood%')),
   others AS (
   SELECT
     patientunitstayid,

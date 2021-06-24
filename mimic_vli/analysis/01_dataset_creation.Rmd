@@ -120,8 +120,8 @@ vent <- run_query(getSQL('sql/vent.sql'))
 rrt <- run_query(getSQL("sql/rrt.sql"))
 
 #intake 
-intake <- run_query(getSQL("sql/deprecated/intake_old.sql"))
-intake72hrs <- run_query(getSQL("sql/deprecated/intake_72hrs_old.sql"))
+intake <- run_query(getSQL("sql/deprecated/intake_old copy.sql"))
+intake72hrs <- run_query(getSQL("sql/deprecated/intake_72hrs_old copy.sql"))
 
 # output
 output <- run_query(getSQL("sql/output.sql"))
@@ -213,8 +213,6 @@ vol_leak_index_dataset$outputs_total_72[is.na(vol_leak_index_dataset$outputs_tot
 # Calculates Fluid Balance
 vol_leak_index_dataset<-vol_leak_index_dataset%>%
   mutate(
-    # TODO WE CAN CHOOSE BETWEEN INTAKES_TOTAL, MV OR CV, MV PRODUCES A CLEANER HISTOGRAM
-    # there are only around 15 patients with neg output
     fluid_balance=(intakes_total -abs(outputs_total)),
     fluid_balance_72=(intakes_total_72-abs(outputs_total_72))
   )  

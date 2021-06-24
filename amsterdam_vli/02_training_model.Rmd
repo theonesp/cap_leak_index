@@ -25,10 +25,9 @@ library(ggplot2)
 ```{r}
 # Build the model
 model <- gam(totalFluid_72 ~ 
-                q_leaking_index
+                q_leaking_index + apache + totalFluid
                 + age_fixed
                 + gender
-                + charlson_score
                 ,data=selected_df_fluid)
 # Make predictions
 predictions <- model %>% predict(selected_df_fluid)
@@ -48,10 +47,9 @@ ggplot(selected_df_fluid, aes(leaking_index, totalFluid_72) ) +
 ```{r}
 # Build the model
 model <- gam(hosp_mortality ~ 
-                q_leaking_index
+                q_leaking_index + apache
                 + age_fixed
                 + gender
-                + charlson_score
                 ,data=selected_df_mortality, family = binomial)
 # Make predictions
 predictions <- model %>% predict(selected_df_mortality)

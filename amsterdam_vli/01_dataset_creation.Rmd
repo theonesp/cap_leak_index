@@ -88,21 +88,11 @@ getSQL <- function(filepath){
 Loads all queries from the sql files in the extraction folder and runs them into RBigQuery to extract the data.
 
 ```{r}
+# overall characteristics
 amsterdam = run_query(getSQL("sql/amsterdam_hct.sql" ))
-```
 
-```{r}
-charlson = run_query(getSQL("sql/charlson 2.sql" ))
-```
-
-
-```{r}
-sofa = run_query(getSQL("sql/sofa_final.sql" ))
-```
-
-```{r}
 # Sepsis patients
-sepsis <- run_query(getSQL('sql/sepsis.sql'))
+sepsis <- run_query(getSQL('sql/sepsis_new.sql'))
 
 # List of patients that are bleeding we want to exclude.
 patient_inexcluded_icd9 <- run_query(getSQL('sql/patient_inexcluded_icd9.sql'))
@@ -113,8 +103,15 @@ blood_infus <- run_query(getSQL('sql/blood_infus.sql'))
 #72hr Fluid Data
 fluid_72hrs <- run_query(getSQL('sql/fluid_72hrs.sql'))
 
+dynamicFluid <- run_query(getSQL('sql/dynamicFluid.sql'))
+dynamicFluid_72 <- run_query(getSQL('sql/dynamicFluid_72.sql'))
+
 #Renal Replacement Therapy
 rrt <- run_query(getSQL('sql/RRT.sql'))
+
+apacheii <- read.csv(file = 'apache_ii.csv')
+apacheii <- apacheii %>% select(admissionid, apache_ii_total_score)
+apacheii <- apacheii %>% rename(apache = apache_ii_total_score)
 ```
 
 # Exclusion criteria 1
@@ -145,8 +142,6 @@ Exclusion criteria and dataset join and not getting rrt (we need new datasets to
 names(amsterdam)[1] <- "admissionid"
 names(patient_included)[1] <- "admissionid"
 selected_cohort<-inner_join(amsterdam,patient_included)
-print('Patients >=16 years old:')
-nrow(selected_cohort)
 
 selected_cohort<-sqldf('
 SELECT * FROM
@@ -165,22 +160,34 @@ nrow(selected_cohort)
 # We are using a left join to join them
 vol_leak_index_dataset<-Reduce(function(...) merge(..., all.x=TRUE), list(
    selected_cohort
+   ,dynamicFluid
+   ,dynamicFluid_72
    ,fluid_72hrs
   ,charlson
+  ,apacheii
 ))
+
+vol_leak_index_dataset$intakes_72[is.na(vol_leak_index_dataset$intakes_72)] = 0
+vol_leak_index_dataset$fluidin_72[is.na(vol_leak_index_dataset$fluidin_72)] = 0
+vol_leak_index_dataset$intakes[is.na(vol_leak_index_dataset$intakes)] = 0
+vol_leak_index_dataset$fluidin[is.na(vol_leak_index_dataset$fluidin)] = 0
 
 # We are adding mech vent status
 vol_leak_index_dataset<-vol_leak_index_dataset%>%
   mutate(
-    mech_vent = ifelse(unabridgedactualventdays > 0, 1, 0)
-  )  
+    mech_vent = ifelse(unabridgedactualventdays > 0, 1, 0),
+    intakes = fluidin + intakes,
+    intakes_72 = fluidin_72 + intakes_72,
+    totalFluid = intakes - fluidout,
+    totalFluid_72 = intakes_72 - fluidout_72
+  )
 vol_leak_index_dataset$mech_vent[is.na(vol_leak_index_dataset$mech_vent)] = 0
 # Removes Patients without intake data
 vol_leak_index_dataset<-sqldf('
 SELECT * FROM
 vol_leak_index_dataset
 WHERE intakes IS NOT null')
-print('missing fluid data')
+print('Not missing fluid data')
 nrow(vol_leak_index_dataset)
 
 # Ensures fluid balance is positive.
@@ -191,7 +198,6 @@ WHERE totalFluid > 0 ')
 
 print('patients with positive fluid data')
 nrow(vol_leak_index_dataset)
-# Alter fluid data so all is positive
 ```
 
 ## Creating new variables
@@ -260,6 +266,7 @@ selected_df_fluid <- vol_leak_index_dataset%>%dplyr::select(
     , unabridgedhosplos
     ,mech_vent
     , unitType
+    ,apache
   )
 
 selected_df_mortality <- vol_leak_index_dataset%>%dplyr::select(
@@ -281,6 +288,7 @@ selected_df_mortality <- vol_leak_index_dataset%>%dplyr::select(
     , unabridgedhosplos
     ,mech_vent
     , unitType
+    ,apache
   )
 
 selected_df_fluid<-selected_df_fluid[complete.cases(selected_df_fluid),]
@@ -314,6 +322,7 @@ view(dfSummary(selected_df_fluid))
 ```{r}
 hist(selected_df_fluid$totalFluid, breaks = 50, xlim = c(0, 10000))
 ```
+
 ```{r}
 hist(selected_df_fluid$totalFluid_72, breaks = 50)
 ```

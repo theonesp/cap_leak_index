@@ -22,7 +22,7 @@ USING
   (itemid)  
   WHERE
     DATETIME_DIFF(charttime, INTIME, MINUTE) BETWEEN -6*60 AND 36*60 
-    AND LOWER(label) LIKE '%blood%' ),
+    AND (LOWER(label) LIKE '%blood%')),
 others AS(
 SELECT
   outputevents.ICUSTAY_ID,

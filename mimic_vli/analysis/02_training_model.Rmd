@@ -36,7 +36,7 @@ Ref.:https://multithreaded.stitchfix.com/blog/2015/07/30/gam/
 ```{r}
 # Build the model
 model <- gam(fluid_balance_72  ~
-                          s(leaking_index) + final_elixhauser_score + oasis
+                          q_leaking_index + final_elixhauser_score + oasis
                          + age_fixed + gender
                          ,data=selected_df_fluid)
 # Make predictions

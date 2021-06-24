@@ -102,6 +102,8 @@ WITH adm as (
     ordercategory,
     stop/86400000 as stop
     FROM `physionet-data.amsterdamdb.drugitems`
+    WHERE
+    iscontinuous = false
 ),  numitems as (
     SELECT
     admissionid,
@@ -175,8 +177,8 @@ WITH adm as (
         FROM daily d
         LEFT JOIN drug dr
         ON d.admissionid = dr.admissionid
-        AND stop BETWEEN 0 AND 1 --first 24 hours
-        WHERE ordercategory = "Infuus - Crystalloid"
+        AND stop BETWEEN -0.25 AND 1.5 --first 24 hours
+--        WHERE ordercategory = "Infuus - Crystalloid"
         GROUP BY d.admissionid, d.days
     ) fluidin_daily
     LEFT JOIN (
@@ -187,7 +189,7 @@ WITH adm as (
         FROM daily d
         LEFT JOIN numitems n
         ON d.admissionid = n.admissionid
-        AND measuredat BETWEEN 0 AND 1 --first 24 hours
+        AND measuredat BETWEEN -0.25 AND 1.5 --first 24 hours
         GROUP BY d.admissionid, d.days
     ) fluidout_daily
     ON fluidin_daily.admissionid=fluidout_daily.admissionid
