@@ -44,7 +44,7 @@ This chunks also creates the run_query and get_sql function.
 
 ```{r setup, include=FALSE}
 # Updated for our year
-project_id <- "hst-953-2018"
+project_id <- "hst-953-2019"
 options(httr_oauth_cache=FALSE)
 # Function that takes in a sql command and runs it on bigquery
 run_query <- function(query){
@@ -144,8 +144,9 @@ nrow(patient_included)
 
 # Exclusion criteria and dataset join (we need new datasets to address exclusion criteria)
 
+# Excluding Patients under 16 and erroneous weight recording
+print('Above 16 and without erroneous demographic data')
 selected_cohort<-inner_join(demographic,patient_included)
-print('Patients >=16 years old:')
 nrow(selected_cohort)
 
 #exclusion based on output amount
@@ -230,7 +231,6 @@ nrow(vol_leak_index_dataset)
 #Calculates Leak Index
 vol_leak_index_dataset<-vol_leak_index_dataset%>%
   mutate(
-    # old definition (NYU Datathon) leaking_index=((mean_hct_24_36hrs/first_hct_6hrs)-1)*body_surface_area*1561
     leaking_index=((mean_hct_24_36hrs - first_hct_6hrs) / fluid_balance) * body_surface_area * 1561
   )
 
@@ -342,14 +342,10 @@ selected_df_fluid <- vol_leak_index_dataset%>%dplyr::select(
     , gender
     , weight
     , height
-    , BMI
     , body_surface_area
     , final_elixhauser_score
     , oasis
     , leaking_index
-    , delta_sofa
-    , sofatotal_day1
-    , sofatotal_day1_cat
     , fluid_balance
     , fluid_balance_72
     , mean_hct_24_36hrs
@@ -363,7 +359,6 @@ selected_df_fluid <- vol_leak_index_dataset%>%dplyr::select(
     , los_hospital
     , los_icu
     , unitType
-    , unabridgedactualventdays
   )
 
 selected_df_mortality <- vol_leak_index_dataset%>%dplyr::select(
@@ -374,26 +369,19 @@ selected_df_mortality <- vol_leak_index_dataset%>%dplyr::select(
     , gender
     , weight
     , height
-    , BMI
     , body_surface_area
     , final_elixhauser_score
     , oasis
     , leaking_index
-    , delta_sofa
-    , sofatotal_day1
-    , sofatotal_day1_cat
     , fluid_balance
     , mean_hct_24_36hrs
     , first_hct_6hrs
     , los_hospital
     , los_icu
     , icu_mortality
-    , intakes_total
-    , intakes_total_72
     , los_hospital
     , los_icu
     , unitType
-    , unabridgedactualventdays
   )
 
 selected_df_fluid<-selected_df_fluid[complete.cases(selected_df_fluid),]
@@ -401,7 +389,7 @@ print('Number of patients after removing incomplete data (fluid):')
 nrow(selected_df_fluid)
 
 # Removing Patients who died before 72 hours
-selected_df_fluid<-selected_df_fluid%>%filter(hosp_mortality_offset>72*60 | hosp_mortality_offset==0)
+selected_df_fluid<-selected_df_fluid%>%filter(hosp_mortality_offset>84*60 | hosp_mortality_offset==0)
 print('Number of patients after excluding patients with hosp_mort_offset <72hrs:')
 nrow(selected_df_fluid)
 

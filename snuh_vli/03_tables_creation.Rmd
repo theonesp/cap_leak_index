@@ -8,12 +8,6 @@ output:
 ---
 
 
-```{r setup, include=FALSE}
-#load the data
-#load("C:/BIG FILES/Phenotyping/HemodynamicProjectsDatasetFeb18.RData")
-```
-
-
 ```{r}
 library(tableone)
 library(magrittr)
@@ -27,26 +21,20 @@ library(dplyr)
 
 ```{r}
 
-label(SNUH_72hrFluid_Mortality$age)<-'Age'
-label(SNUH_72hrFluid_Mortality$sex)<-'Gender'
-label(SNUH_72hrFluid_Mortality$weight)<-'Weight'
-# label(SNUH_72hrFluid_Mortality$height)<-'Height'
-# label(SNUH_72hrFluid_Mortality$BMI)<-'BMI'
-# label(SNUH_72hrFluid_Mortality$unitType)<-'ICU Type'
-# label(SNUH_72hrFluid_Mortality$body_surface_area)<-'BSA'
-# label(SNUH_72hrFluid_Mortality$oasis)<-'Oasis Score'
-# label(SNUH_72hrFluid_Mortality$los_icu)<-'ICU LOS'
-# label(SNUH_72hrFluid_Mortality$los_hospital)<-'Hospital LOS'
-# label(SNUH_72hrFluid_Mortality$unabridgedactualventdays)<-'Ventilation Days'
-label(SNUH_72hrFluid_Mortality$first_hct_6hrs)<-'First Hematocrit 6 hrs.'
-label(SNUH_72hrFluid_Mortality$mean_hct_24_36hrs)<-'First Hematocrit 24-36 hrs.'
-# label(SNUH_72hrFluid_Mortality$delta_sofa)<-'Δ Sofa'
-label(SNUH_72hrFluid_Mortality$hosp_mortality)<-'Hospital Mortality'
-# label(SNUH_72hrFluid_Mortality$intakes_total)<-'Total Intake 24 hrs.'
-# label(SNUH_72hrFluid_Mortality$intakes_total_72)<-'Total Intake 72 hrs.'
+label(selected_df_fluid$age)<-'Age'
+label(selected_df_fluid$sex)<-'Gender'
+label(selected_df_fluid$weight)<-'Weight'
+label(selected_df_fluid$height)<-'Height'
+label(selected_df_fluid$body_surface_area)<-'Body Surface Area'
+label(selected_df_fluid$apache2)<-'Apache Score'
+label(selected_df_fluid$value_1)<-'First Hematocrit 6 hrs.'
+label(selected_df_fluid$value_2)<-'First Hematocrit 24-36 hrs.'
+label(selected_df_fluid$hosp_mortality)<-'Hospital Mortality'
+label(selected_df_fluid$fluid_balance)<-'Total Fluid Balance 24 hrs.'
+label(selected_df_fluid$fluid_balance_72)<-'Total Fluid Balance 72 hrs.'
 
-vars_in_table1<-c("age_fixed", "gender", "weight", "height", "BMI", "unitType", "body_surface_area", "oasis", "los_icu", "los_hospital", "unabridgedactualventdays", "first_hct_6hrs", "mean_hct_24_36hrs", "delta_sofa", "hosp_mortality", "intakes_total","intakes_total_72")
-table1_dataset<-SNUH_72hrFluid_Mortality[,vars_in_table1]
+vars_in_table1<-c("age", "sex", "weight", "height", "body_surface_area", "apache2", "value_1", "value_2", "hosp_mortality", "fluid_balance","fluid_balance_72")
+table1_dataset<-selected_df_fluid[,vars_in_table1]
 cat_variables<-rep(NA, length(vars_in_table1))
 #stratifyby<-"hosp_mortality"
 
@@ -67,38 +55,30 @@ table1_base<-print(CreateTableOne(vars = vars_in_table1
                                   , factorVars = cat_variables
                                   
     ,data = table1_dataset, addOverall=T),varLabels = T
-    ,nonnormal = c('fluid_balance_72', 'leaking_index','final_charlson_score'))
+    ,nonnormal = c('leaking_index'))
 # run this in console for html output, the code below uses kableExtra::
-starification_cats<-n_distinct(table1_dataset[,stratifyby])
 table1_base %>%
   kbl(caption = "Table 1 SNUH_72hrFluid_Mortality" , align = "c") %>%
   kable_classic_2(full_width = F, html_font = "Cambria")%>%
-  add_header_above(c("MIMIC III" = 2 ))
+  add_header_above(c("SNUH" = 2 ))
 ```
 
 # Table 1 selected_df_mortality
 
 ```{r}
 
-label(selected_df_mortality$age_fixed)<-'Age'
-label(selected_df_mortality$gender)<-'Gender'
+label(selected_df_mortality$age)<-'Age'
+label(selected_df_mortality$sex)<-'Gender'
 label(selected_df_mortality$weight)<-'Weight'
 label(selected_df_mortality$height)<-'Height'
-label(selected_df_mortality$BMI)<-'BMI'
-label(selected_df_mortality$unitType)<-'ICU Type'
-label(selected_df_mortality$body_surface_area)<-'BSA'
-label(selected_df_mortality$oasis)<-'Oasis Score'
-label(selected_df_mortality$los_icu)<-'ICU LOS'
-label(selected_df_mortality$los_hospital)<-'Hospital LOS'
-label(selected_df_mortality$unabridgedactualventdays)<-'Ventilation Days'
-label(selected_df_mortality$first_hct_6hrs)<-'First Hematocrit 6 hrs.'
-label(selected_df_mortality$mean_hct_24_36hrs)<-'First Hematocrit 24-36 hrs.'
-label(selected_df_mortality$delta_sofa)<-'Δ Sofa'
+label(selected_df_mortality$body_surface_area)<-'Body Surface Area'
+label(selected_df_mortality$apache2)<-'Apache Score'
+label(selected_df_mortality$value_1)<-'First Hematocrit 6 hrs.'
+label(selected_df_mortality$value_2)<-'First Hematocrit 24-36 hrs.'
 label(selected_df_mortality$hosp_mortality)<-'Hospital Mortality'
-label(selected_df_mortality$intakes_total)<-'Total Intake 24 hrs.'
-label(selected_df_mortality$intakes_total_72)<-'Total Intake 72 hrs.'
+label(selected_df_mortality$fluid_balance)<-'Total Fluid Balance 24 hrs.'
 
-vars_in_table1<-c("age_fixed", "gender", "weight", "height", "BMI", "unitType", "body_surface_area", "oasis", "los_icu", "los_hospital", "unabridgedactualventdays", "first_hct_6hrs", "mean_hct_24_36hrs", "delta_sofa", "hosp_mortality", "intakes_total","intakes_total_72")
+vars_in_table1<-c("age", "sex", "weight", "height", "body_surface_area", "apache2", "value_1", "value_2", "hosp_mortality", "fluid_balance")
 table1_dataset<-selected_df_mortality[,vars_in_table1]
 cat_variables<-rep(NA, length(vars_in_table1))
 #stratifyby<-"hosp_mortality"
@@ -120,11 +100,10 @@ table1_base<-print(CreateTableOne(vars = vars_in_table1
                                   , factorVars = cat_variables
                                   
     ,data = table1_dataset, addOverall=T),varLabels = T
-    ,nonnormal = c('fluid_balance_72', 'leaking_index','final_charlson_score'))
+    ,nonnormal = c('leaking_index'))
 # run this in console for html output, the code below uses kableExtra::
-starification_cats<-n_distinct(table1_dataset[,stratifyby])
 table1_base %>%
-  kbl(caption = "Table 1 selected_df_mortality" , align = "c") %>%
+  kbl(caption = "Table 1 SNUH_72hrFluid_Mortality" , align = "c") %>%
   kable_classic_2(full_width = F, html_font = "Cambria")%>%
-  add_header_above(c("MIMIC III" = 2 ))
+  add_header_above(c("SNUH" = 2 ))
 ```

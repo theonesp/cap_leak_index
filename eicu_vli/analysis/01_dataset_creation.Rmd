@@ -363,7 +363,6 @@ selected_df_fluid <- vol_leak_index_dataset%>%dplyr::select(
     ,final_charlson_score
     ,apache_iv
     ,leaking_index
-    ,delta_sofa
     ,fluid_balance
     ,fluid_balance_72
     ,mean_hct_24_36hrs
@@ -373,8 +372,9 @@ selected_df_fluid <- vol_leak_index_dataset%>%dplyr::select(
     , unabridgedunitlos
     , unabridgedhosplos
     , unitType
-    ,sofatotal_day1
-    ,sofatotal_day1_cat
+    ,body_surface_area
+    ,height
+    ,weight
   )
 
 selected_df_mortality <- vol_leak_index_dataset%>%dplyr::select(
@@ -386,7 +386,6 @@ selected_df_mortality <- vol_leak_index_dataset%>%dplyr::select(
     ,final_charlson_score
     ,apache_iv
     ,leaking_index
-    ,delta_sofa
     ,fluid_balance
     ,mean_hct_24_36hrs
     ,first_hct_6hrs
@@ -395,8 +394,9 @@ selected_df_mortality <- vol_leak_index_dataset%>%dplyr::select(
     , unabridgedunitlos
     , unabridgedhosplos
     , unitType
-    ,sofatotal_day1
-    ,sofatotal_day1_cat
+    , body_surface_area
+    ,height
+    ,weight
   )
 ```
 
@@ -422,7 +422,7 @@ print('Number of patients after excluding patients with missing data (fluid):')
 nrow(selected_df_fluid)
 
 selected_df_fluid<-selected_df_fluid%>%filter(hosp_mortality_offset>84*60 | hosp_mortality_offset==0)
-print('Number of patients after excluding patients with hosp_mort_offset <72hrs:')
+print('Number of patients after excluding patients with hosp_mort_offset <84hrs:')
 nrow(selected_df_fluid)
 
 #  we don’t want to remove patients that died before 72hrs for the mortality analysis. This removes a significant number of patients who passed away from our analysis and we don’t see as strong of a signal.

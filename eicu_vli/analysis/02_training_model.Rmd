@@ -49,7 +49,7 @@ center_scale <- function(x) {
 ```{r}
 # Build the model
 model <- gam(fluid_balance_72  ~
-                         q_leaking_index + age_fixed + gender + apache_iv + final_charlson_score
+                         s(leaking_index) + age_fixed + gender + apache_iv + final_charlson_score
                          ,data=selected_df_fluid) 
 # Make predictions
 predictions <- model %>% predict(selected_df_fluid)
@@ -78,7 +78,7 @@ data.frame(
 summary(model)
 ggplot(selected_df_mortality, aes(leaking_index, hosp_mortality) ) +
   stat_smooth(method = gam, formula = y ~ s(x)) + 
-  labs(y="In-Hospital Mortality", x = "VLI")
+  labs(y="In-Hospital Death", x = "VLI")
 ```
 
 ```{r}

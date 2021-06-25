@@ -8,10 +8,10 @@ SELECT
   CASE WHEN admission_age > 89 THEN 91.4 ELSE admission_age END AS age_fixed,
   icustay_detail.hospital_expire_flag AS hosp_mortality ,
   CASE WHEN icustay_detail.hospital_expire_flag = 1 THEN DATETIME_DIFF(dod_hosp, icustay_detail.INTIME, MINUTE) ELSE 0 END AS hosp_mortality_offset,
-  CAST(ROUND(SQRT((height_max*weight_max) / 3600),2) AS INT64) AS body_surface_area,
+  CAST(ROUND(SQRT((height_max*weight_max) / 3600),2) AS FLOAT64) AS body_surface_area,
   CAST(weight_max AS INT64 ) AS weight,
   CAST(height_max AS INT64 ) AS height,
-  CAST(ROUND(weight_max/POWER(CAST(height_max AS INT64 )/100,2),2) AS INT64) AS BMI,
+  ROUND(weight_max/POWER(CAST(height_max AS INT64 )/100,2),2) AS BMI,
   icustays.first_careunit AS unitType 
 FROM
   `physionet-data.mimiciii_derived.icustay_detail` icustay_detail
@@ -32,4 +32,4 @@ LEFT JOIN
 USING
   (icustay_id)   
 WHERE  
-  admission_age >=16
+  admission_age >=16 and weight_max < 200

@@ -68,7 +68,7 @@ hb_data <- hb_data[order(hb_data$dt),]
 hb_data1temp <- hb_data[hb_data$difference == 0, ]
 hb_data2temp <- hb_data[hb_data$difference == 1, ]
 
-io_data <- read.csv(file = 'septic_io_result.csv')
+io_data <- read.csv(file = 'fluid_result.csv')
 colnames(io_data)[5] <- "io_balance"
 
 io_data <- merge(selected_cohort,io_data,by="hid")
@@ -177,6 +177,7 @@ selected_df_fluid <- vol_leak_index_dataset%>%dplyr::select(
     , age
     , sex
     , weight
+    ,height
     , fluid_balance
     , fluid_balance_72
     ,value
@@ -184,6 +185,7 @@ selected_df_fluid <- vol_leak_index_dataset%>%dplyr::select(
     ,value_2
     ,leaking_index
     ,apache2
+    ,body_surface_area
   )
 
 selected_df_mortality <- vol_leak_index_dataset%>%dplyr::select(
@@ -193,12 +195,14 @@ selected_df_mortality <- vol_leak_index_dataset%>%dplyr::select(
     , age
     , sex
     , weight
+    ,height
     , fluid_balance
     ,value
     ,value_1
     ,value_2
     ,leaking_index
     ,apache2
+    ,body_surface_area
   )
 
 selected_df_fluid<-selected_df_fluid[complete.cases(selected_df_fluid),]

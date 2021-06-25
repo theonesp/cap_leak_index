@@ -442,4 +442,4 @@ sepsis_at_admission = 1
 OR
 sepsis_antibiotics_bool = 1
 OR
-(other_antibiotics_bool = 1 AND sepsis_cultures_bool = 1)) AND (sepsis_at_admission = 1 OR sepsis_at_admission IS NULL)
+(other_antibiotics_bool = 1 AND sepsis_cultures_bool = 1))

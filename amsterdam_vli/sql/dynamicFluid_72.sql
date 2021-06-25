@@ -3,20 +3,20 @@
 With intake as (SELECT d.admissionid,
 round((sum(CASE
     WHEN (
-      d.start <= 86400000
+      d.start <= 129600000
       AND d.stop >= 302400000
       AND d.fluidin <> 0
-    ) THEN (((302400000- 86400000) / ((d.duration * 1000) * 60)) * d.fluidin)
+    ) THEN (((302400000- 129600000) / ((d.duration * 1000) * 60)) * d.fluidin)
     WHEN (
-      d.start < 86400000
-      AND d.stop > 86400000
+      d.start < 129600000
+      AND d.stop > 129600000
       AND d.stop <= 302400000
       AND d.fluidin <> 0
-    ) THEN (((d.stop - 86400000) / ((d.duration * 1000) * 60)) * d.fluidin)
+    ) THEN (((d.stop - 129600000) / ((d.duration * 1000) * 60)) * d.fluidin)
     WHEN (
-      d.start >= 86400000
+      d.start >= 129600000
       AND d.start < 302400000
-      AND d.stop > 86400000
+      AND d.stop > 129600000
       AND d.stop <= 302400000
       AND d.fluidin <> 0
     ) THEN CASE
@@ -31,7 +31,7 @@ round((sum(CASE
       ELSE d.fluidin
     END
     WHEN (
-      d.start >= 86400000
+      d.start >= 129600000
       AND d.start < 302400000
       AND d.stop > 302400000
       AND d.fluidin <> 0
@@ -52,7 +52,7 @@ FROM `physionet-data.amsterdamdb.numericitems` AS num
 WHERE (
   num.fluidout <> 0
   AND num.fluidout IS NOT NULL
-  AND num.measuredat >= 86400000
+  AND num.measuredat >= 129600000
   AND num.measuredat < 302400000
 )
 group by num.admissionid)

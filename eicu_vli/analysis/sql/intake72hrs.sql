@@ -501,9 +501,9 @@ With
     LEFT JOIN 
     t2
     USING (patientunitstayid)
-    --INNER JOIN
-    --reliable_fluid_data
-    --USING (patientunitstayid)
+    INNER JOIN
+    reliable_fluid_data
+    USING (patientunitstayid)
     WHERE intakes_total72 IS NOT NULL
     ORDER BY patientunitstayid
     

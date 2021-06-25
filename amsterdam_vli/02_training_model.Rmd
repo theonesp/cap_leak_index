@@ -25,7 +25,7 @@ library(ggplot2)
 ```{r}
 # Build the model
 model <- gam(totalFluid_72 ~ 
-                q_leaking_index + apache + totalFluid
+                q_leaking_index + apache
                 + age_fixed
                 + gender
                 ,data=selected_df_fluid)
@@ -63,7 +63,7 @@ data.frame(
 
 ggplot(selected_df_mortality, aes(leaking_index, hosp_mortality) ) +
   stat_smooth(method = gam, formula = y ~ s(x)) +
-  labs(y="In-Hospital Mortality", x = "VLI")
+  labs(y="In-Hospital Death", x = "VLI")
 ```
 ```{r}
 OR_table<-as.data.frame(round(exp(cbind(OR=coef(model), confint.default(model))),2))

@@ -120,7 +120,7 @@ WITH adm as (
     ROW_NUMBER() OVER (PARTITION BY admissionid ORDER BY measuredat ASC) AS position,
     measuredat/86400000 as measuredat 
     FROM `physionet-data.amsterdamdb.numericitems`
-    WHERE item IN ('Hematocriet','A_Hematocriet(%)','RA_Hematocriet(%)','MCA_Hematocriet(%)','Ht(v.Bgs) (bloed)','Ht (bloed)') AND measuredat BETWEEN -21600000 AND 64800000
+    WHERE item IN ('Hematocriet','A_Hematocriet(%)','RA_Hematocriet(%)','MCA_Hematocriet(%)','Ht(v.Bgs) (bloed)','Ht (bloed)') AND measuredat BETWEEN -43200000 AND 64800000
 ),  second_hct as (
     SELECT 
     admissionid,

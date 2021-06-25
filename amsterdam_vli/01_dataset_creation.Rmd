@@ -205,10 +205,10 @@ nrow(vol_leak_index_dataset)
 ### Leaking Index
 
 ```{r}
-# 100/3 is for a unit conversion
+# 100 is for a unit conversion of hematocrit
 vol_leak_index_dataset<-vol_leak_index_dataset%>%
   mutate(
-    leaking_index=((mean_hct_24_36hrs - first_hct_6hrs) * (100/3) / totalFluid) * body_surface_area * 1561
+    leaking_index=((mean_hct_24_36hrs - first_hct_6hrs) * (100) / totalFluid) * body_surface_area * 1561
   )  
 ```
 
@@ -251,10 +251,6 @@ selected_df_fluid <- vol_leak_index_dataset%>%dplyr::select(
     ,hosp_mortality
     ,age_fixed
     ,gender
-    ,charlson_score
-    # the data availability for apache score and sofa is too low
-    # ,apachescore
-    # ,delta_sofa
     ,hosp_mortality_offset
     ,totalFluid
     ,totalFluid_72
@@ -264,9 +260,11 @@ selected_df_fluid <- vol_leak_index_dataset%>%dplyr::select(
     ,mean_hct_24_36hrs
     , unabridgedunitlos
     , unabridgedhosplos
-    ,mech_vent
     , unitType
     ,apache
+    ,weight
+    ,height
+    ,body_surface_area
   )
 
 selected_df_mortality <- vol_leak_index_dataset%>%dplyr::select(
@@ -274,10 +272,6 @@ selected_df_mortality <- vol_leak_index_dataset%>%dplyr::select(
     ,hosp_mortality
     ,age_fixed
     ,gender
-    ,charlson_score
-    # the data availability for apache score and sofa is too low
-    # ,apachescore
-    # ,delta_sofa
     ,hosp_mortality_offset
     ,totalFluid
     ,q_leaking_index
@@ -286,18 +280,20 @@ selected_df_mortality <- vol_leak_index_dataset%>%dplyr::select(
     ,mean_hct_24_36hrs
     , unabridgedunitlos
     , unabridgedhosplos
-    ,mech_vent
     , unitType
     ,apache
+    ,weight
+    ,height
+    ,body_surface_area
   )
 
 selected_df_fluid<-selected_df_fluid[complete.cases(selected_df_fluid),]
 print('Number of patients after removing incomplete data (fluid):')
 nrow(selected_df_fluid)
 
-# Removing Patients who died before 72 hours
-selected_df_fluid<-selected_df_fluid%>%filter(hosp_mortality_offset>72 | hosp_mortality_offset==0)
-print('Number of patients after excluding patients with hosp_mort_offset <72hrs:')
+# Removing Patients who died before 84 hours
+selected_df_fluid<-selected_df_fluid%>%filter(hosp_mortality_offset>84 | hosp_mortality_offset==0)
+print('Number of patients after excluding patients with hosp_mort_offset <84hrs:')
 nrow(selected_df_fluid)
 
 selected_df_mortality<-selected_df_mortality[complete.cases(selected_df_mortality),]
@@ -311,7 +307,7 @@ table(cut2(selected_df_mortality$leaking_index, g=4))
 # Table 1
 
 ```{r}
-table1(~ gender + age_fixed + hosp_mortality + totalFluid + mean_hct_24_36hrs + first_hct_6hrs + charlson_score| q_leaking_index, data=selected_df_mortality)
+table1(~ gender + age_fixed + hosp_mortality + totalFluid + mean_hct_24_36hrs + first_hct_6hrs| q_leaking_index, data=selected_df_mortality)
 ```
 ## Summary of dataset
 ```{r}
