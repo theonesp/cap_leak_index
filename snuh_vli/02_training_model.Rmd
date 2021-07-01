@@ -14,7 +14,7 @@ library(oddsratio)
 model <- gam(fluid_balance_72  ~
                           s(leaking_index) + apache2 
                          + age + sex
-                         ,data=selected_df_fluid)
+                         ,data=selected_df_fluid, family = gaussian)
 # Make predictions
 predictions <- model %>% predict(selected_df_fluid)
 

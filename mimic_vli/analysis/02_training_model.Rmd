@@ -36,7 +36,7 @@ Ref.:https://multithreaded.stitchfix.com/blog/2015/07/30/gam/
 ```{r}
 # Build the model
 model <- gam(fluid_balance_72  ~
-                          q_leaking_index + final_elixhauser_score + oasis
+                          s(leaking_index) + final_elixhauser_score + oasis
                          + age_fixed + gender
                          ,data=selected_df_fluid)
 # Make predictions
@@ -58,7 +58,7 @@ ggplot(selected_df_fluid, aes(leaking_index, fluid_balance_72 ) ) +
 ```{r}
 # Build the model
 model <- gam(hosp_mortality  ~
-                          q_leaking_index + oasis + final_elixhauser_score
+                          s(leaking_index) + oasis + final_elixhauser_score
                          + age_fixed + gender
                          ,data=selected_df_mortality, family = binomial)
 # Make predictions

@@ -208,7 +208,7 @@ nrow(vol_leak_index_dataset)
 # 100 is for a unit conversion of hematocrit
 vol_leak_index_dataset<-vol_leak_index_dataset%>%
   mutate(
-    leaking_index=((mean_hct_24_36hrs - first_hct_6hrs) * (100) / totalFluid) * body_surface_area * 1561
+    leaking_index=((mean_hct_24_36hrs - first_hct_6hrs) * (100) / totalFluid) * body_surface_area * 1000
   )  
 ```
 

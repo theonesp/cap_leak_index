@@ -231,7 +231,7 @@ nrow(vol_leak_index_dataset)
 #Calculates Leak Index
 vol_leak_index_dataset<-vol_leak_index_dataset%>%
   mutate(
-    leaking_index=((mean_hct_24_36hrs - first_hct_6hrs) / fluid_balance) * body_surface_area * 1561
+    leaking_index=((mean_hct_24_36hrs - first_hct_6hrs) / fluid_balance) * body_surface_area * 1000
   )
 
 # Removes leaking index greater than 0 (means that hematocrit increases over time with fluid). We are not doing this because an increase in hematocrit is clinically possible

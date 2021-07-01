@@ -145,7 +145,7 @@ vol_leak_index_dataset<-Reduce(function(...) merge(..., all.x=TRUE), list(
 ```{r}
 vol_leak_index_dataset<-vol_leak_index_dataset%>%
   mutate(
-    leaking_index=((value) / fluid_balance) * body_surface_area * 1561
+    leaking_index=((value) / fluid_balance) * body_surface_area * 1000
   )
 ```
 
