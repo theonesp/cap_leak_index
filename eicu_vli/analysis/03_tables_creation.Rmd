@@ -21,7 +21,7 @@ library(dplyr)
 # Table 1 
 
 ```{r}
-vars_in_table1<-c("age_fixed", "gender", "unitType","weight", "height", "body_surface_area", "leaking_index", "final_charlson_score", "apache_iv", "unabridgedunitlos", "unabridgedhosplos", "first_hct_6hrs", "mean_hct_24_36hrs", "hosp_mortality", "fluid_balance","fluid_balance_72")
+vars_in_table1<-c("age_fixed", "gender", "unitType","weight", "height", "body_surface_area", "leaking_index", "final_charlson_score", "apache_iv", "first_hct_6hrs", "mean_hct_24_36hrs", "hosp_mortality", "fluid_balance","fluid_balance_72")
 table1_dataset<-selected_df_fluid[,vars_in_table1]
 cat_variables<-rep(NA, length(vars_in_table1))
 label(table1_dataset$age_fixed)<-'Age'
@@ -32,8 +32,8 @@ label(table1_dataset$height)<-'Height'
 label(table1_dataset$weight)<-'Weight'
 label(table1_dataset$leaking_index)<-'Vascular Leak Index'
 label(table1_dataset$apache_iv)<-'Apache Score'
-label(table1_dataset$unabridgedunitlos)<-'ICU LOS'
-label(table1_dataset$unabridgedhosplos)<-'Hospital LOS'
+# label(table1_dataset$unabridgedunitlos)<-'ICU LOS'
+# label(table1_dataset$unabridgedhosplos)<-'Hospital LOS'
 label(table1_dataset$first_hct_6hrs)<-'First Hematocrit 6 hrs.'
 label(table1_dataset$mean_hct_24_36hrs)<-'First Hematocrit 24-36 hrs.'
 label(table1_dataset$hosp_mortality)<-'Hospital Mortality'
@@ -67,7 +67,7 @@ table1_base %>%
   add_header_above(c("eICU" = 2 ))
 ```
 ```{r}
-vars_in_table1<-c("age_fixed", "gender", "unitType", "height", "weight", "body_surface_area", "leaking_index", "final_charlson_score", "apache_iv", "unabridgedunitlos", "unabridgedhosplos", "first_hct_6hrs", "mean_hct_24_36hrs", "hosp_mortality", "fluid_balance")
+vars_in_table1<-c("age_fixed", "gender", "unitType", "height", "weight", "body_surface_area", "leaking_index", "final_charlson_score", "apache_iv", "first_hct_6hrs", "mean_hct_24_36hrs", "hosp_mortality", "fluid_balance")
 table1_dataset<-selected_df_mortality[,vars_in_table1]
 cat_variables<-rep(NA, length(vars_in_table1))
 label(table1_dataset$age_fixed)<-'Age'
@@ -78,8 +78,8 @@ label(table1_dataset$height)<-'Height'
 label(table1_dataset$weight)<-'Weight'
 label(table1_dataset$leaking_index)<-'Vascular Leak Index'
 label(table1_dataset$apache_iv)<-'Apache Score'
-label(table1_dataset$unabridgedunitlos)<-'ICU LOS'
-label(table1_dataset$unabridgedhosplos)<-'Hospital LOS'
+# label(table1_dataset$unabridgedunitlos)<-'ICU LOS'
+# label(table1_dataset$unabridgedhosplos)<-'Hospital LOS'
 label(table1_dataset$first_hct_6hrs)<-'First Hematocrit 6 hrs.'
 label(table1_dataset$mean_hct_24_36hrs)<-'First Hematocrit 24-36 hrs.'
 label(table1_dataset$hosp_mortality)<-'Hospital Mortality'

@@ -215,6 +215,7 @@ WITH adm as (
     GROUP BY d.admissionid, d.days
 )
 SELECT 
+    
     ANY_VALUE(adm.admissionid) as patientunitstayid,		
     ANY_VALUE(adm.agegroup) as age_fixed,
     ANY_VALUE(adm.gender) as gender,

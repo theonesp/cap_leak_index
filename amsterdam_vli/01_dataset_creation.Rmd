@@ -140,6 +140,7 @@ Exclusion criteria and dataset join and not getting rrt (we need new datasets to
 
 ```{r}
 names(amsterdam)[1] <- "admissionid"
+amsterdam$unitType <- "mixed surgical-medical"
 names(patient_included)[1] <- "admissionid"
 selected_cohort<-inner_join(amsterdam,patient_included)
 
@@ -287,6 +288,9 @@ selected_df_mortality <- vol_leak_index_dataset%>%dplyr::select(
     ,body_surface_area
   )
 
+selected_df_fluid = selected_df_fluid[selected_df_fluid$gender != "", ]
+selected_df_mortality = selected_df_mortality[selected_df_mortality$gender != "", ]
+
 selected_df_fluid<-selected_df_fluid[complete.cases(selected_df_fluid),]
 print('Number of patients after removing incomplete data (fluid):')
 nrow(selected_df_fluid)
@@ -321,45 +325,6 @@ hist(selected_df_fluid$totalFluid, breaks = 50, xlim = c(0, 10000))
 
 ```{r}
 hist(selected_df_fluid$totalFluid_72, breaks = 50)
-```
-
-
-```{r}
-vars_in_table1<-c('age_fixed', 'gender'  , 'charlson_score', 'totalFluid' , 'mean_hct_24_36hrs' , 'first_hct_6hrs', 'hosp_mortality','leaking_index', 'unabridgedunitlos', 'unabridgedhosplos', 'mech_vent')
-
-table1_dataset<-selected_df_fluid[,vars_in_table1]
-
-cat_variables<-rep(NA, length(vars_in_table1))
-stratifyby<-"hosp_mortality"
-
-
-label(table1_dataset$age_fixed)<-'Age'
-
-# detects whether a variable is categorical or not
-cont<-1
-for (i in 1:length(vars_in_table1) ) {
-  if ( n_distinct(table1_dataset[vars_in_table1[i] ])<=10 ) {
-    print(i)
-    print(vars_in_table1[i])
-    print(names(table1_dataset[vars_in_table1[i]]))
-    cat_variables[cont]<-names(table1_dataset[vars_in_table1[i]])
-    cont<-cont+1
-  }
-}  
-
-cat_variables<-cat_variables[!is.na(cat_variables)]
-
-table1_base<-print(CreateTableOne(vars = vars_in_table1, strata = stratifyby, factorVars = cat_variables
-    ,data = table1_dataset, addOverall=T),varLabels = T)
-
-# run this in console for html output, the code below uses kableExtra::
-
-starification_cats<-n_distinct(table1_dataset[,stratifyby])
-
-table1_base %>%
-  kbl(caption = "Table 1 of base model" , align = "c") %>%
-  kable_classic_2(full_width = F, html_font = "Cambria")%>%
-  add_header_above(c(" "," ", 'Hospital Mortality' = starification_cats," ", "" ))
 ```
 
 ```{r}

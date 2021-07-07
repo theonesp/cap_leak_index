@@ -47,7 +47,7 @@ ggplot(selected_df_fluid, aes(leaking_index, totalFluid_72) ) +
 ```{r}
 # Build the model
 model <- gam(hosp_mortality ~ 
-               s(leaking_index) + apache 
+               q_leaking_index + apache
                 + age_fixed
                 + gender
                 ,data=selected_df_mortality, family = binomial)

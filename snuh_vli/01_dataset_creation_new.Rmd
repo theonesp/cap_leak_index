@@ -32,6 +32,7 @@ nrow(sepsis)
 demographic <- read.csv (file = "septic_hid_info.csv")
 
 demographic<-demographic[!(abs(demographic$height)==1 | abs(demographic$weight) == 1), ]
+demographic$sex <- ifelse(demographic$sex == 'M', 'Male', 'Female')
 
 
 selected_cohort<-inner_join(demographic,sepsis)
@@ -186,6 +187,7 @@ selected_df_fluid <- vol_leak_index_dataset%>%dplyr::select(
     ,leaking_index
     ,apache2
     ,body_surface_area
+    ,icuroom
   )
 
 selected_df_mortality <- vol_leak_index_dataset%>%dplyr::select(
@@ -203,6 +205,7 @@ selected_df_mortality <- vol_leak_index_dataset%>%dplyr::select(
     ,leaking_index
     ,apache2
     ,body_surface_area
+    ,icuroom
   )
 
 selected_df_fluid<-selected_df_fluid[complete.cases(selected_df_fluid),]
@@ -216,6 +219,9 @@ nrow(selected_df_fluid)
 selected_df_mortality<-selected_df_mortality[complete.cases(selected_df_mortality),]
 print('Number of patients after removing incomplete data (mortality):')
 nrow(selected_df_mortality)
+
+selected_df_fluid$icuroom[selected_df_fluid$icuroom == "SICU2"] = "SICU"
+selected_df_mortality$icuroom[selected_df_mortality$icuroom == "SICU2"] = "SICU"
 
 
 selected_df_fluid<-selected_df_fluid%>%
@@ -250,9 +256,16 @@ write.csv(selected_df_mortality,'selected_df_mortality.csv')
 
 #General Characteristics of SNUH dataset
 ```{r}
-general <- read.csv (file = "genchar.csv")
-median_age <- median(general$age, na.rm = TRUE)
-mean_sex <- mean(general$male, na.rm = TRUE)
-mean_mortality <- mean(selected_df_mortality$hosp_mortality, na.rm = TRUE)
+all_unittype <- read.csv(file = 'snuh_unittype.csv')
+
+general <- read.csv (file = "smr_genchar_deidentified.csv")
+general$sex <- ifelse(general$sex == "M", 1, 0)
+mean_sex <- mean(general$sex, na.rm = TRUE)
+
+combined_all <- merge(all_unittype, general, 'hid')
+combined_all$birthday = as.Date(combined_all$birthday, format = "%Y-%m-%d")
+combined_all$icuin = as.Date(combined_all$icuin, format = "%Y-%m-%d")
+combined_all$age = as.numeric((combined_all$icuin - combined_all$birthday) / 365)
+median_age <- median(combined_all$age, na.rm = TRUE)
 ```
 

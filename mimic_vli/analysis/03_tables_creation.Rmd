@@ -28,8 +28,8 @@ label(selected_df_fluid$unitType)<-'ICU Type'
 label(selected_df_fluid$body_surface_area)<-'Body Surface Area'
 label(selected_df_fluid$final_elixhauser_score)<-'Elixhauser Comobordity Index'
 label(selected_df_fluid$oasis)<-'Oasis Score'
-label(selected_df_fluid$los_icu)<-'ICU LOS'
-label(selected_df_fluid$los_hospital)<-'Hospital LOS'
+# label(selected_df_fluid$los_icu)<-'ICU LOS'
+# label(selected_df_fluid$los_hospital)<-'Hospital LOS'
 label(selected_df_fluid$first_hct_6hrs)<-'First Hematocrit 6 hrs.'
 label(selected_df_fluid$mean_hct_24_36hrs)<-'First Hematocrit 24-36 hrs.'
 label(selected_df_fluid$hosp_mortality)<-'Hospital Mortality'
@@ -37,7 +37,7 @@ label(selected_df_fluid$fluid_balance)<-'Total Fluid Balance 24 hrs.'
 label(selected_df_fluid$fluid_balance_72)<-'Total Fluid Balance 72 hrs.'
 label(selected_df_fluid$leaking_index)<-'Vascular Leak Index.'
 
-vars_in_table1<-c("age_fixed", "gender", "unitType", "weight", "height", "body_surface_area", "leaking_index", "oasis", "final_elixhauser_score", "los_icu", "los_hospital", "first_hct_6hrs", "mean_hct_24_36hrs", "hosp_mortality", "fluid_balance","fluid_balance_72")
+vars_in_table1<-c("age_fixed", "gender", "unitType", "weight", "height", "body_surface_area", "leaking_index", "oasis", "final_elixhauser_score", "first_hct_6hrs", "mean_hct_24_36hrs", "hosp_mortality", "fluid_balance","fluid_balance_72")
 table1_dataset<-selected_df_fluid[,vars_in_table1]
 cat_variables<-rep(NA, length(vars_in_table1))
 #stratifyby<-"hosp_mortality"
@@ -81,8 +81,8 @@ label(selected_df_mortality$body_surface_area)<-'Body Surface Area'
 label(selected_df_fluid$leaking_index)<-'Vascular Leak Index.'
 label(selected_df_fluid$final_elixhauser_score)<-'Elixhauser Comobordity Index'
 label(selected_df_mortality$oasis)<-'Oasis Score'
-label(selected_df_mortality$los_icu)<-'ICU LOS'
-label(selected_df_mortality$los_hospital)<-'Hospital LOS'
+# label(selected_df_mortality$los_icu)<-'ICU LOS'
+# label(selected_df_mortality$los_hospital)<-'Hospital LOS'
 label(selected_df_mortality$first_hct_6hrs)<-'First Hematocrit 6 hrs.'
 label(selected_df_mortality$mean_hct_24_36hrs)<-'First Hematocrit 24-36 hrs.'
 label(selected_df_mortality$hosp_mortality)<-'Hospital Mortality'

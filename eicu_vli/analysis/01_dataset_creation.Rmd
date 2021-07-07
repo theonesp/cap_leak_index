@@ -463,36 +463,6 @@ hist(selected_df_fluid$fluid_balance, breaks = 1000, xlim = c(0, 10000))
 hist(selected_df_fluid$fluid_balance_72, breaks = 100, xlim = c(-10000, 10000))
 ```
 
-# Table 1 
-
-```{r}
-vars_in_table1<-c('age_fixed', 'gender'  , 'final_charlson_score' , 'apache_iv'  , 'delta_sofa' ,'sofatotal_day1_cat', 'fluid_balance' , 'mean_hct_24_36hrs' , 'first_hct_6hrs', 'mech_vent','hosp_mortality_offset', 'hosp_mortality', 'actualicumortality' , 'unabridgedunitlos' , 'unabridgedhosplos','leaking_index')
-table1_dataset<-selected_df_fluid[,vars_in_table1]
-cat_variables<-rep(NA, length(vars_in_table1))
-stratifyby<-"hosp_mortality"
-label(table1_dataset$age_fixed)<-'Age'
-# detects whether a variable is categorical or not
-cont<-1
-for (i in 1:length(vars_in_table1) ) {
-  if ( n_distinct(table1_dataset[vars_in_table1[i] ])<=10 ) {
-    print(i)
-    print(vars_in_table1[i])
-    print(names(table1_dataset[vars_in_table1[i]]))
-    cat_variables[cont]<-names(table1_dataset[vars_in_table1[i]])
-    cont<-cont+1
-  }
-}  
-cat_variables<-cat_variables[!is.na(cat_variables)]
-table1_base<-print(CreateTableOne(vars = vars_in_table1, strata = stratifyby, factorVars = cat_variables
-    ,data = table1_dataset, addOverall=T),varLabels = T)
-# run this in console for html output, the code below uses kableExtra::
-starification_cats<-n_distinct(table1_dataset[,stratifyby])
-table1_base %>%
-  kbl(caption = "Table 1 of base model" , align = "c") %>%
-  kable_classic_2(full_width = F, html_font = "Cambria")%>%
-  add_header_above(c(" "," ", 'Hospital Mortality' = starification_cats," ", "" ))
-```
-
 ```{r}
 write.csv(selected_df_fluid,'selected_df_fluid.csv')
 write.csv(selected_df_mortality,'selected_df_mortality.csv')

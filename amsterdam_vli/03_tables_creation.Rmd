@@ -28,15 +28,15 @@ label(selected_df_fluid$unitType)<-'ICU Type'
 label(selected_df_fluid$body_surface_area)<-'Body Surface Area'
 label(selected_df_fluid$leaking_index)<-'Vascular Leak Index'
 label(selected_df_fluid$apache)<-'Apache Score'
-label(selected_df_fluid$unabridgedunitlos)<-'ICU LOS'
-label(selected_df_fluid$unabridgedhosplos)<-'Hospital LOS'
+# label(selected_df_fluid$unabridgedunitlos)<-'ICU LOS'
+# label(selected_df_fluid$unabridgedhosplos)<-'Hospital LOS'
 label(selected_df_fluid$first_hct_6hrs)<-'First Hematocrit 6 hrs.'
 label(selected_df_fluid$mean_hct_24_36hrs)<-'First Hematocrit 24-36 hrs.'
 label(selected_df_fluid$hosp_mortality)<-'Hospital Mortality'
 label(selected_df_fluid$totalFluid)<-'Total Fluid Balance 24 hrs.'
 label(selected_df_fluid$totalFluid_72)<-'Total Fluid Balance 72 hrs.'
 
-vars_in_table1<-c("age_fixed", "gender", "unitType", "weight", "height", "body_surface_area", "leaking_index", "apache", "unabridgedunitlos", "unabridgedhosplos", "first_hct_6hrs", "mean_hct_24_36hrs", "hosp_mortality", "totalFluid","totalFluid_72")
+vars_in_table1<-c("age_fixed", "gender", "unitType", "weight", "height", "body_surface_area", "leaking_index", "apache", "first_hct_6hrs", "mean_hct_24_36hrs", "hosp_mortality", "totalFluid","totalFluid_72")
 table1_dataset<-selected_df_fluid[,vars_in_table1]
 cat_variables<-rep(NA, length(vars_in_table1))
 #stratifyby<-"hosp_mortality"
@@ -70,25 +70,22 @@ table1_base %>%
 # Table 1 selected_df_mortality
 
 ```{r}
-
 label(selected_df_mortality$age_fixed)<-'Age'
 label(selected_df_mortality$gender)<-'Gender'
 label(selected_df_mortality$weight)<-'Weight'
 label(selected_df_mortality$height)<-'Height'
 label(selected_df_mortality$unitType)<-'ICU Type'
-label(selected_df_mortality$body_surface_area)<-'BSA'
-label(selected_df_mortality$oasis)<-'Oasis Score'
-label(selected_df_mortality$los_icu)<-'ICU LOS'
-label(selected_df_mortality$los_hospital)<-'Hospital LOS'
-label(selected_df_mortality$unabridgedactualventdays)<-'Ventilation Days'
+label(selected_df_mortality$body_surface_area)<-'Body Surface Area'
+label(selected_df_mortality$leaking_index)<-'Vascular Leak Index'
+label(selected_df_mortality$apache)<-'Apache Score'
+# label(selected_df_mortality$unabridgedunitlos)<-'ICU LOS'
+# label(selected_df_mortality$unabridgedhosplos)<-'Hospital LOS'
 label(selected_df_mortality$first_hct_6hrs)<-'First Hematocrit 6 hrs.'
 label(selected_df_mortality$mean_hct_24_36hrs)<-'First Hematocrit 24-36 hrs.'
-label(selected_df_mortality$delta_sofa)<-'Δ Sofa'
 label(selected_df_mortality$hosp_mortality)<-'Hospital Mortality'
-label(selected_df_mortality$intakes_total)<-'Total Intake 24 hrs.'
-label(selected_df_mortality$intakes_total_72)<-'Total Intake 72 hrs.'
+label(selected_df_mortality$totalFluid)<-'Total Fluid Balance 24 hrs.'
 
-vars_in_table1<-c("age_fixed", "gender", "weight", "height", "unitType", "body_surface_area", "oasis", "los_icu", "los_hospital", "first_hct_6hrs", "mean_hct_24_36hrs", "delta_sofa", "hosp_mortality", "intakes_total","intakes_total_72")
+vars_in_table1<-c("age_fixed", "gender", "unitType", "weight", "height", "body_surface_area", "leaking_index", "apache", "first_hct_6hrs", "mean_hct_24_36hrs", "hosp_mortality", "totalFluid")
 table1_dataset<-selected_df_mortality[,vars_in_table1]
 cat_variables<-rep(NA, length(vars_in_table1))
 #stratifyby<-"hosp_mortality"
