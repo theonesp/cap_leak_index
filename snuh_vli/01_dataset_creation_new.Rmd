@@ -141,6 +141,15 @@ vol_leak_index_dataset<-Reduce(function(...) merge(..., all.x=TRUE), list(
    io_data72,
    hb_diff
 ))
+
+# Removes Patients without intake data
+vol_leak_index_dataset<-sqldf('
+SELECT * FROM
+vol_leak_index_dataset
+WHERE fluid_balance IS NOT null')
+
+print('patients with fluid data')
+nrow(vol_leak_index_dataset)
 ```
 
 ```{r}
