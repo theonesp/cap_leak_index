@@ -61,7 +61,8 @@ data.frame(
 summary(model)
 ggplot(selected_df_fluid, aes(leaking_index, fluid_balance_72) ) +
   stat_smooth(method = gam, formula = y ~ s(x)) +
-  labs(y="Fluid Balance 36h-84h (ml)", x = "VLI")
+  labs(y="Fluid Balance 36h-84h (ml)", x = "VLI")+
+  theme_classic()
 ```
 
 ```{r}
@@ -78,7 +79,8 @@ data.frame(
 summary(model)
 ggplot(selected_df_mortality, aes(leaking_index, hosp_mortality) ) +
   stat_smooth(method = gam, formula = y ~ s(x)) + 
-  labs(y="In-Hospital Death", x = "VLI")
+  labs(y="In-Hospital Death", x = "VLI")+
+  theme_classic()
 ```
 
 ```{r}
