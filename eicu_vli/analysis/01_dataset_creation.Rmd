@@ -464,6 +464,12 @@ hist(selected_df_fluid$fluid_balance_72, breaks = 100, xlim = c(-10000, 10000))
 ```
 
 ```{r}
+png("eicu_hist.png", width = 2000, height = 2000, res = 400)
+hist(selected_df_mortality$leaking_index, main = "eICU",  xlab = "VLI", ylab = "Frequency", xlim = c(-30, 5), breaks = 15)
+dev.off()
+```
+
+```{r}
 write.csv(selected_df_fluid,'selected_df_fluid.csv')
 write.csv(selected_df_mortality,'selected_df_mortality.csv')
 ```

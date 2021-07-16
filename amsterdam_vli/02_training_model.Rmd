@@ -25,7 +25,7 @@ library(ggplot2)
 ```{r}
 # Build the model
 model <- gam(totalFluid_72 ~ 
-                s(leaking_index) + apache 
+                q_leaking_index + apache
                 + age_fixed
                 + gender
                 ,data=selected_df_fluid, family = gaussian)
@@ -44,10 +44,11 @@ ggplot(selected_df_fluid, aes(leaking_index, totalFluid_72) ) +
   labs(y="Fluid Balance 36h-84h (ml)", x = "VLI")
 ```
 
+
 ```{r}
 # Build the model
 model <- gam(hosp_mortality ~ 
-               q_leaking_index + apache
+               s(leaking_index) + apache
                 + age_fixed
                 + gender
                 ,data=selected_df_mortality, family = binomial)
@@ -65,6 +66,7 @@ ggplot(selected_df_mortality, aes(leaking_index, hosp_mortality) ) +
   stat_smooth(method = gam, formula = y ~ s(x)) +
   labs(y="In-Hospital Death", x = "VLI")
 ```
+
 ```{r}
 OR_table<-as.data.frame(round(exp(cbind(OR=coef(model), confint.default(model))),2))
 options(scipen=999) # disable scientific notation

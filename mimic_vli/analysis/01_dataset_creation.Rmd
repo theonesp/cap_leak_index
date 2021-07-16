@@ -434,6 +434,12 @@ hist(selected_df_fluid$fluid_balance, breaks = 50, xlim = c(0, 20000))
 hist(selected_df_fluid$fluid_balance_72, breaks = 20, xlim = c(-20000, 20000))
 ```
 
+```{r}
+png("mimic_hist.png", width = 2000, height = 2000, res = 400)
+hist(selected_df_mortality$leaking_index, main = "MIMIC",  xlab = "VLI", ylab = "Frequency", xlim = c(-15, 5), breaks = 15)
+dev.off()
+```
+
 # Export dataset
 
 ```{r}
