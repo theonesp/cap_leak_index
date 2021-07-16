@@ -3,6 +3,8 @@ title: "01_dataset_creation.Rmd"
 output: pdf
 ---
 
+# Environment
+
 ```{r}
 library(bigrquery)
 library(summarytools)
@@ -20,6 +22,7 @@ library(kableExtra)
 options(scipen=999)
 ```
 
+# Dataset creation
 
 ```{r}
 # Sepsis patients without hemodialysis and bleeding
